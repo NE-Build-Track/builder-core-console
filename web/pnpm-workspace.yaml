@@ -1,0 +1,5 @@
+# Install-time scripts are off by default (pnpm 10). None of these are needed: they fetch optional
+# native helpers that Next.js and ESLint fall back from.
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

@@ -1,0 +1,29 @@
+# Node / web
+web/node_modules/
+web/.next/
+web/out/
+web/next-env.d.ts
+*.tsbuildinfo
+
+# Python helpers in deploy/
+__pycache__/
+*.py[cod]
+
+# Local state
+*.db
+*.sqlite
+.env
+.env.*
+!.env.example
+
+# Secrets and pinned certificates (deploy/README.md)
+deploy/secrets/
+deploy/config/pinned-certs/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Per-worktree scratch (logs, screenshots)
+.local/

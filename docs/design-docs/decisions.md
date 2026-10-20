@@ -1,0 +1,20 @@
+# Decisions
+
+Accepted 20 October 2026 by Mike unless noted. D14 was added and D5 revised the same day. Changing one needs a human (AGENTS.md).
+
+| # | Decision | Why |
+| --- | --- | --- |
+| D1 | **The console is read-only in v1.** Only GET reads of the engine, Batteries and the signer. No forms that post, no route handlers or server actions that write. | A management view should be safe to leave open. The engine admin key can do anything (gap G8), so read-only is enforced in code by `tests/structure/read-only.test.ts`. |
+| D2 | **The engine is the stock builder-core REST service**, `lpb serve` built from builder-core `a89216d` (`tasks/m3/mz/stream-support`, the commit ChatLPT pins) and run as its own container. Not embedded. | The console reports on the engine as builder-core ships it, so whatever it shows is true of every stock deployment. `a89216d` is a superset of `releases/m3` (streaming, `abandoned`, runner GPU). |
+| D3 | **The stack's own payment stack uses ChatLPT's pins, configuration, env names and secret values.** Only one of the two stacks runs at a time. | Same payer, same orchestrators, no new credentials to fund. One signer per payer account (ChatLPT D10). `first-run.sh` never starts the signer. |
+| D4 | **Next.js App Router with server-rendered reads; no Gyral.** The browser never talks to the engine or Batteries. | Credentials stay on the server; pages are plain server components. |
+| D5 | **Tailwind v4 and shadcn's token setup stay; the console's components follow the design system in D14.** Semantic HTML for structure; modern CSS for layout, tokens and motion. *Revised 20 October:* v1 first used shadcn's generated Card, Table and Alert; D14 replaced them with the mock's own components, so `components/ui/` is empty. shadcn's colour names map onto the console's tokens, so a shadcn widget added later matches. | The semantic-html and modern-css skills apply to everything: landmarks, captions, oklch tokens with `light-dark()`, container queries, cascade layers, motion gated by `prefers-reduced-motion`. |
+| D6 | **Compute on demand; store nothing.** Each page reads current state; a 15-second in-memory cache shares reads. | The engine already stores projections and Batteries the ledger. Local rollups and Prometheus are future work (tech debt). |
+| D7 | **No sign-in in v1.** The console is published on 127.0.0.1 only. | It cannot move money (D1), but it shows every actor's spend. Auth is future work. |
+| D8 | **Batteries is the money authority; the engine is the attribution authority.** | Batteries applies every signed ticket; the engine knows which job and actor a ticket paid for. The console shows both and their reconciliation. |
+| D9 | **The engine runs in its stock `per_actor` mode.** | Grants, actors and per-actor allocations are what a management view is for. ChatLPT's `per_application` shared key does not apply. |
+| D10 | **Signer metrics through a socat relay.** | The signer refuses non-loopback metrics binds (gap G5). The relay shares its namespace and is never published. |
+| D11 | **One engine.** The console reports on the stack's one `lpb serve` engine, not on other engines that might pay through the same Batteries. | Scope. Spend from elsewhere would show as unattributed. |
+| D12 | **Engine types come from the pinned spec; Batteries and signer shapes are zod schemas.** | The engine publishes OpenAPI at the pinned commit; the others do not. |
+| D14 | **The visual design is the accepted mock**, `design-docs/mock/console-mock.html` (accepted by Mike, 20 October 2026). Its stylesheet is ported layer for layer into `web/src/app/globals.css`, and its widgets became components on real data. What the mock faked is either real or labelled: signer sparklines show samples since the page opened (D6), the ticker shows Batteries' newest applied tickets, the topology's packets only flow on healthy edges. | It is the design Mike wants; porting rather than reinterpreting keeps it faithful. |
+| D13 | **Writes happen outside the console**, through the engine's Swagger UI or curl on 127.0.0.1:8090. | Keeps D1 while the stack is still operable. |

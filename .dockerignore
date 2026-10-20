@@ -1,0 +1,9 @@
+.git
+.local
+web/node_modules
+web/.next
+deploy/secrets
+deploy/.env
+deploy/config/pinned-certs
+docs
+**/__pycache__

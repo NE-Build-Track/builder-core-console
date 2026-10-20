@@ -1,0 +1,118 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { NOW } from "../../tests/support/fixtures";
+
+import { batteriesReader } from "./batteries/reader";
+import { engineReader, httpProblem } from "./engine/reader";
+import { parseSignerMetrics, signerReader } from "./signer/reader";
+
+const now = () => NOW;
+const respond = (status: number, body: unknown) =>
+  new Response(typeof body === "string" ? body : JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("signer adapter", () => {
+  it("parses the signer's Prometheus text and ignores unknown series", () => {
+    const text = [
+      "# HELP livepeer_signer_up up",
+      "livepeer_signer_up 1",
+      "livepeer_signer_kafka_pending_events 3",
+      'livepeer_signer_kafka_oldest_event_age_seconds{topic="x"} 12.5',
+      "something_else 9",
+    ].join("\n");
+    expect(parseSignerMetrics(text)).toEqual({
+      livepeer_signer_up: 1,
+      livepeer_signer_kafka_pending_events: 3,
+      livepeer_signer_kafka_oldest_event_age_seconds: 12.5,
+    });
+  });
+
+  it("treats a 503 from /readyz as an answer, not a failure", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("signer payment dependencies unavailable\n", { status: 503 })));
+    const reader = signerReader({ ok: true, value: { url: "http://s:8937", metricsUrl: "http://s:8939" } }, { timeoutMs: 1000, now });
+    expect(await reader.readiness()).toMatchObject({ ok: true, value: { ready: false, detail: "signer payment dependencies unavailable" } });
+  });
+
+  it("says which setting is missing", async () => {
+    const reader = signerReader({ ok: false, missing: "CONSOLE_SIGNER_URL" }, { timeoutMs: 1000, now });
+    expect(await reader.discovery()).toMatchObject({ ok: false, problem: { kind: "not_configured", detail: "CONSOLE_SIGNER_URL" } });
+  });
+});
+
+describe("batteries adapter", () => {
+  const settings = { ok: true as const, value: { url: "http://b:8081", token: "secret" } };
+
+  it("walks cursor pages with the reader token", async () => {
+    const fetch = vi.fn(async (url: string, init: RequestInit) => {
+      expect((init.headers as Record<string, string>)["Livepeer-Clearinghouse-Token"]).toBe("secret");
+      expect(init.method).toBe("GET");
+      const cursor = new URL(url).searchParams.get("cursor");
+      return cursor
+        ? respond(200, { items: [{ id: "g2", name: "Two", status: "active", currency: "usd", total_usd: "1", created_at_ms: 2 }], next_cursor: "" })
+        : respond(200, { items: [{ id: "g1", name: "One", status: "active", currency: "usd", total_usd: "2", created_at_ms: 1 }], next_cursor: "abc" });
+    });
+    vi.stubGlobal("fetch", fetch);
+    const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 10_000, now }).grants();
+    expect(reading.ok && reading.value.items.map((grant) => grant.id)).toEqual(["g1", "g2"]);
+    expect(reading.ok && reading.value.truncated).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops at the row cap and says the list is truncated", async () => {
+    const page = Array.from({ length: 1000 }, (_, index) => ({ id: `g${index}`, name: "g", status: "active", currency: "usd", created_at_ms: index }));
+    vi.stubGlobal("fetch", vi.fn(async () => respond(200, { items: page, next_cursor: "more" })));
+    const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).grants();
+    expect(reading).toMatchObject({ ok: true, value: { truncated: true } });
+  });
+
+  it("rejects a body that does not match the pinned shape, naming the field", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => respond(200, { items: [{ id: "g1" }], next_cursor: "" })));
+    const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).grants();
+    expect(reading).toMatchObject({ ok: false, problem: { kind: "unexpected" } });
+    expect(!reading.ok && reading.problem.kind === "unexpected" && reading.problem.detail).toContain("items.0.name");
+  });
+
+  it("reports HTTP errors with the first line of the body", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => respond(403, "Forbidden\nmore")));
+    const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).ledger();
+    expect(reading).toMatchObject({ ok: false, problem: { kind: "http", status: 403, detail: "Forbidden" } });
+  });
+
+  it("reports a refused connection as unreachable", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("fetch failed", { cause: new Error("connect ECONNREFUSED 127.0.0.1:8081") });
+    }));
+    const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).ready();
+    expect(reading).toMatchObject({ ok: false, problem: { kind: "unreachable", detail: "connect ECONNREFUSED 127.0.0.1:8081" } });
+  });
+});
+
+describe("engine adapter", () => {
+  const settings = { ok: true as const, value: { url: "http://e:8080", adminToken: "lpk_admin" } };
+  const health = { ready: false, discovery_fresh: false, discovery_observed_at: null, discovery_error: "x", cost_sync_at: null, cost_sync_error: null, running_jobs: 0, allocation_mode: "per_actor", version: "v" };
+
+  it("reads an unready engine's health from its 503 body", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => respond(503, health)));
+    expect(await engineReader(settings, { timeoutMs: 1000, now }).health()).toMatchObject({ ok: true, value: { ready: false } });
+  });
+
+  it("sends the admin key and only GETs", async () => {
+    const fetch = vi.fn(async (request: Request) => {
+      expect(request.method).toBe("GET");
+      expect(request.headers.get("authorization")).toBe("Bearer lpk_admin");
+      expect(request.url).toBe("http://e:8080/v1/admin/reconciliation?application_id=default&actor_id=a");
+      return respond(200, { application_id: "default" });
+    });
+    vi.stubGlobal("fetch", fetch);
+    await engineReader(settings, { timeoutMs: 1000, now }).reconciliation({ applicationId: "default", actorId: "a" });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("turns engine error bodies into a status line", () => {
+    expect(httpProblem(404, { error: "no allocation pays for actor 'x'" })).toEqual({ kind: "http", status: 404, detail: "no allocation pays for actor 'x'" });
+    expect(httpProblem(422, { detail: [{ msg: "bad" }] })).toMatchObject({ status: 422, detail: '[{"msg":"bad"}]' });
+  });
+});
