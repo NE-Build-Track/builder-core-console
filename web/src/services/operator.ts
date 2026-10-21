@@ -88,7 +88,28 @@ export type ReviewContext = {
   readonly grants: Reading<readonly EngineGrant[]>;
   readonly allowance: Reading<Allowance> | null;
   readonly keys: Reading<readonly AccessKey[]>;
+  /** Each grant's unallocated balance from the Batteries ledger, when the console can read it. */
+  readonly unallocated: Readonly<Record<string, string>>;
 };
+
+function minus(left: string, right: string): string | null {
+  const a = toUnits(left);
+  const b = toUnits(right);
+  return a === null || b === null ? null : fromUnits(a - b);
+}
+
+/** What drawing `amount` from a grant does to its unallocated balance, and a warning when it is short. */
+function fromGrant(context: ReviewContext, grantId: string, amount: string): { readonly lines: ReviewLine[]; readonly warnings: string[] } {
+  const free = context.unallocated[grantId];
+  if (!grantId || free === undefined) return { lines: [], warnings: [] };
+  const after = minus(free, amount);
+  if (after === null) return { lines: [], warnings: [] };
+  const short = after.startsWith("-");
+  return {
+    lines: [{ label: "Grant unallocated", before: dollars(free), after: short ? "not enough" : dollars(after) }],
+    warnings: short ? [`The grant has only ${dollars(free)} unallocated, so the engine will refuse this (409). Fund the grant first, or allocate less.`] : [],
+  };
+}
 
 /** An amount exactly as it is, never rounded, with at least two decimals: $1.50, $0.125. */
 function dollars(value: string): string {
@@ -125,17 +146,21 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
       ];
       return { ...base, lines, button: `Fund ${dollars(input.amount)}` };
     }
-    case "provision":
+    case "provision": {
+      const grant = fromGrant(context, input.grantId, input.amount);
       return {
         ...base,
         lines: [
           { label: "Actor", value: `${input.actorId} in ${input.applicationId}`, mono: true },
           { label: "From grant", value: grantName(context, input.grantId), mono: true },
+          ...grant.lines,
           { label: "Allocation", before: "$0", after: dollars(input.amount) },
           ...(input.label ? [{ label: "Label", value: input.label }] : []),
         ],
+        warnings: [...warnings, ...grant.warnings],
         button: `Provision with ${dollars(input.amount)}`,
       };
+    }
     case "fundAllocation": {
       const allowance = context.allowance?.ok ? context.allowance.value : null;
       const lines: ReviewLine[] = [{ label: "Actor", value: `${input.actorId} in ${input.applicationId}`, mono: true }];
@@ -148,8 +173,9 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
       } else {
         lines.push({ label: "Adds", value: dollars(input.amount) });
       }
-      if (input.grantId) lines.push({ label: "From grant", value: grantName(context, input.grantId), mono: true });
-      return { ...base, lines, button: `Fund ${dollars(input.amount)}` };
+      const grant = fromGrant(context, input.grantId, input.amount);
+      if (input.grantId) lines.push({ label: "From grant", value: grantName(context, input.grantId), mono: true }, ...grant.lines);
+      return { ...base, lines, warnings: [...warnings, ...grant.warnings], button: `Fund ${dollars(input.amount)}` };
     }
     case "setStatus": {
       const current = context.allowance?.ok ? context.allowance.value.status : "unknown";
@@ -263,6 +289,7 @@ export type OperatorActor = {
 
 export type OperatorView = {
   readonly grants: Reading<readonly EngineGrant[]>;
+  readonly unallocated: Readonly<Record<string, string>>;
   readonly keys: Reading<readonly AccessKey[]>;
   readonly actors: readonly OperatorActor[];
 };

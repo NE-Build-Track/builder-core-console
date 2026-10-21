@@ -3,6 +3,8 @@
  * one builder's jobs; and their allowance and wholesale network cost. Pure functions over readings.
  */
 import { COST_CLASSES, type Allowance, type CostClass, type CostSummary, type EngineHealth, type Fees, type Job, type JobCost, type NetworkRate, type Offering } from "@/domain/engine";
+import { isFinalState, type JobState, type RunInput } from "@/domain/builder";
+import { invalid, parsed, wholeNumber, type Parsed } from "@/domain/forms";
 import { mapReading, type Reading } from "@/domain/reading";
 import { ageSeconds } from "@/utils/time";
 
@@ -103,17 +105,8 @@ export function usage(allowance: Reading<Allowance>, summary: Reading<CostSummar
   return { allowance, summary, window, classes: COST_CLASSES.map((costClass) => ({ costClass, fees: byClass[costClass] ?? null })) };
 }
 
-/** A job and its cost, as the Builder polls them after a run (JSON for the browser). */
-export type JobState = {
-  readonly job: Job | null;
-  readonly cost: JobCost | null;
-  readonly problem: string | null;
-  /** Nothing more will change: the job is final and its cost is no longer pending. */
-  readonly settled: boolean;
-};
-
 export function jobState(job: Reading<Job>, cost: Reading<JobCost>): JobState {
-  const final = job.ok && ["succeeded", "failed", "uncertain"].includes(job.value.state);
+  const final = job.ok && isFinalState(job.value.state);
   const costSettled = cost.ok && cost.value.status !== "pending";
   const nothingPaid = job.ok && !job.value.attempts.some((attempt) => attempt.payment_sent);
   return {
@@ -122,4 +115,34 @@ export function jobState(job: Reading<Job>, cost: Reading<JobCost>): JobState {
     problem: job.ok ? null : `job: ${job.problem.kind === "http" ? `HTTP ${job.problem.status}` : job.problem.kind}`,
     settled: final && (costSettled || nothingPaid),
   };
+}
+
+function field(value: Record<string, unknown>, name: string): unknown {
+  return value[name];
+}
+
+/**
+ * A run request from the browser, checked before anything is sent (decision D19). The browser built it,
+ * so nothing in it is trusted: the server parses it again and the engine checks the key's permissions.
+ */
+export function parseRun(value: unknown): Parsed<RunInput> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return invalid("body", "The run request must be a JSON object.");
+  const body = value as Record<string, unknown>;
+  const app = field(body, "app");
+  if (typeof app !== "string" || !/^[A-Za-z0-9._/@:-]{1,200}$/.test(app)) return invalid("app", "Choose an offering.");
+  const path = field(body, "path");
+  if (typeof path !== "string" || !path.startsWith("/") || path.length > 500 || /\s/.test(path)) return invalid("path", "The path must start with / and have no spaces.");
+  const method = field(body, "method");
+  if (method !== "POST" && method !== "GET") return invalid("method", "The method must be POST or GET.");
+  const payload = field(body, "payload");
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return invalid("payload", "The input must be a JSON object.");
+  const stream = field(body, "stream");
+  if (typeof stream !== "boolean") return invalid("stream", "Say whether to stream.");
+  const timeout = wholeNumber(String(field(body, "timeoutS")), "timeoutS", "Timeout", 5, 600);
+  if (!timeout.ok) return timeout;
+  const attempts = wholeNumber(String(field(body, "maxAttempts")), "maxAttempts", "Attempts", 1, 5);
+  if (!attempts.ok) return attempts;
+  const ref = field(body, "operationRef");
+  if (typeof ref !== "string" || !/^[A-Za-z0-9._:-]{8,200}$/.test(ref)) return invalid("operationRef", "The run lost its operation reference; try again.");
+  return parsed({ app, path, method, payload: payload as Record<string, unknown>, stream, timeoutS: timeout.value, maxAttempts: attempts.value, operationRef: ref });
 }

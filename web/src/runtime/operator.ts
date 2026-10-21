@@ -8,7 +8,7 @@ import { describeProblem } from "@/domain/reading";
 import type { Session } from "@/domain/session";
 import { actorsFromKeys, parseAction, resultOf, reviewOf, type OperatorView, type ReviewContext } from "@/services/operator";
 
-import { forgetReads } from "./console";
+import { forgetReads, loadMoney } from "./console";
 import { engineUrl, keyed } from "./session";
 
 /**
@@ -26,18 +26,28 @@ export function valuesOf(form: FormData): Record<string, string> {
   return values;
 }
 
+/** Each grant's unallocated balance from the Batteries ledger (shared reads; empty when Batteries is unreadable). */
+async function unallocatedByGrant(): Promise<Record<string, string>> {
+  forgetReads();
+  const view = await loadMoney();
+  if (!view.grants.ok) return {};
+  return Object.fromEntries(view.grants.value.flatMap((item) => (item.unallocated === null ? [] : [[item.grant.id, item.unallocated]])));
+}
+
 async function contextFor(session: Session, input: ActionInput): Promise<ReviewContext> {
   const engine = keyed(session.token);
   const unavailable = { ok: false as const, source: "engine" as const, problem: { kind: "not_configured" as const, detail: "CONSOLE_ENGINE_URL" }, readAt: new Date().toISOString() };
-  if (!engine) return { grants: unavailable, allowance: null, keys: unavailable };
+  if (!engine) return { grants: unavailable, allowance: null, keys: unavailable, unallocated: {} };
   const actorId = "actorId" in input ? input.actorId : null;
   const wantsAllowance = input.action === "fundAllocation" || input.action === "setStatus";
-  const [grants, allowance, keys] = await Promise.all([
+  const drawsOnGrant = input.action === "provision" || input.action === "fundAllocation";
+  const [grants, allowance, keys, unallocated] = await Promise.all([
     engine.grants(),
     wantsAllowance && actorId ? engine.allowance(actorId) : Promise.resolve(null),
     input.action === "revokeKey" ? engine.adminKeys() : Promise.resolve(unavailable),
+    drawsOnGrant ? unallocatedByGrant() : Promise.resolve({}),
   ]);
-  return { grants, allowance, keys };
+  return { grants, allowance, keys, unallocated };
 }
 
 export async function reviewAction(session: Session, form: FormData): Promise<ActionState> {
@@ -73,9 +83,9 @@ export async function commitAction(session: Session, form: FormData): Promise<Ac
 export async function loadOperator(session: Session): Promise<OperatorView> {
   const engine = keyed(session.token);
   const missing = { ok: false as const, source: "engine" as const, problem: { kind: "not_configured" as const, detail: "CONSOLE_ENGINE_URL" }, readAt: new Date().toISOString() };
-  if (!engine) return { grants: missing, keys: missing, actors: [] };
-  const [grants, keys] = await Promise.all([engine.grants(), engine.adminKeys()]);
+  if (!engine) return { grants: missing, keys: missing, actors: [], unallocated: {} };
+  const [grants, keys, unallocated] = await Promise.all([engine.grants(), engine.adminKeys(), unallocatedByGrant()]);
   const rows = keys.ok ? actorsFromKeys(keys.value) : [];
   const allowances = await Promise.all(rows.map((row) => engine.allowance(row.actorId)));
-  return { grants, keys, actors: rows.map((row, index) => ({ ...row, allowance: allowances[index] ?? null })) };
+  return { grants, keys, unallocated, actors: rows.map((row, index) => ({ ...row, allowance: allowances[index] ?? null })) };
 }

@@ -948,6 +948,7 @@
   .money-input { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); }
   .money-input > span { color: var(--muted); }
   .form-error { color: color-mix(in oklch, var(--bad) 85%, var(--fg)); font-size: var(--step--1); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; translate: none; }
   .btn[data-danger] { border-color: color-mix(in oklch, var(--bad) 55%, transparent); color: color-mix(in oklch, var(--bad) 85%, var(--fg)); }
   .btn.primary[data-danger] { background: var(--bad); color: var(--accent-ink); border-color: transparent; }
 
@@ -966,6 +967,8 @@
 
   /* the three-step dialog */
   .act-dialog {
+    margin: auto; /* the reset zeroes margins; a modal dialog is centred by auto margins */
+    text-align: start; white-space: normal; /* opened from a table cell, it would inherit the cell's alignment */
     inline-size: min(44rem, calc(100vw - 32px)); max-block-size: calc(100dvh - 32px); padding: 0;
     border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); color: var(--fg); box-shadow: var(--shadow);
     &::backdrop { background: oklch(10% 0.03 265 / 0.55); backdrop-filter: blur(3px); }

@@ -54,18 +54,17 @@ export async function signInBuilderWithKey(form: FormData): Promise<void> {
   redirect(`/builder?signin=${encodeURIComponent(result.message)}`);
 }
 
-/** One Operator action: `intent` is review, commit, back or again (D17). */
+/** One Operator action: `intent` is review, commit, back or again (D17). The client refreshes the page when its dialog closes. */
 export async function operate(previous: ActionState, form: FormData): Promise<ActionState> {
   const session = await sessionFor("operator");
   if (!session) return { step: "fill", values: valuesOf(form), error: { message: "Your operator session ended. Sign in again." } };
   switch (form.get("intent")) {
     case "review":
       return reviewAction(session, form);
-    case "commit": {
-      const state = await commitAction(session, form);
-      if (state.step === "done" && state.ok) refresh();
-      return state;
-    }
+    case "commit":
+      // No refresh here: the page re-renders when the dialog closes, so a row that changes its
+      // actions (Provision becomes Fund) cannot unmount the dialog that is showing the result.
+      return commitAction(session, form);
     case "back":
       return { step: "fill", values: previous.step === "fill" ? (previous.values ?? valuesOf(form)) : previous.values };
     default:

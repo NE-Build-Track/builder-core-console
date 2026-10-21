@@ -2,10 +2,13 @@
 import type { FieldSpec, ReviewLine } from "@/domain/operator";
 
 export function Fields({
+  idPrefix,
   fields,
   values,
   error,
 }: {
+  /** Unique per dialog: a page holds many action dialogs with the same field names. */
+  readonly idPrefix: string;
   readonly fields: readonly FieldSpec[];
   readonly values?: Readonly<Record<string, string>>;
   readonly error?: { readonly field?: string; readonly message: string };
@@ -14,7 +17,7 @@ export function Fields({
     <div className="act-fields">
       {fields.map((field) => {
         if (field.type === "hidden") return <input key={field.name} type="hidden" name={field.name} value={values?.[field.name] ?? field.value} />;
-        const id = `field-${field.name}`;
+        const id = `${idPrefix}-${field.name}`;
         const value = values?.[field.name] ?? field.value ?? "";
         const wrong = error?.field === field.name;
         const describedBy = [field.hint ? `${id}-hint` : null, wrong ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;

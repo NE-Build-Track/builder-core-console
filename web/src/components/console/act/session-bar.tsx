@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import type { SessionView } from "@/domain/session";
 
-import { Ago, Id } from "../values";
+import { Id, Instant } from "../values";
 
 export function SessionBar({ session, signOut, children }: { readonly session: SessionView; readonly signOut: () => Promise<void>; readonly children?: ReactNode }) {
   return (
@@ -22,7 +22,7 @@ export function SessionBar({ session, signOut, children }: { readonly session: S
         ) : null}
       </span>
       <span className="muted">
-        until <Ago iso={session.expiresAt} />
+        until <Instant iso={session.expiresAt} />
       </span>
       {children}
       <form action={signOut} className="session-out">

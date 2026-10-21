@@ -4,6 +4,7 @@
  * capability's inputs (builder-core #18) the form can take them from there.
  */
 import type { components } from "./engine-schema";
+import type { Job, JobCost } from "./engine";
 
 type Schemas = components["schemas"];
 
@@ -87,3 +88,12 @@ export const FINAL_JOB_STATES = ["succeeded", "failed", "uncertain"] as const;
 export function isFinalState(state: string): boolean {
   return (FINAL_JOB_STATES as readonly string[]).includes(state);
 }
+
+/** A job and its cost, as the Builder polls them after a run (JSON for the browser). */
+export type JobState = {
+  readonly job: Job | null;
+  readonly cost: JobCost | null;
+  readonly problem: string | null;
+  /** Nothing more will change: the job is final and its cost is no longer pending, or nothing was paid. */
+  readonly settled: boolean;
+};

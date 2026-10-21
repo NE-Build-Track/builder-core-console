@@ -15,6 +15,7 @@ const REF = "console-fundGrant-1234abcd";
 const context: ReviewContext = {
   grants: read("engine", [{ id: "g1", name: "Pilot", status: "active", currency: "USD", total: "1.5" }]),
   allowance: read("engine", { allocation_id: "al1", status: "active", granted: { amount: "0.25", currency: "USD" }, available: { amount: "0.2", currency: "USD" }, spent: { amount: "0.05", currency: "USD" } }),
+  unallocated: { g1: "0.3" },
   keys: read("engine", [
     { key_id: "k1abcdefgh", actor_id: "acme", application_id: "default", kind: "actor", label: "", permissions: [], created_at: "2026-10-21T10:00:00Z", revoked_at: null },
   ]),
@@ -76,5 +77,15 @@ describe("operator actions", () => {
       { key_id: "k9", actor_id: "ops", application_id: "default", kind: "admin", label: "", permissions: [], created_at: "2026-10-21T10:00:00Z", revoked_at: null },
     ]);
     expect(actors).toEqual([{ applicationId: "default", actorId: "acme", activeKeys: 1, revokedKeys: 0 }]);
+  });
+});
+
+describe("drawing on a grant", () => {
+  it("shows the grant's unallocated balance and warns before the engine would refuse", () => {
+    const fits = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.25", label: "" }, context);
+    expect(fits.lines).toContainEqual({ label: "Grant unallocated", before: "$0.30", after: "$0.05" });
+    expect(fits.warnings.join(" ")).not.toContain("refuse");
+    const short = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.5", label: "" }, context);
+    expect(short.warnings.join(" ")).toContain("will refuse this (409)");
   });
 });

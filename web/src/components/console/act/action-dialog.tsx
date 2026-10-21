@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 
 import type { ActionState, FieldSpec, OperatorAction } from "@/domain/operator";
@@ -35,10 +36,23 @@ export function ActionDialog({ action, label, fields, operate, signInWithKey, qu
   const titleId = useId();
   const [state, formAction, pending] = useActionState(operate, { step: "fill" });
   const [ref, setRef] = useState(() => newRef(action));
+  const router = useRouter();
+  const changed = useRef(false);
 
   useEffect(() => {
-    if (state.step === "done" && state.ok) toast(state.title);
+    if (state.step === "done" && state.ok) {
+      changed.current = true;
+      toast(state.title);
+    }
   }, [state]);
+
+  function closed(): void {
+    setRef(newRef(action));
+    if (changed.current) {
+      changed.current = false;
+      router.refresh();
+    }
+  }
 
   function close(): void {
     dialog.current?.close();
@@ -52,7 +66,7 @@ export function ActionDialog({ action, label, fields, operate, signInWithKey, qu
       <button type="button" className={quiet ? "btn" : "btn primary"} data-danger={danger || undefined} onClick={() => dialog.current?.showModal()}>
         {label}
       </button>
-      <dialog ref={dialog} className="act-dialog" aria-labelledby={titleId} onClose={() => setRef(newRef(action))}>
+      <dialog ref={dialog} className="act-dialog" aria-labelledby={titleId} onClose={closed}>
         <div className="act-head">
           <h2 id={titleId}>{label}</h2>
           <ol className="steps" aria-label="Steps">
@@ -69,7 +83,7 @@ export function ActionDialog({ action, label, fields, operate, signInWithKey, qu
           <form action={formAction} className="act-form">
             <input type="hidden" name="action" value={action} />
             <input type="hidden" name="operation_ref" value={operationRef} />
-            <Fields fields={fields} values={values} error={state.error} />
+            <Fields idPrefix={titleId} fields={fields} values={values} error={state.error} />
             {state.error && !state.error.field ? (
               <p className="form-error" role="alert">
                 {state.error.message}
@@ -121,7 +135,7 @@ export function ActionDialog({ action, label, fields, operate, signInWithKey, qu
         ) : null}
 
         {state.step === "done" ? (
-          <form action={formAction} className="act-form">
+          <div className="act-form">
             {state.ok ? (
               <>
                 <p className="pill" data-state="ok">
@@ -138,10 +152,10 @@ export function ActionDialog({ action, label, fields, operate, signInWithKey, qu
               </div>
             )}
             <ExchangePanel call={state.exchange} open={!state.ok} />
-            {Object.entries(state.values).map(([name, value]) => (
-              <input key={name} type="hidden" name={name} value={value} />
-            ))}
-            <div className="act-buttons">
+            <form action={formAction} className="act-buttons">
+              {Object.entries(state.values).map(([name, value]) => (
+                <input key={name} type="hidden" name={name} value={value} />
+              ))}
               {state.ok ? (
                 <button type="submit" name="intent" value="again" className="btn" onClick={() => setRef(newRef(action))}>
                   Do another
@@ -154,8 +168,8 @@ export function ActionDialog({ action, label, fields, operate, signInWithKey, qu
               <button type="button" className="btn primary" onClick={close}>
                 Done
               </button>
-            </div>
-          </form>
+            </form>
+          </div>
         ) : null}
       </dialog>
     </>

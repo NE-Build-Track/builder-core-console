@@ -1,10 +1,10 @@
 import "server-only";
 
-import type { RunInput } from "@/domain/builder";
+import type { JobState, RunInput } from "@/domain/builder";
 import { mapReading, type Reading } from "@/domain/reading";
 import type { Session } from "@/domain/session";
 import type { RunStarted } from "@/ports/keyed";
-import { catalog, jobRow, jobState, usage, type CatalogView, type JobRow, type JobState, type UsageView } from "@/services/builder";
+import { catalog, jobRow, jobState, usage, type CatalogView, type JobRow, type UsageView } from "@/services/builder";
 import { windowBounds, type WindowName } from "@/utils/time";
 
 import { forgetReads, sharedSources } from "./console";

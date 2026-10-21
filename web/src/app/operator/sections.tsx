@@ -16,7 +16,10 @@ function grantOptions(view: OperatorView, blank: string | null): { value: string
   const grants = view.grants.ok ? view.grants.value : [];
   return [
     ...(blank === null ? [] : [{ value: "", label: blank }]),
-    ...grants.map((grant) => ({ value: grant.id, label: `${grant.name || "(no name)"} · $${grant.total || "?"}` })),
+    ...grants.map((grant) => {
+      const free = view.unallocated[grant.id];
+      return { value: grant.id, label: `${grant.name || "(no name)"} · $${grant.total || "?"} total${free === undefined ? "" : ` · $${free} unallocated`}` };
+    }),
   ];
 }
 
