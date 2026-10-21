@@ -14,16 +14,18 @@ import { usage } from "@/services/usage";
 import { users } from "@/services/users";
 import type { WindowName } from "@/utils/time";
 
-import { cached, ttlCache } from "./ttl-cache";
+import { cached, ttlCache, type TtlCache } from "./ttl-cache";
 
 /**
  * App wiring: settings → adapters → cached readers → services. Pages call only these functions.
  * The sources are built once per server process, so the cache is shared by every request.
  */
+let cache: TtlCache | null = null;
+
 function build(): Sources {
   const config = readConfig();
   const now = () => new Date();
-  const cache = ttlCache(config.cacheTtlMs);
+  cache = ttlCache(config.cacheTtlMs);
   const options = { timeoutMs: config.timeoutMs, now };
   return {
     engine: cached("engine", engineReader(config.engine, options), cache),
@@ -39,6 +41,14 @@ let sources: Sources | null = null;
 function current(): Sources {
   sources ??= build();
   return sources;
+}
+
+/** The shared sources, for the writing areas' review reads. */
+export const sharedSources = (): Sources => current();
+
+/** After a write, forget every cached read so the next page shows the change, not a 15 s old copy. */
+export function forgetReads(): void {
+  cache?.clear();
 }
 
 export const loadStackHealth = () => stackHealth(current());

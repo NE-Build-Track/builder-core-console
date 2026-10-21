@@ -20,3 +20,21 @@ export function CopyButton({ value, label }: { readonly value: string; readonly 
     </button>
   );
 }
+
+/** Copy a longer text (a curl command, a new key) behind a labelled button; the toast never echoes it. */
+export function CopyAction({ value, label, primary = false }: { readonly value: string; readonly label: string; readonly primary?: boolean }) {
+  async function copy(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast(`Copied ${label}`);
+    } catch {
+      toast("Copy blocked here", "Select the text and copy it by hand.");
+    }
+  }
+  return (
+    <button type="button" className={primary ? "btn primary" : "btn"} onClick={copy}>
+      <Icon name="copy" />
+      Copy {label}
+    </button>
+  );
+}

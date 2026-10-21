@@ -92,7 +92,7 @@ async function Money() {
         <Unreadable reading={view.allocations} what="Allocations" />
         <Unreadable reading={view.keys} what="Gateway keys" />
         <Unreadable reading={view.engineGrants} what="The engine's grants" />
-        {view.grants.ok && view.grants.value.length === 0 ? <Empty>Batteries has no grants yet. Create one with the Batteries CLI (deploy/README.md).</Empty> : null}
+        {view.grants.ok && view.grants.value.length === 0 ? <Empty>Batteries has no grants yet. Create one from Operator actions, or with the Batteries CLI (deploy/README.md).</Empty> : null}
         {view.grants.ok && view.grants.value.length > 0 ? (
           <Grid min="min(28rem, 100%)" start>
             {view.grants.value.map((grant) => (

@@ -250,6 +250,9 @@ export type NavCounts = {
   readonly usage: number | null;
   readonly jobs: number | null;
   readonly sources: number;
+  /** The writing areas carry no count. */
+  readonly operator: null;
+  readonly builder: null;
 };
 
 export type SignerView = {

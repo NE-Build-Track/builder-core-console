@@ -17,6 +17,9 @@ fails when the two disagree. The console works within these today; nothing here 
 | [G9](#g9-admin-reads-are-scoped-to-one-application) | builder-core | Per-actor money across every application. |
 | [G10](#g10-no-application-wide-reconciliation-in-per_actor-mode) | builder-core | One reconciliation read for the Health page instead of one per actor. |
 | [G11](#g11-reconciliation-flags-normal-sync-lag-as-unbalanced) | builder-core | An engine flag that only goes false on real money gaps, so it can drive alerts. |
+| [G12](#g12-creating-a-grant-returns-an-incomplete-record) | builder-core | The created grant shown from one call. |
+| [G13](#g13-no-who-am-i-call) | builder-core | The Builder names its actor from the moment it signs in. |
+| [G14](#g14-rates-are-in-wei-only) | builder-core | Rates a builder can read in dollars before running a job. |
 
 ## G1: No admin job list
 
@@ -105,10 +108,36 @@ fails when the two disagree. The console works within these today; nothing here 
 **Fix.** Reconcile only up to the last synced usage row, or report the unsynced amount separately from unattributed spend.
 
 **Owner.** builder-core. **Unlocks:** An engine flag that only goes false on real money gaps, so it can drive alerts.
+
+## G12: Creating a grant returns an incomplete record
+
+**Impact.** POST /v1/admin/grants answers 201 with the new grant's id but an empty name, status and total, so the console reads the grant list again after creating one instead of showing the response.
+
+**Fix.** Map Batteries' create response fully in the engine (the grant list already maps the same fields).
+
+**Owner.** builder-core. **Unlocks:** The created grant shown from one call.
+
+## G13: No who-am-I call
+
+**Impact.** Nothing tells a key which actor and application it belongs to, so the Builder learns its actor id from its newest job and shows none until the key has run one.
+
+**Fix.** GET /v1/me returning the caller's actor, application, kind and permissions.
+
+**Owner.** builder-core. **Unlocks:** The Builder names its actor from the moment it signs in.
+
+## G14: Rates are in wei only
+
+**Impact.** Offerings carry the orchestrators' rates in wei per their own unit, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries.
+
+**Fix.** Add a USD rate beside the advertised one, with the ETH price, its source and its time (ISS-10).
+
+**Owner.** builder-core. **Unlocks:** Rates a builder can read in dollars before running a job.
+
 ## Not a console gap: funded grants through the engine
 
 With ChatLPT's credential layout (also builder-core's dev stack), `POST /v1/admin/grants` with a non-zero
 amount fails with `provider HTTP 403`: the grant-desk credential has `grants.create` but not `grants.fund`,
-and Batteries needs both for a funded grant. ChatLPT creates its grant with the Batteries CLI for the
-same reason. This stack does the same ([deploy/README.md](../../deploy/README.md#operating)). Found
-20 October 2026.
+and Batteries needs both for a funded grant; with no amount the engine refuses the grant. Found
+20 October 2026. **Resolved for this stack 21 October:** `deploy/init-secrets.py` gives this stack's grant
+desk `grants.fund`, so Operator actions can create funded grants (D15). ChatLPT's Batteries keeps its own
+credentials and still uses the CLI.

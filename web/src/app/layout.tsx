@@ -19,7 +19,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Builder console", template: "%s · Builder console" },
-  description: "A read-only view of a livepeer-builder stack: engine, Batteries and the remote signer.",
+  description: "A livepeer-builder stack in one place: read-only pages for its health and money, and Operator and Builder areas that drive the engine's REST API.",
   robots: { index: false, follow: false },
 };
 
@@ -71,7 +71,7 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
             </Suspense>
             <div className="rail-foot">
               <Pill state="ok" quiet>
-                Read-only: every route is a GET
+                Pages read only; Operator and Builder write, after review
               </Pill>
               <Suspense fallback={<EnginePin version={null} />}>
                 <ReportedPin />

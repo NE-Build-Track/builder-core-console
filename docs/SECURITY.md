@@ -2,11 +2,19 @@
 
 ## Trust boundaries
 
-- **Browser ↔ console.** No sign-in in v1 (D7). The console is published on `127.0.0.1` only. Anyone
-  who can reach that port sees every actor's spend and the stack's state, but can change nothing (D1).
-- **Console ↔ engine.** The console holds an engine **admin** key. The engine has no read-only admin
-  credential (gap G8), so the key could do anything; the console's code makes only GET requests, and
-  `web/tests/structure/read-only.test.ts` keeps it that way.
+- **Browser ↔ console.** The read-only pages need no sign-in (D7); the console is published on
+  `127.0.0.1` only. Anyone who can reach that port sees every actor's spend and the stack's state.
+  Changing anything needs a sign-in to a writing area with an engine key (D16): an admin key for
+  Operator actions, an actor key for the Builder.
+- **Sessions.** The pasted key is checked against the engine, then sealed (AES-256-GCM under
+  `CONSOLE_SESSION_SECRET`) into an httpOnly, `SameSite=Strict` cookie for 8 hours; the browser cannot
+  read it and the server stores nothing. Server actions are origin-checked by Next.js; the Builder's
+  run endpoint checks `Origin` itself. Sign-out deletes the cookie; a revoked key fails on its next call.
+- **Console ↔ engine.** The pages read with the console's own **admin** key, which could do anything
+  (gap G8): only GET leaves the read path, and `web/tests/structure/writes.test.ts` keeps writes in two
+  adapters used only by the writing areas, which send them with the **signed-in** key, never the console's.
+- **New keys.** An issued key is shown once, in the result of the action that made it, and is never
+  stored, logged or shown in a request panel (keys there are replaced by `lpk_…(hidden)`).
 - **Console ↔ Batteries.** The `console-reader` credential has only `*.read` permissions, so
   Batteries itself refuses any write.
 - **Console ↔ signer.** Discovery and the metrics listener need no credential. The relay that exposes
@@ -17,6 +25,8 @@
 | Credential | Where | Notes |
 | --- | --- | --- |
 | Engine admin key (`lpk_`) | `deploy/.env` `CONSOLE_ENGINE_ADMIN_TOKEN` | Printed once by `lpb bootstrap-admin`; revoke with `POST /v1/admin/keys/{id}/revoke` |
+| Session secret | `deploy/.env` `CONSOLE_SESSION_SECRET` | Seals sign-ins; written by `first-run.sh`; changing it signs everyone out |
+| Signed-in keys | the area's sealed cookie only | Never stored on the server or written to a log |
 | Batteries `console-reader` | `deploy/secrets/console-reader-token`, `deploy/.env` | `*.read` only |
 | Batteries engine and grant-desk tokens | `deploy/secrets/`, `deploy/.env` (`LPB_*`) | The engine's, as in ChatLPT |
 | Payer keystore, password, RPC URL | `deploy/secrets/` | The signer's; the same payer as ChatLPT |
@@ -30,5 +40,5 @@
 
 ## Before exposing the console beyond loopback
 
-Add sign-in (tech debt T3) and put TLS in front of it. Prefer a reverse proxy with its own auth until
-the console has one.
+Put TLS in front of it (the session cookie is marked Secure over HTTPS) and protect the read-only pages
+too: they need no sign-in. Prefer a reverse proxy with its own auth until the pages have one.

@@ -928,3 +928,124 @@
   .chart .cross { left: var(--x); }
   .signer-tiles { --min: 13rem; }
 }
+
+/* ------------------------------------------------------------------ writing areas (D15–D20)
+   Operator actions and the Builder: forms, the three-step dialog, the request panel, run output. */
+@layer components {
+  /* fields */
+  .field { display: grid; gap: 6px; min-inline-size: 0; }
+  .field label { font-size: var(--step--1); font-weight: 600; }
+  .field input, .field select, .field textarea {
+    inline-size: 100%; min-block-size: 2.75rem; padding: 8px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-size: var(--step--1);
+    &:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    &[aria-invalid="true"], &:user-invalid { border-color: var(--bad); }
+    &:disabled { opacity: .55; cursor: not-allowed; }
+  }
+  .field input[name="key"], .field textarea, .field input[name$="_id"] { font-family: var(--font-mono); }
+  .field textarea { min-block-size: 12rem; resize: vertical; line-height: 1.45; tab-size: 2; }
+  .field .hint { color: var(--faint); font-size: var(--step--2); }
+  .money-input { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); }
+  .money-input > span { color: var(--muted); }
+  .form-error { color: color-mix(in oklch, var(--bad) 85%, var(--fg)); font-size: var(--step--1); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; translate: none; }
+  .btn[data-danger] { border-color: color-mix(in oklch, var(--bad) 55%, transparent); color: color-mix(in oklch, var(--bad) 85%, var(--fg)); }
+  .btn.primary[data-danger] { background: var(--bad); color: var(--accent-ink); border-color: transparent; }
+
+  /* sign-in and the signed-in bar */
+  .signin { display: grid; gap: 14px; max-inline-size: 40rem; }
+  .signin h2 { display: flex; align-items: center; gap: 10px; }
+  .signin h2 svg { inline-size: 18px; block-size: 18px; color: var(--accent); }
+  .signin-why { color: var(--muted); font-size: var(--step--1); display: grid; gap: 8px; }
+  .session-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 14px;
+    border: 1px solid var(--line-soft); border-radius: var(--r); background: var(--surface); font-size: var(--step--1);
+  }
+  .session-out { margin-inline-start: auto; }
+  .area-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+  .area-nav a[aria-current="page"] { border-color: var(--accent); color: var(--fg); }
+
+  /* the three-step dialog */
+  .act-dialog {
+    margin: auto; /* the reset zeroes margins; a modal dialog is centred by auto margins */
+    text-align: start; white-space: normal; /* opened from a table cell, it would inherit the cell's alignment */
+    inline-size: min(44rem, calc(100vw - 32px)); max-block-size: calc(100dvh - 32px); padding: 0;
+    border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); color: var(--fg); box-shadow: var(--shadow);
+    &::backdrop { background: oklch(10% 0.03 265 / 0.55); backdrop-filter: blur(3px); }
+  }
+  .act-head {
+    position: sticky; inset-block-start: 0; z-index: 1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 18px; border-block-end: 1px solid var(--line-soft); background: var(--surface);
+  }
+  .act-head h2 { font-size: var(--step-1); }
+  .act-head .btn.icon { margin-inline-start: auto; font-size: 1.2rem; }
+  .steps { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0; font-size: var(--step--2); color: var(--faint); counter-reset: step; }
+  .steps li { counter-increment: step; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-soft); }
+  .steps li::before { content: counter(step) ". "; }
+  .steps li[aria-current="step"] { color: var(--fg); border-color: var(--accent); background: var(--accent-soft); }
+  .act-form { display: grid; gap: 16px; padding: 18px; }
+  .act-fields { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); }
+  .act-buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .act-form > .pill { justify-self: start; }
+
+  /* review lines: label, then value or before → after */
+  .review { display: grid; gap: 8px; margin: 0; }
+  .review > div { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 4px 14px; align-items: baseline; font-size: var(--step--1); }
+  .review dt { color: var(--muted); }
+  .review dd { margin: 0; overflow-wrap: anywhere; }
+  .review .before { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in oklch, currentColor 45%, transparent); }
+  @container (width < 28rem) { .review > div { grid-template-columns: minmax(0, 1fr); } }
+
+  /* the request and response panel (D18) */
+  .exchange { border: 1px solid var(--line-soft); border-radius: 12px; background: var(--surface-2); min-inline-size: 0; }
+  .exchange > summary {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 12px; cursor: pointer; font-size: var(--step--1);
+    list-style-position: inside;
+  }
+  .exchange-title { font-weight: 600; }
+  .exchange-line { color: var(--muted); overflow-wrap: anywhere; }
+  .exchange-line b { color: var(--accent); font-weight: 600; }
+  .exchange-body { display: grid; gap: 8px; padding: 0 12px 12px; }
+  .exchange-k { font-size: var(--step--2); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .code {
+    margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line-soft);
+    font-family: var(--font-mono); font-size: var(--step--2); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+    max-block-size: 22rem; overflow: auto;
+  }
+
+  /* a new key, shown once */
+  .shown-once {
+    display: grid; gap: 10px; padding: 14px; border-radius: 12px;
+    border: 1px solid color-mix(in oklch, var(--warn) 55%, transparent); background: color-mix(in oklch, var(--warn) 9%, var(--surface));
+  }
+  .shown-once-k { font-size: var(--step--1); }
+  .secret { display: block; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px dashed var(--line); overflow-wrap: anywhere; user-select: all; }
+
+  /* the Builder's job form and its output (D19, D20) */
+  .run-form { display: grid; gap: 14px; }
+  .catalog-scroll { max-block-size: 26rem; overflow-y: auto; }
+  .catalog-scroll thead th { position: sticky; inset-block-start: 0; background: var(--surface); z-index: 1; }
+  .run-row { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); align-items: end; }
+  .run-options { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: var(--step--1); }
+  .run-options label { display: inline-flex; gap: 8px; align-items: center; }
+  .run-options input[type="number"] { inline-size: 6rem; min-block-size: 2.25rem; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+  .preset-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: var(--step--1); }
+  .rate-line { color: var(--muted); font-size: var(--step--1); }
+  .views { display: inline-flex; gap: 4px; padding: 3px; border-radius: 10px; border: 1px solid var(--line-soft); background: var(--surface-2); }
+  .views button { padding: 4px 10px; border-radius: 7px; font-size: var(--step--1); color: var(--muted); }
+  .views button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+  .output-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--step-0); line-height: 1.6; margin: 0; }
+  .output-images { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); }
+  .output-images img { inline-size: 100%; block-size: auto; border-radius: 12px; border: 1px solid var(--line-soft); background: var(--surface-2); }
+  .caret::after { content: "▍"; color: var(--accent); }
+  .job-record { display: grid; gap: 12px; }
+  .attempt-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: var(--step--1); }
+  .attempt-list li { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-soft); background: var(--surface); }
+}
+
+@layer motion {
+  @media (prefers-reduced-motion: no-preference) {
+    .act-dialog[open] { animation: bc-dialog-in .22s var(--ease-out); }
+    @keyframes bc-dialog-in { from { opacity: 0; translate: 0 8px; } }
+  }
+}

@@ -1,5 +1,6 @@
 /**
- * Every upstream route the console reads, by source. tests/structure/docs.test.ts checks this list
+ * Every upstream route the console calls, by source: the reads behind the pages, and the writes the
+ * Operator and Builder areas make with a signed-in key (decisions D15–D18). tests/structure/docs.test.ts checks this list
  * against the adapters (no unlisted route is called) and against docs/references/data-sources.md.
  */
 import type { SourceName } from "./reading";
@@ -23,6 +24,17 @@ export const CATALOG = [
   { source: "engine", route: "GET /v1/admin/reconciliation", credential: "admin key", usedFor: "Health and Users: balanced or not" },
   { source: "engine", route: "GET /v1/jobs/{job_id}", credential: "admin key", usedFor: "Jobs: lookup by id" },
   { source: "engine", route: "GET /v1/jobs/{job_id}/cost", credential: "admin key", usedFor: "Jobs: a job's cost by attempt" },
+  { source: "engine", route: "GET /v1/jobs", credential: "actor key (Builder)", usedFor: "Builder: my jobs; sign-in: is the key working" },
+  { source: "engine", route: "POST /v1/jobs", credential: "actor key (Builder)", usedFor: "Builder: run a job, streamed through" },
+  { source: "engine", route: "POST /v1/admin/grants", credential: "admin key (Operator)", usedFor: "Operator: create a grant" },
+  { source: "engine", route: "POST /v1/admin/grant/fund", credential: "admin key (Operator)", usedFor: "Operator: fund a grant (operation reference)" },
+  { source: "engine", route: "POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation", credential: "admin key (Operator)", usedFor: "Operator: provision an actor" },
+  { source: "engine", route: "POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/fund", credential: "admin key (Operator)", usedFor: "Operator: fund an allocation (operation reference)" },
+  { source: "engine", route: "POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/status", credential: "admin key (Operator)", usedFor: "Operator: set allocation status" },
+  { source: "engine", route: "POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/rotate-key", credential: "admin key (Operator)", usedFor: "Operator: rotate the payment key (operation reference)" },
+  { source: "engine", route: "POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/revoke", credential: "admin key (Operator)", usedFor: "Operator: revoke an allocation" },
+  { source: "engine", route: "POST /v1/admin/keys", credential: "admin key (Operator)", usedFor: "Operator: issue an access key (shown once)" },
+  { source: "engine", route: "POST /v1/admin/keys/{key_id}/revoke", credential: "admin key (Operator)", usedFor: "Operator: revoke an access key" },
   { source: "batteries", route: "GET /readyz", credential: "none", usedFor: "Health" },
   { source: "batteries", route: "GET /v1/grants", credential: "console-reader", usedFor: "Money" },
   { source: "batteries", route: "GET /v1/allocations", credential: "console-reader", usedFor: "Money, Usage" },

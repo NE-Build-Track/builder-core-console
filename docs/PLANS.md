@@ -23,3 +23,4 @@ When every acceptance item is evidenced and Mike has reviewed it, move the plan 
 | Plan | State |
 | --- | --- |
 | [active/console-v1.md](exec-plans/active/console-v1.md) | Scaffolded; awaiting review |
+| [active/console-m3.md](exec-plans/active/console-m3.md) | Phases 0–4 built 21 October; awaiting review; dry run and final run to come |

@@ -10,6 +10,8 @@ export const PAGES = [
   { key: "users", href: "/users", label: "Users", icon: "users" },
   { key: "usage", href: "/usage", label: "Usage", icon: "usage" },
   { key: "jobs", href: "/jobs", label: "Jobs", icon: "jobs" },
+  { key: "operator", href: "/operator", label: "Operator", icon: "pen" },
+  { key: "builder", href: "/builder", label: "Builder", icon: "bolt" },
   { key: "sources", href: "/sources", label: "Sources & gaps", icon: "sources" },
 ] as const satisfies readonly { key: keyof NavCounts; href: string; label: string; icon: IconName }[];
 

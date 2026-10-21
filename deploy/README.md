@@ -1,7 +1,8 @@
 # Deploy
 
 The builder stack and its console, in Docker Compose. Same components, pins, config and secrets as
-ChatLPT's `deploy/`, plus the stock builder-core engine as its own service and the read-only console.
+ChatLPT's `deploy/`, plus the stock builder-core engine as its own service and the console. This is
+the Build Track's M3 dev stack ([m3-environment.md](../docs/references/m3-environment.md)).
 Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.md).
 
 | Service | Image | Reachable at |
@@ -9,7 +10,7 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
 | `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:a89216d` | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `engine` | `builder-console/engine:ad6bba9` | `127.0.0.1:8090` (Swagger at `/docs`) |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 ## Secrets
@@ -20,7 +21,7 @@ Either reuse ChatLPT's values (D3):
 mkdir -m 700 deploy/secrets deploy/config/pinned-certs
 cp -p ../chatlpt-sample-enterprise-app/deploy/secrets/* deploy/secrets/
 cp -p ../chatlpt-sample-enterprise-app/deploy/config/pinned-certs/*.pem deploy/config/pinned-certs/
-python3 deploy/init-secrets.py      # adds only the read-only console-reader credential
+python3 deploy/init-secrets.py      # adds the read-only console-reader; lets the grant desk fund grants
 ```
 
 or start fresh with `python3 deploy/init-secrets.py` on an empty `deploy/secrets/`, then add
@@ -32,7 +33,7 @@ or start fresh with `python3 deploy/init-secrets.py` on an empty `deploy/secrets
 ```sh
 cp deploy/.env.example deploy/.env && chmod 600 deploy/.env
 make images            # all five images; Batteries, the signer and the engine build from GitHub at their pins
-deploy/first-run.sh    # fills LPB_* tokens, CONSOLE_BATTERIES_TOKEN, LPB_SECRET_KEY and the engine admin key
+deploy/first-run.sh    # fills LPB_* tokens, CONSOLE_BATTERIES_TOKEN, LPB_SECRET_KEY, the engine admin key and CONSOLE_SESSION_SECRET
 ```
 
 `first-run.sh` keeps values that are already set and never starts the signer. The engine admin key is
@@ -46,9 +47,10 @@ make logs
 make down      # keeps volumes; `docker compose -f deploy/compose.yaml down -v` deletes all stack state
 ```
 
-The console only reads (D1). To change the stack, use Batteries' CLI and the engine on 127.0.0.1:8090.
-Create a funded grant with the CLI, as ChatLPT's `first-run.sh` does (the grant-desk credential cannot
-fund a grant through the engine; see [gaps.md](../docs/references/gaps.md)):
+The console's pages only read (D1); its Operator actions change the stack through the engine (D15), and
+the engine on 127.0.0.1:8090 takes the same calls by curl or Swagger. Run `python3 deploy/init-secrets.py`
+once on secrets copied from ChatLPT so the grant desk can fund the grants it creates (then restart
+clearinghouse). A funded grant can also be created with the CLI, as ChatLPT's `first-run.sh` does:
 
 ```sh
 docker compose -f deploy/compose.yaml exec -T clearinghouse \

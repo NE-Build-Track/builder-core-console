@@ -4,10 +4,11 @@ This file is a **map**, not a manual. Read the linked documents when a task touc
 
 ## What this repository is
 
-The **builder console**: a read-only operations view of one livepeer-builder stack. The stack is the
-stock builder-core engine (`lpb serve`), Clearinghouse Batteries and the node remote signer, run as
-Docker services exactly as ChatLPT runs its payment stack. The console reads their health, money,
-users, usage and jobs, and changes nothing.
+The **builder console** for one livepeer-builder stack, and the Build Track's M3 reference app. The
+stack is the stock builder-core engine (`lpb serve`), Clearinghouse Batteries and the node remote
+signer, run as Docker services exactly as ChatLPT runs its payment stack. Its pages read the stack's
+health, money, users, usage and jobs and change nothing; its Operator and Builder areas drive the
+engine's REST API with a signed-in key, each write reviewed first (D15–D20).
 
 ## Start here
 
@@ -48,22 +49,23 @@ web/src/
   utils/       exact decimals, time, bounded concurrency (imports nothing internal)
   domain/      types layer: zod schemas for Batteries and the signer, engine types, view models,
                pins, the gap registry and the route catalog
-  ports/       providers: the read-only reader interfaces services depend on
+  ports/       providers: the readers services depend on, and the keyed engine and writer (ports/keyed.ts)
   config/      CONSOLE_* settings (server-only)
   adapters/    engine (openapi-fetch), Batteries and signer (GET via http.ts) (server-only)
   services/    pure page logic over the ports: health, network, money, users, usage, jobs
   runtime/     wiring and the TTL cache; the only thing pages call (server-only)
   components/  ui/ = shadcn kit as generated; console/ = the console's own semantic pieces
   app/         Next.js routes: one server component per page, reads inside <Suspense>
-web/tests/structure/   layers, read-only, taste, pins, docs: invariants with fix-it messages
+web/tests/structure/   layers, writes, taste, pins, docs: invariants with fix-it messages
 deploy/                compose, configs, secrets bootstrap, the console image
 openapi/               the pinned engine's OpenAPI spec
 ```
 
 ## Working agreements
 
-- **Read-only.** No write calls, forms, route handlers or server actions (D1). The structural tests
-  enforce it. A write is a new decision first.
+- **Read-only pages, deliberate writes.** The existing pages make no writes (D1). Writes live only in the
+  Operator actions and Builder areas (D15), behind a key sign-in (D16), as fill in → review → result
+  (D17) with the REST call shown (D18), enforced by `writes.test.ts`. Any other write is a new decision first.
 - **Enforce invariants, not style.** If a rule matters, add it to `web/tests/structure/` with a
   failure message that says how to fix it.
 - **Parse at the boundary.** Batteries and signer bodies go through zod in `domain/`; the engine is

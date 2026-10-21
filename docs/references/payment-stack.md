@@ -7,7 +7,7 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 | --- | --- | --- |
 | `clearinghouse` | `NE-Build-Track/clearinghouse-batteries`, `examples/compose/Dockerfile` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
 | `signer` | `NE-Build-Track/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
-| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `a89216db9399738cb96fdca21b72c99d51a89c32` (`tasks/m3/mz/stream-support`) |
+| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `ad6bba98dd0cb068924fa63b2cd552b135068bbb` (`releases/m3`: the merge of PR #28, streaming, and PR #31, gateway `3238731` and D41; the commit ChatLPT pins) |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relay only (D10) |
 | `console` | this repository, `deploy/console/Dockerfile` | — |
 
@@ -23,7 +23,8 @@ The signer shares the clearinghouse container's network namespace, as in ChatLPT
 loopback, so `signer-metrics` joins the same namespace and relays it as `clearinghouse:8939`.
 
 Published to the host, on 127.0.0.1 only: the console (`CONSOLE_PORT`, 3060) and the engine
-(`ENGINE_PORT`, 8090), whose Swagger UI is the stack's write path (D13).
+(`ENGINE_PORT`, 8090), whose Swagger UI takes the same calls as the console's Operator actions (D15;
+D13 is superseded).
 
 ## Secrets (git-ignored `deploy/secrets/`)
 
@@ -35,7 +36,9 @@ The same files ChatLPT uses: `keystore.json`, `keystore-password` (payer account
 `ledger.read` and `escrow.read`.
 
 `init-secrets.py` either creates all of them in an empty folder, or, when the folder already holds a
-`clearinghouse.toml` (copied from ChatLPT to use the same values), appends only the reader.
+`clearinghouse.toml` (copied from ChatLPT to use the same values), appends only the reader and adds
+`grants.fund` to this stack's grant desk, so a grant can be created with an amount through the engine
+(gap G12's neighbour in [gaps.md](gaps.md); ChatLPT's own Batteries is unchanged).
 
 ## Engine settings
 
