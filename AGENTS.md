@@ -62,8 +62,10 @@ openapi/               the pinned engine's OpenAPI spec
 
 ## Working agreements
 
-- **Read-only.** No write calls, forms, route handlers or server actions (D1). The structural tests
-  enforce it. A write is a new decision first.
+- **Read-only pages, deliberate writes.** The existing pages make no writes (D1). Writes live only in the
+  Operator actions and Builder areas (D15), behind a key sign-in (D16), as fill in → review → result
+  (D17) with the REST call shown (D18). The structural tests enforce read-only today and change with
+  the first write. Any other write is a new decision first.
 - **Enforce invariants, not style.** If a rule matters, add it to `web/tests/structure/` with a
   failure message that says how to fix it.
 - **Parse at the boundary.** Batteries and signer bodies go through zod in `domain/`; the engine is

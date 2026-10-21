@@ -5,5 +5,6 @@ coding agent.
 
 Two rules matter most:
 
-- **The console is read-only.** Never add a write to the engine or Batteries (decision D1).
+- **Writes only where D15–D20 allow them.** The existing pages stay read-only (D1); writes go through the
+  Operator actions and Builder areas, behind a sign-in, each with review and its REST call shown.
 - **Never commit or push without a human review.**
