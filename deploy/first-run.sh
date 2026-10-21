@@ -4,6 +4,7 @@
 #   CONSOLE_BATTERIES_TOKEN                            from deploy/secrets/console-reader-token (read-only)
 #   LPB_SECRET_KEY                                     from `lpb gen-secret-key`
 #   CONSOLE_ENGINE_ADMIN_TOKEN                         from `lpb bootstrap-admin` (printed once by the engine)
+#   CONSOLE_SESSION_SECRET                             random, seals the Operator and Builder sign-ins (D16)
 # Values that are already set are kept. It never starts the signer, so it is safe while ChatLPT runs (D3).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -36,6 +37,9 @@ chmod 600 "$ENV_FILE"
 engine() { docker compose run --rm --no-deps -T engine "$@"; }
 if [ -z "$(current LPB_SECRET_KEY)" ]; then
   put LPB_SECRET_KEY "$(engine lpb gen-secret-key | tail -1)"
+fi
+if [ -z "$(current CONSOLE_SESSION_SECRET)" ]; then
+  put CONSOLE_SESSION_SECRET "$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
 fi
 if [ -z "$(current CONSOLE_ENGINE_ADMIN_TOKEN)" ]; then
   echo "issuing the engine admin key (shown once by the engine; stored only in $ENV_FILE)…"

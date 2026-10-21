@@ -24,6 +24,27 @@ with `CONSOLE_ENGINE_ADMIN_TOKEN`, an `lpk_` admin key from `lpb bootstrap-admin
 | `GET /v1/jobs/{job_id}` | Jobs | Any job by id, with attempts and signed sessions. There is no admin job list (gap G1). |
 | `GET /v1/jobs/{job_id}/cost` | Jobs | The job's cost by attempt and cost class. |
 
+### With a signed-in key (Operator actions and Builder, D15–D18)
+
+These calls use the key the person signed in with, not the console's admin key, and are never cached.
+The Builder also reads `GET /v1/offerings`, `GET /v1/runners`, `GET /v1/allowance`, `GET /v1/costs/summary`
+and `GET /v1/jobs/{job_id}` (and `/cost`) with its actor key; the Operator page reads `GET /v1/admin/grants`,
+`GET /v1/admin/keys` and each actor's `GET /v1/allowance` with the admin key.
+
+| Route | Area | Notes |
+| --- | --- | --- |
+| `GET /v1/jobs` | Builder, sign-in | The key's own jobs. At sign-in it shows the key works; the newest job names the actor (gap G13). |
+| `POST /v1/jobs` | Builder | Runs a job. `?stream=true` for chat; the response streams through the console unchanged, with `Livepeer-Job-Id`. |
+| `POST /v1/admin/grants` | Operator | Create a grant with an amount. Needs the grant desk to hold `grants.fund` (deploy/init-secrets.py). Returns only the id (gap G12). |
+| `POST /v1/admin/grant/fund` | Operator | Add to a grant. Takes an operation reference; a repeat applies once. |
+| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation` | Operator | Provision an actor with an allocation drawn from a grant. No operation reference yet (ISS-11). |
+| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/fund` | Operator | Add to an allocation. Takes an operation reference. |
+| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/status` | Operator | `active`, `paused` or `exhausted`. |
+| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/rotate-key` | Operator | Replace the allocation's gateway key; the engine keeps the new one. Takes an operation reference. |
+| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/revoke` | Operator | Stop the allocation for good. |
+| `POST /v1/admin/keys` | Operator | Issue an access key. The token comes back once and is shown once. No operation reference yet (ISS-11). |
+| `POST /v1/admin/keys/{key_id}/revoke` | Operator | Revoke an access key. |
+
 ## Batteries
 
 The Clearinghouse Batteries management API at `CONSOLE_BATTERIES_URL` (`http://clearinghouse:8081`),

@@ -22,6 +22,11 @@ export type ConsoleConfig = {
   readonly timeoutMs: number;
   /** The most rows the console reads from one Batteries list (gap G6). */
   readonly maxListRows: number;
+  /**
+   * Seals the Operator and Builder sessions (decision D16). Without it, sign-in is off and the console
+   * stays read-only. At least 32 characters; deploy/first-run.sh writes one.
+   */
+  readonly sessionSecret: string | null;
 };
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -41,6 +46,11 @@ function url(env: Env, name: string): string | null {
   } catch {
     return null;
   }
+}
+
+function secret(env: Env, name: string): string | null {
+  const value = text(env, name);
+  return value && value.length >= 32 ? value : null;
 }
 
 function number(env: Env, name: string, fallback: number, min: number, max: number): number {
@@ -75,5 +85,6 @@ export function readConfig(env: Env = process.env): ConsoleConfig {
     cacheTtlMs: number(env, "CONSOLE_CACHE_TTL_S", 15, 0, 300) * 1000,
     timeoutMs: number(env, "CONSOLE_TIMEOUT_S", 8, 1, 60) * 1000,
     maxListRows: number(env, "CONSOLE_MAX_LIST_ROWS", 20_000, 1000, 200_000),
+    sessionSecret: secret(env, "CONSOLE_SESSION_SECRET"),
   };
 }

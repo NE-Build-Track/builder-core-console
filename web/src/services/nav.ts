@@ -24,5 +24,7 @@ export async function navCounts(sources: Sources): Promise<NavCounts> {
     usage: usage.ok ? usage.value.items.filter((event) => event.status === "applied" && event.created_at_ms >= dayAgo).length : null,
     jobs: projections.ok ? projections.value.length : null,
     sources: GAPS.length,
+    operator: null,
+    builder: null,
   };
 }
