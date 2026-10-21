@@ -4,7 +4,8 @@ Grades as of 20 October 2026. A: proven and enforced. B: works and tested. C: wo
 
 | Area | Grade | Evidence | Next step |
 | --- | --- | --- | --- |
-| Read-only guarantee | A | `read-only.test.ts`; Batteries reader credential is `*.read` | Read-only engine credential (G8) |
+| Read-only pages, deliberate writes | A | `writes.test.ts`: writes only in two adapters, from the two areas, server actions in one file; Batteries reader credential is `*.read` | Read-only engine credential (G8) |
+| Writing areas | B | Unit tests for parsing, plans, reviews, sign-in and sealing; Operator and Builder driven in headless Chromium against the live stack, with paid chat and image jobs (21 October) | A committed browser smoke; keyboard and screen-reader pass |
 | Layering and boundaries | A | `layers.test.ts` | — |
 | Services (page logic) | B | Unit tests on live-shaped fixtures for every service | Property tests for decimal sums |
 | Adapters | B | Tests with stubbed fetch: paging, caps, shape errors, 503 bodies | Contract test against a live stack in CI |

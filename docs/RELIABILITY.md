@@ -15,6 +15,7 @@ The console reads `CONSOLE_*` variables (compose sets the URLs; `deploy/.env` ho
 | `CONSOLE_APPLICATION_ID` | `default` | The application the admin key reads (gap G9) |
 | `CONSOLE_CACHE_TTL_S` | `15` (0–300) | How long one upstream read is reused |
 | `CONSOLE_TIMEOUT_S` | `8` (1–60) | Per-request upstream timeout |
+| `CONSOLE_SESSION_SECRET` | — (32+ characters) | Seals Operator and Builder sign-ins (D16). Without it, sign-in is off and the console is read-only |
 | `CONSOLE_MAX_LIST_ROWS` | `20000` | Row cap per Batteries list (gap G6) |
 
 A missing variable does not stop the console: that source reads "not configured: NAME" on every page.

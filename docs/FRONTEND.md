@@ -12,7 +12,11 @@ standalone server. No Gyral (D4).
 - Every page is a server component: a static heading and lede, then a `<Suspense>` child that calls
   `await connection()` and one `load*()` from `runtime/console.ts`. Nothing about the stack is
   prerendered. `searchParams` is awaited inside the Suspense child.
-- No route handlers except `/livez`; no server actions (D1).
+- Route handlers: `/livez`, and in the Builder area `POST /builder/run` (streams a job) and
+  `GET /builder/api/jobs/[id]` (the run panel polls it). Server actions live in `src/app/actions.ts`
+  only (D15–D17; `tests/structure/writes.test.ts`).
+- Operator actions are native forms in a native `<dialog>` bound to `useActionState`; the server
+  describes the fields (`FieldSpec`) and every step comes back from the server action.
 - Client components are islands: they receive data as props from server components and never import
   `runtime/`, `adapters/`, `config/` or `services/` (`tests/structure/layers.test.ts`).
 - Open pages re-read the stack every 15 s with `router.refresh()` (`AutoRefresh`), while the tab is visible

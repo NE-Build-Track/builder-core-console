@@ -2,8 +2,10 @@
 
 **Who it is for:** the operator of a builder stack: whoever funds grants, provisions actors and keeps
 the engine, Batteries and the signer running. **What it answers:** is the stack healthy, what can it
-buy, where did the money go, who used it, and what happened to a given job. It changes nothing (D1)
-and needs no sign-in on 127.0.0.1 (D7).
+buy, where did the money go, who used it, and what happened to a given job. Those pages change nothing
+(D1) and need no sign-in on 127.0.0.1 (D7). Since 21 October the console is also the M3 reference app:
+[Operator actions](#operator-actions) and the [Builder](#builder) change the stack through the engine's
+REST API, behind a key sign-in (D15–D20).
 
 Every section names its source and read time; every failed read names the source and the problem;
 every known limit cites its gap ([gaps.md](../references/gaps.md)).
@@ -72,7 +74,32 @@ jobs (gaps G1, G3).
 Every upstream route the console reads, with its credential and purpose; the pinned commits; and every
 known gap with its owner and fix.
 
-## Out of scope for v1
+## Operator actions
 
-Writes of any kind, sign-in, history beyond what the sources hold, alerts, and charts that need time
+For the operator, signed in with an admin key. Three sections, each row carrying the actions that change
+it: **Grants** (create a grant; fund one), **Actors and allocations** (provision an actor from a grant;
+fund its allocation; set its status; rotate its payment key; revoke it) and **Access keys** (issue a key;
+revoke one). Actors are listed from their keys (gap G2).
+
+Every action is a native dialog with three steps (D17): **fill in**; **review**, which reads the stack
+and shows what will change (money as before → after, including the grant's unallocated balance), any
+warning (a repeat that would apply twice, a grant that is short, an admin key), a typed confirmation for
+what cannot be undone, and the exact request that will be sent (D18); and **result**, with the request
+and response. A new key is shown once, with a button that takes an actor key straight to the Builder.
+Calls that take an operation reference reuse the same one through Back and Try again.
+
+## Builder
+
+For a builder, signed in with an actor key. Three tabs. **Catalog and run**: every offering with ready
+runners and its wholesale rate exactly as advertised (wei shown as ETH, unit in words, age; gap G14), and
+one job form for any offering (D19): offering, path, method, JSON input with Chat, Image and Empty
+examples, stream, timeout and attempts, with the request shown before it is sent. The output streams in
+and is shown by content type (D20): Rendered chat, JSON with its images, an image, or Raw. Below it the
+job's record: state, attempts and whether each paid, the result reference, and the network cost
+followed from pending to its final status. **My jobs**: the key's jobs, any one opened with its record.
+**Usage and cost**: the allowance and the wholesale cost by class over 24 h, 7 d or 30 d.
+
+## Out of scope
+
+Retail prices (an app's own), history beyond what the sources hold, alerts, and charts that need time
 series the sources do not keep (Prometheus; see the tech-debt tracker).

@@ -23,7 +23,8 @@ The signer shares the clearinghouse container's network namespace, as in ChatLPT
 loopback, so `signer-metrics` joins the same namespace and relays it as `clearinghouse:8939`.
 
 Published to the host, on 127.0.0.1 only: the console (`CONSOLE_PORT`, 3060) and the engine
-(`ENGINE_PORT`, 8090), whose Swagger UI is the stack's write path (D13).
+(`ENGINE_PORT`, 8090), whose Swagger UI takes the same calls as the console's Operator actions (D15;
+D13 is superseded).
 
 ## Secrets (git-ignored `deploy/secrets/`)
 
@@ -35,7 +36,9 @@ The same files ChatLPT uses: `keystore.json`, `keystore-password` (payer account
 `ledger.read` and `escrow.read`.
 
 `init-secrets.py` either creates all of them in an empty folder, or, when the folder already holds a
-`clearinghouse.toml` (copied from ChatLPT to use the same values), appends only the reader.
+`clearinghouse.toml` (copied from ChatLPT to use the same values), appends only the reader and adds
+`grants.fund` to this stack's grant desk, so a grant can be created with an amount through the engine
+(gap G12's neighbour in [gaps.md](gaps.md); ChatLPT's own Batteries is unchanged).
 
 ## Engine settings
 

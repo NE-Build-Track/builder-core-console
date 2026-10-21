@@ -1,7 +1,8 @@
 # Deploy
 
 The builder stack and its console, in Docker Compose. Same components, pins, config and secrets as
-ChatLPT's `deploy/`, plus the stock builder-core engine as its own service and the read-only console.
+ChatLPT's `deploy/`, plus the stock builder-core engine as its own service and the console. This is
+the Build Track's M3 dev stack ([m3-environment.md](../docs/references/m3-environment.md)).
 Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.md).
 
 | Service | Image | Reachable at |
@@ -20,7 +21,7 @@ Either reuse ChatLPT's values (D3):
 mkdir -m 700 deploy/secrets deploy/config/pinned-certs
 cp -p ../chatlpt-sample-enterprise-app/deploy/secrets/* deploy/secrets/
 cp -p ../chatlpt-sample-enterprise-app/deploy/config/pinned-certs/*.pem deploy/config/pinned-certs/
-python3 deploy/init-secrets.py      # adds only the read-only console-reader credential
+python3 deploy/init-secrets.py      # adds the read-only console-reader; lets the grant desk fund grants
 ```
 
 or start fresh with `python3 deploy/init-secrets.py` on an empty `deploy/secrets/`, then add
@@ -32,7 +33,7 @@ or start fresh with `python3 deploy/init-secrets.py` on an empty `deploy/secrets
 ```sh
 cp deploy/.env.example deploy/.env && chmod 600 deploy/.env
 make images            # all five images; Batteries, the signer and the engine build from GitHub at their pins
-deploy/first-run.sh    # fills LPB_* tokens, CONSOLE_BATTERIES_TOKEN, LPB_SECRET_KEY and the engine admin key
+deploy/first-run.sh    # fills LPB_* tokens, CONSOLE_BATTERIES_TOKEN, LPB_SECRET_KEY, the engine admin key and CONSOLE_SESSION_SECRET
 ```
 
 `first-run.sh` keeps values that are already set and never starts the signer. The engine admin key is

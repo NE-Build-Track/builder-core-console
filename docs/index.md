@@ -7,7 +7,8 @@ document under `docs/`.
 | --- | --- |
 | [design-docs/](design-docs/index.md) | Core beliefs, decisions, the design mock |
 | [product-specs/](product-specs/index.md) | What each page shows and why |
-| [references/](references/index.md) | Data sources, gaps, the payment stack, harness engineering |
+| [references/](references/index.md) | Data sources, gaps, the payment stack, the M3 environment, harness engineering |
+| [guides/](guides/index.md) | The M3 journey, step by step (ISS-24) |
 | [PLANS.md](PLANS.md) | How plans work; the active and completed plans |
 | [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md) | Shortcuts and future work |
 | [DESIGN.md](DESIGN.md) | Look and feel |

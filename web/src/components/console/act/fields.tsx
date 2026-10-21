@@ -15,17 +15,19 @@ export function Fields({
 }) {
   return (
     <div className="act-fields">
-      {fields.map((field) => {
+      {fields.map((field, index) => {
         if (field.type === "hidden") return <input key={field.name} type="hidden" name={field.name} value={values?.[field.name] ?? field.value} />;
         const id = `${idPrefix}-${field.name}`;
         const value = values?.[field.name] ?? field.value ?? "";
         const wrong = error?.field === field.name;
+        // A modal dialog focuses its autofocus element: the first field, or the one that is wrong.
+        const focus = error?.field ? wrong : index === fields.findIndex((item) => item.type !== "hidden");
         const describedBy = [field.hint ? `${id}-hint` : null, wrong ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
         return (
           <div key={field.name} className="field">
             <label htmlFor={id}>{field.label}</label>
             {field.type === "select" ? (
-              <select id={id} name={field.name} defaultValue={value} aria-invalid={wrong || undefined} aria-describedby={describedBy}>
+              <select id={id} name={field.name} defaultValue={value} autoFocus={focus} aria-invalid={wrong || undefined} aria-describedby={describedBy}>
                 {field.options.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -39,6 +41,7 @@ export function Fields({
                   id={id}
                   name={field.name}
                   defaultValue={value}
+                  autoFocus={focus}
                   placeholder={field.placeholder}
                   inputMode={field.type === "usd" ? "decimal" : undefined}
                   autoComplete="off"
