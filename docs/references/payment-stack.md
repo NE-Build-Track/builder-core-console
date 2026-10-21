@@ -7,7 +7,7 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 | --- | --- | --- |
 | `clearinghouse` | `NE-Build-Track/clearinghouse-batteries`, `examples/compose/Dockerfile` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
 | `signer` | `NE-Build-Track/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
-| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `93756ba2755b422031526e0dec7cf87d59f7e161` (`tasks/m3/mz/stream-support`, the PR #28 review fixes; next the merge commit on `releases/m3`) |
+| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `ad6bba98dd0cb068924fa63b2cd552b135068bbb` (`releases/m3`: the merge of PR #28, streaming, and PR #31, gateway `3238731` and D41; the commit ChatLPT pins) |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relay only (D10) |
 | `console` | this repository, `deploy/console/Dockerfile` | — |
 
