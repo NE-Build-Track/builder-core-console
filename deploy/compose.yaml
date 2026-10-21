@@ -56,9 +56,9 @@ services:
     restart: unless-stopped
 
   engine:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:a89216d
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:93756ba
     build:
-      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#a89216db9399738cb96fdca21b72c99d51a89c32
+      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#93756ba2755b422031526e0dec7cf87d59f7e161
       dockerfile: deploy/dev-stack/engine/Dockerfile
       args:
         BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"  # hatch-vcs derives the engine version from .git

@@ -20,7 +20,7 @@ the job selection (ISS-19), the journey guide (ISS-24) and the funded proof (ISS
 
 Each item names the M3 task it evidences.
 
-- [ ] The stack and console pin builder-core `93756ba` (the PR #28 review fixes), then the merge commit on `releases/m3` once it exists; the engine spec in `openapi/` is regenerated at that pin.
+- [x] The stack and console pin builder-core `93756ba` (the PR #28 review fixes), then the merge commit on `releases/m3` once it exists; the engine spec in `openapi/` is regenerated at that pin.
 - [ ] Sign-in by pasting a key (D16): admin or actor, checked against the engine, held in a sealed httpOnly `SameSite=Strict` cookie the browser cannot read; sign-out; an expired or revoked key ends the session with a clear message. The read-only pages keep working without sign-in (D7). (ISS-21)
 - [ ] Write plumbing: an `EngineWriter` port and adapter, the only code that sends non-GET requests; every write returns an exchange (method, path, body, status, response, keys redacted) for the request panel with copy as `curl` (D18). The structural tests change from "never writes" to "writes only through the writer, only from the Operator and Builder areas". (ISS-20)
 - [ ] The fill in → review → result flow (D17) as one reusable form pattern: review shows before → after for money moves, typed key prefix for revocations, a new key shown once, a result toast and refreshed section; a generated operation reference on every admin call that accepts one. (ISS-20)
@@ -39,7 +39,8 @@ Each item names the M3 task it evidences.
 
 ## Progress
 
-- [x] 2026-10-21 Plan written from the M3 decisions (console D15–D20, decision record above); awaiting review.
+- [x] 2026-10-21 Plan written from the M3 decisions (console D15–D20, decision record above). Mike approved it and asked for every phase to be built now, committed locally, for his review at the end.
+- [x] 2026-10-21 Phase 0: re-pinned to `93756ba` (image `builder-console/engine:93756ba`, which reports `0.0.1.dev1+g93756ba27`); the engine spec is identical at both commits, so the generated types are unchanged. Grant creation through the engine failed both ways (an amount: Batteries 403 for the grant desk; no amount: the engine refuses), so `init-secrets.py` now gives this stack's grant desk `grants.fund`; a $1 grant was then created and funded $0.50 twice under one operation reference, which applied once ($1.50). The create response lacks name, status and total: gap G12.
 
 ### Phases
 
@@ -74,7 +75,7 @@ Each item names the M3 task it evidences.
 
 ### Risks
 
-- **Grant funding.** On 20 October `POST /v1/admin/grants` with an amount failed with `provider HTTP 403` under ChatLPT's credentials (no `grants.fund`). Phase 0 checks whether this stack's Batteries operator credential can be given that scope; otherwise "create grant" and "fund grant" stay CLI steps and the operator area says so.
+- ~~**Grant funding.**~~ Resolved in phase 0: this stack's grant desk can fund grants (`init-secrets.py`).
 - **One signer per payer.** This stack and ChatLPT share the payer account, so ChatLPT stays down during runs.
 - **Runner availability.** The dry run records which listed orchestrators serve Qwen and FLUX; the final run needs at least one of each.
 - **Next.js 16.** Server actions and streaming route handlers are checked against `web/node_modules/next/dist/docs/` before use.

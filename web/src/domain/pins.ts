@@ -6,8 +6,8 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "a89216db9399738cb96fdca21b72c99d51a89c32",
-    note: "tasks/m3/mz/stream-support (the commit ChatLPT pins)",
+    commit: "93756ba2755b422031526e0dec7cf87d59f7e161",
+    note: "tasks/m3/mz/stream-support with the PR #28 review fixes (the commit ChatLPT pins); next, the merge commit on releases/m3",
   },
   batteries: {
     repository: "NE-Build-Track/clearinghouse-batteries",

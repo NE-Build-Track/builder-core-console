@@ -1,6 +1,6 @@
 /**
- * Engine types, generated from the pinned builder-core OpenAPI spec (openapi/engine.openapi.json at
- * a89216d). Regenerate with `pnpm gen:api`; never edit engine-schema.d.ts by hand.
+ * Engine types, generated from the pinned builder-core OpenAPI spec (openapi/engine.openapi.json; identical at
+ * a89216d and 93756ba). Regenerate with `pnpm gen:api`; never edit engine-schema.d.ts by hand.
  */
 import type { components } from "./engine-schema";
 

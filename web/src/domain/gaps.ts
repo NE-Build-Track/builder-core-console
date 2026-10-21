@@ -104,6 +104,14 @@ export const GAPS = [
     fix: "Reconcile only up to the last synced usage row, or report the unsynced amount separately from unattributed spend.",
     owner: "builder-core",
   },
+  {
+    id: "G12",
+    title: "Creating a grant returns an incomplete record",
+    impact:
+      "POST /v1/admin/grants answers 201 with the new grant's id but an empty name, status and total, so the console reads the grant list again after creating one instead of showing the response.",
+    fix: "Map Batteries' create response fully in the engine (the grant list already maps the same fields).",
+    owner: "builder-core",
+  },
 ] as const satisfies readonly Gap[];
 
 export type GapId = (typeof GAPS)[number]["id"];

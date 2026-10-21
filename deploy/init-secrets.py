@@ -5,8 +5,13 @@ Adapted from ChatLPT's deploy/init-secrets.py. Two cases (deploy/README.md#secre
 - deploy/secrets/ is empty: write every Batteries credential ChatLPT writes (operator, a least-privilege
   engine credential, the grant desk, the signer webhook, Kafka users) plus `console-reader`.
 - deploy/secrets/ already holds clearinghouse.toml (for example, copied from ChatLPT so both stacks use the
-  same values): append the `console-reader` credential if it is missing and write its token. Nothing else
-  is touched.
+  same values): append the `console-reader` credential if it is missing and write its token, and let the
+  grant desk fund the grants it creates (below). Nothing else is touched.
+
+The grant desk gets `grants.fund` beside `grants.create`: Batteries refuses to create a grant with an
+amount without it, and the engine refuses a grant without one, so without it the console's Operator
+actions could not create a grant (decision D15). This changes only this stack's Batteries; ChatLPT's keeps
+its own file.
 
 `console-reader` may only read. It is the console's Batteries credential and never gets a write permission.
 Then copy the payer keystore in, if this is a fresh directory:
@@ -33,6 +38,10 @@ READER_ALLOW = [
     "ledger.read",
     "escrow.read",
 ]
+
+
+GRANT_DESK_ID = "grant-desk"
+GRANT_DESK_ALLOW = ["grants.read", "grants.create", "grants.fund"]
 
 
 def reader_block(secret: str) -> str:
@@ -69,7 +78,7 @@ allow = ["grants.fund", "allocations.create", "allocations.fund", "allocations.r
 id = "grant-desk"
 secret = "{grant_desk}"
 [credentials.management]
-allow = ["grants.read", "grants.create"]
+allow = ["grants.read", "grants.create", "grants.fund"]
 
 [[credentials]]
 id = "signer"
@@ -130,12 +139,34 @@ def add_reader(target: Path) -> None:
     print(f"Added the {READER_ID} credential (read-only) to {creds_file}. Restart clearinghouse to load it.")
 
 
+def allow_grant_funding(target: Path) -> None:
+    creds_file = target / "clearinghouse.toml"
+    creds = creds_file.read_text()
+    desk = next((item for item in tomllib.loads(creds).get("credentials", []) if item.get("id") == GRANT_DESK_ID), None)
+    if desk is None:
+        print(f"no {GRANT_DESK_ID} credential; nothing to do")
+        return
+    allow = desk.get("management", {}).get("allow", [])
+    if "grants.fund" in allow:
+        print(f"{GRANT_DESK_ID} can already fund grants; nothing to do")
+        return
+    head, found, tail = creds.partition(f'id = "{GRANT_DESK_ID}"')
+    before, _, rest = tail.partition("allow = [")
+    old, _, after = rest.partition("]")
+    if not found or not old.strip():
+        raise SystemExit(f"could not find the {GRANT_DESK_ID} allow list in {creds_file}; add grants.fund by hand")
+    new = ", ".join(f'"{name}"' for name in GRANT_DESK_ALLOW)
+    creds_file.write_text(f"{head}{found}{before}allow = [{new}]{after}")
+    print(f"{GRANT_DESK_ID} may now fund grants ({creds_file}). Restart clearinghouse to load it.")
+
+
 def main() -> None:
     os.umask(0o077)
     target = Path(__file__).resolve().parent / "secrets"
     target.mkdir(mode=0o700, exist_ok=True)
     if (target / "clearinghouse.toml").exists():
         add_reader(target)
+        allow_grant_funding(target)
     elif any(target.iterdir()):
         raise SystemExit("deploy/secrets/ has files but no clearinghouse.toml; refusing to guess")
     else:
