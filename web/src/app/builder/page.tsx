@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { ExchangePanel } from "@/components/console/act/exchange-panel";
 import { PageView, Streamed } from "@/components/console/page-view";
-import { Empty, PageHead, ReadFrom, Section, Unreadable } from "@/components/console/primitives";
+import { Empty, GapChip, PageHead, ReadFrom, Section, Unreadable } from "@/components/console/primitives";
 import { JobRunner, type OfferingChoice } from "@/components/console/run/job-runner";
 import { Ago, Pill } from "@/components/console/values";
 import { loadCatalog, loadMyJobs } from "@/runtime/builder";
@@ -33,13 +33,13 @@ export default function BuilderPage({ searchParams }: { readonly searchParams: S
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? null;
 
 function rateText(rate: RateView): string {
-  return rate.known ? `${rate.amount} ${rate.currency} per ${rate.unit}` : "no rate";
+  return rate.known ? rate.text : "no rate";
 }
 
 function rangeText(entry: CatalogEntry): string {
   if (!entry.low.known && !entry.high.known) return "no rate advertised";
   if (entry.low.known && entry.high.known && entry.low.amount === entry.high.amount) return rateText(entry.low);
-  return `${rateText(entry.low)} – ${rateText(entry.high)}`;
+  return `${rateText(entry.low)} to ${rateText(entry.high)}`;
 }
 
 async function Builder({ searchParams }: { readonly searchParams: Search }) {
@@ -57,13 +57,18 @@ async function Builder({ searchParams }: { readonly searchParams: Search }) {
       <Section
         id="h-catalog"
         title="What the network offers"
-        description="Read live from the orchestrators on the engine's list. Rates are the orchestrators' wholesale network rates, in their own unit; an app sets its own retail price."
+        description={
+          <>
+            Read live from the orchestrators on the engine&apos;s list. Rates are the orchestrators&apos; wholesale network rates, exactly as advertised in
+            their own currency and unit; an app sets its own retail price. No USD rate yet <GapChip id="G14" />.
+          </>
+        }
         end={view.discovery.ok ? <Pill state={view.discovery.value.discovery_fresh ? "ok" : "warn"}>{view.discovery.value.discovery_fresh ? "Discovery fresh" : "Discovery stale"}</Pill> : null}
       >
         <Unreadable reading={view.entries} what="Offerings" />
         {view.entries.ok && entries.length === 0 ? <Empty>The engine sees no offerings. Is the signer running and discovery fresh?</Empty> : null}
         {entries.length > 0 ? (
-          <div className="table-scroll">
+          <div className="table-scroll catalog-scroll">
             <table className="data">
               <caption className="sr-only">Offerings with ready runners, rate range and when they were read</caption>
               <thead>

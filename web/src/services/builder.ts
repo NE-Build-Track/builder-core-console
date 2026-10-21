@@ -6,14 +6,30 @@ import { COST_CLASSES, type Allowance, type CostClass, type CostSummary, type En
 import { isFinalState, type JobState, type RunInput } from "@/domain/builder";
 import { invalid, parsed, wholeNumber, type Parsed } from "@/domain/forms";
 import { mapReading, type Reading } from "@/domain/reading";
+import { weiToEth } from "@/utils/decimal";
 import { ageSeconds } from "@/utils/time";
 
 /** An offering read longer ago than this is marked stale, whatever the engine's overall freshness says. */
 export const STALE_AFTER_S = 300;
 
 export type RateView =
-  | { readonly known: true; readonly amount: string; readonly currency: string; readonly unit: string }
+  | { readonly known: true; readonly amount: string; readonly currency: string; readonly unit: string; readonly text: string }
   | { readonly known: false };
+
+/** "per second", "per request", "per 720p pixel-second": the orchestrator's unit, in words. */
+export function unitWords(unit: string): string {
+  if (unit === "fixed") return "per request";
+  return `per ${unit.replace(/-/g, " ").replace(/s$/, "").replace(/ second$/, "-second")}`;
+}
+
+/**
+ * A rate exactly as advertised, readable: wei shown as ETH with the wei beside it. The engine gives no
+ * USD rate (gap G14); a USD figure would need an ETH price with its source and time.
+ */
+export function rateText(amount: string, currency: string, unit: string): string {
+  const per = unitWords(unit);
+  return currency.toLowerCase() === "wei" ? `${weiToEth(amount)} ETH ${per} (${amount} wei)` : `${amount} ${currency} ${per}`;
+}
 
 export type CatalogEntry = {
   readonly app: string;
@@ -35,7 +51,7 @@ export type CatalogView = {
 };
 
 function rateOf(rate: NetworkRate | null | undefined): RateView {
-  return rate ? { known: true, amount: String(rate.amount), currency: rate.currency, unit: rate.unit } : { known: false };
+  return rate ? { known: true, amount: String(rate.amount), currency: rate.currency, unit: rate.unit, text: rateText(String(rate.amount), rate.currency, rate.unit) } : { known: false };
 }
 
 export function catalogEntry(offering: Offering, now: Date): CatalogEntry {

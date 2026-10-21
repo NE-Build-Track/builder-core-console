@@ -112,6 +112,22 @@ export const GAPS = [
     fix: "Map Batteries' create response fully in the engine (the grant list already maps the same fields).",
     owner: "builder-core",
   },
+  {
+    id: "G13",
+    title: "No who-am-I call",
+    impact:
+      "Nothing tells a key which actor and application it belongs to, so the Builder learns its actor id from its newest job and shows none until the key has run one.",
+    fix: "GET /v1/me returning the caller's actor, application, kind and permissions.",
+    owner: "builder-core",
+  },
+  {
+    id: "G14",
+    title: "Rates are in wei only",
+    impact:
+      "Offerings carry the orchestrators' rates in wei per their own unit, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries.",
+    fix: "Add a USD rate beside the advertised one, with the ETH price, its source and its time (ISS-10).",
+    owner: "builder-core",
+  },
 ] as const satisfies readonly Gap[];
 
 export type GapId = (typeof GAPS)[number]["id"];

@@ -44,6 +44,8 @@ export function JobRunner({ offerings, initialApp }: { readonly offerings: reado
   const [maxAttempts, setMaxAttempts] = useState(2);
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<Run | null>(null);
+  /** Each run gets fresh output views: a tab chosen for the last response may not exist for this one. */
+  const [runs, setRuns] = useState(0);
   const [jobState, setJobState] = useState<JobState | null>(null);
   const abort = useRef<AbortController | null>(null);
 
@@ -107,6 +109,8 @@ export function JobRunner({ offerings, initialApp }: { readonly offerings: reado
     const input: RunInput = { app, path, method, payload, stream, timeoutS, maxAttempts, operationRef: `console-run-${crypto.randomUUID()}` };
     const call: ShownCall = { method: "POST", path: fillPath("/v1/jobs", {}, { stream: String(stream) }), body: jobRequestOf(input) };
     setJobState(null);
+    setRun(null);
+    setRuns((count) => count + 1);
     abort.current = new AbortController();
     const started = Date.now();
     let response: Response;
@@ -220,7 +224,7 @@ export function JobRunner({ offerings, initialApp }: { readonly offerings: reado
           </button>
         </div>
       </form>
-      {run ? <RunResult run={run} jobState={jobState} /> : null}
+      {run ? <RunResult key={runs} run={run} jobState={jobState} /> : null}
     </div>
   );
 }
@@ -235,7 +239,7 @@ function RunResult({ run, jobState }: { readonly run: Run; readonly jobState: Jo
           <span>The response below has the engine&apos;s own words, and the job when there is one.</span>
         </div>
       ) : (
-        <OutputView output={run.output} />
+        <OutputView key={run.output.contentType} output={run.output} />
       )}
       {run.jobId ? <JobRecord jobId={run.jobId} state={jobState} /> : null}
       <ExchangePanel call={run.call} open={run.phase === "refused"} />
