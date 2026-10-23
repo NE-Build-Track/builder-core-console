@@ -1,7 +1,7 @@
 /**
  * Engine types, generated from the pinned builder-core OpenAPI spec (openapi/engine.openapi.json). The types are
- * identical at a89216d, 93756ba, ad6bba9, 165e601, a22bc98 and b89c1bb; from 165e601 the spec adds only the bearer
- * security scheme.
+ * identical at a89216d, 93756ba, ad6bba9, 165e601, a22bc98, b89c1bb and 878e4f4; from 165e601 the spec adds only the
+ * bearer security scheme.
  * Regenerate with `pnpm gen:api`; never edit engine-schema.d.ts by hand.
  */
 import type { components } from "./engine-schema";

@@ -10,7 +10,7 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
 | `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:b89c1bb` | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `engine` | `builder-console/engine:878e4f4` | `127.0.0.1:8090` (Swagger at `/docs`) |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 ## Secrets
