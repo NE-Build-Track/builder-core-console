@@ -6,7 +6,7 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "a22bc98a22bd3f29944cd3e7b79bcd7574f3a958",
+    commit: "b89c1bbc1150691d3aad520efb0a592768b953aa",
     note: "releases/m3: the merge of PR #28 (streaming) and PR #31 (gateway 3238731, D41); the commit ChatLPT pins",
   },
   batteries: {

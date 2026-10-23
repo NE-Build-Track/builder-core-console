@@ -16,7 +16,7 @@ flowchart LR
         AD["adapters/: engine, Batteries, signer (GET only)"]
     end
     subgraph Stack["builder stack (deploy/compose.yaml)"]
-        Engine["engine: stock lpb serve (builder-core a22bc98)"]
+        Engine["engine: stock lpb serve (builder-core b89c1bb)"]
         Bat["clearinghouse: Batteries (ca09e47)"]
         Signer["signer: node remote signer (406b248)"]
         Relay["signer-metrics: socat relay"]
