@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { PINS, shortCommit } from "@/domain/pins";
+
 import { broken, engineHealth, fakeSources, healthyMetrics, read, reconciliation } from "../../tests/support/fixtures";
 
 import { stackHealth, worst } from "./stack-health";
@@ -43,7 +45,7 @@ describe("stack health", () => {
 
   it("flags an engine that is not the pinned build", async () => {
     const sources = fakeSources({ engine: { health: async () => read("engine", engineHealth({ version: "0.0.0" })) } });
-    expect(await stateOf(sources, "engine.version")).toMatchObject({ state: "warn", summary: expect.stringContaining("ad6bba9") });
+    expect(await stateOf(sources, "engine.version")).toMatchObject({ state: "warn", summary: expect.stringContaining(shortCommit(PINS.engine.commit)) });
   });
 
   it("reports a signer that cannot pay as down, with its reason", async () => {

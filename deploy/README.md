@@ -10,7 +10,7 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
 | `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:ad6bba9` | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `engine` | `builder-console/engine:a22bc98` | `127.0.0.1:8090` (Swagger at `/docs`) |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 ## Secrets
@@ -68,7 +68,8 @@ curl -s -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
   -d '{"actor_id":"customer-42","application_id":"default","label":"customer 42"}' http://127.0.0.1:8090/v1/admin/keys
 ```
 
-Swagger at <http://127.0.0.1:8090/docs> does the same interactively.
+Swagger at <http://127.0.0.1:8090/docs> does the same interactively: **Authorize** takes the token
+(`lpk_…`) and sends it as `Authorization: Bearer`. The engine declares the scheme when its API keys are on, as on this stack.
 
 ### Demo traffic
 

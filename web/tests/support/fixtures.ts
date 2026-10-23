@@ -5,6 +5,7 @@
 import type { Allocation, ApiKey, Grant, LedgerRow, PaymentSession, UsageEvent } from "@/domain/batteries";
 import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, Reconciliation } from "@/domain/engine";
 import { failed, ok, type Problem, type Reading, type SourceName } from "@/domain/reading";
+import { PINS, shortCommit } from "@/domain/pins";
 import type { DiscoveredOrchestrator, SignerMetrics, SignerReadiness } from "@/domain/signer";
 import type { BatteriesReader, EngineReader, SignerReader, Sources } from "@/ports/sources";
 
@@ -129,7 +130,7 @@ export function engineHealth(overrides: Partial<EngineHealth> = {}): EngineHealt
     cost_sync_error: null,
     running_jobs: 0,
     allocation_mode: "per_actor",
-    version: "0.1.1.dev14+gad6bba9",
+    version: `0.1.1.dev37+g${shortCommit(PINS.engine.commit)}`, // the pinned build
     ...overrides,
   };
 }
