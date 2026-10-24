@@ -49,6 +49,7 @@ Each item names the M3 task it evidences.
 - [x] 2026-10-23 Re-pinned to `a22bc98`: builder-core's PR #41 review fixes and doc sweep, the commit ChatLPT pins. The engine spec and the generated types are unchanged.
 - [x] 2026-10-23 Re-pinned to `b89c1bb`, the merge of builder-core PR #41 on `releases/m3` (the same code as `a22bc98`, which was shown live: console API 33/33, engine sweep 42/42).
 - [x] 2026-10-23 Re-pinned to `878e4f4`, the merge of builder-core PR #42 (FakeEngine and test changes only; the stock server is unchanged).
+- [x] 2026-10-24 Re-pinned to `629f1ab`, the merge of builder-core PRs #43 and #44: a paid job never reads as `none`, per-job evidence versions, payment evidence stored before the paid request (migration `0005`; the engine migrates on start). The REST spec is unchanged.
 - [x] 2026-10-21 Phase 0: re-pinned to `93756ba` (image `builder-console/engine:93756ba`, which reports `0.0.1.dev1+g93756ba27`); the engine spec is identical at both commits, so the generated types are unchanged. Grant creation through the engine failed both ways (an amount: Batteries 403 for the grant desk; no amount: the engine refuses), so `init-secrets.py` now gives this stack's grant desk `grants.fund`; a $1 grant was then created and funded $0.50 twice under one operation reference, which applied once ($1.50). The create response lacks name, status and total: gap G12.
 
 ### Phases
