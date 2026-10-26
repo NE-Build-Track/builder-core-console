@@ -3,8 +3,12 @@
 Sign in to the console through an identity provider (decision D21) against an engine that accepts only
 JWTs (builder-core PR #50, `LPB_AUTH=jwt`, and PR #53: the actor list and the read-only auditor). It is
 a separate compose project from `deploy/compose.yaml`, and it is paid. Batteries and the signer run
-exactly as there, on the same funded payer: the `builder-console_paid-state` volume, `deploy/secrets`,
-and the tokens `first-run.sh` copies from `deploy/.env`.
+exactly as there, with the same payer and credentials (`deploy/secrets`, and the tokens `first-run.sh`
+copies from `deploy/.env`), but on this stack's own ledger (`builder-console-keycloak_paid-state`): its
+grants and actors start empty and never mix with the main stack's. Create a grant in Operator actions first.
+
+To start over, `down -v` removes this stack's ledger and engine database; Keycloak's users come back from
+the realm file.
 
 **One signer per payer.** Stop `deploy/compose.yaml`, ChatLPT and inference-gateway before
 `up`: they all sign for the same wallet.

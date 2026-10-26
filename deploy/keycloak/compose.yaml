@@ -1,6 +1,7 @@
 # Local Keycloak test of the console's OIDC sign-in against a JWT-only engine (builder-core PR #50/#53).
 # A separate compose project from deploy/compose.yaml, paid: Batteries and the signer run exactly as there,
-# on the same funded payer (the builder-console_paid-state volume and deploy/secrets). One signer per payer:
+# with the same payer and credentials (deploy/secrets) but their own ledger (the paid-state volume here), so
+# this stack's grants and actors start empty and never mix with deploy/compose.yaml's. One signer per payer:
 # stop deploy/compose.yaml, ChatLPT and inference-gateway first (they share the payer).
 # Keycloak is reached at http://keycloak.localhost:8180 from the browser (*.localhost is loopback) and from
 # the containers (a network alias), so the issuer is one URL everywhere. See README.md here.
@@ -158,6 +159,4 @@ services:
 
 volumes:
   engine-data:
-  paid-state:  # the funded payer's state, shared with deploy/compose.yaml (never both at once)
-    external: true
-    name: builder-console_paid-state
+  paid-state:  # this stack's own Batteries ledger, Kafka and signer events; the payer is deploy/secrets
