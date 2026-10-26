@@ -106,7 +106,7 @@ export function GrantsSection({ view }: { readonly view: OperatorView }) {
 function AllocationCells({ actor }: { readonly actor: OperatorActor }) {
   const allowance = actor.allowance;
   if (!allowance?.ok) {
-    const missing = allowance && !allowance.ok && allowance.problem.kind === "http" && allowance.problem.status === 404;
+    const missing = actor.provisioned === false || (allowance && !allowance.ok && allowance.problem.kind === "http" && allowance.problem.status === 404);
     return (
       <>
         <td>
@@ -134,7 +134,7 @@ function AllocationCells({ actor }: { readonly actor: OperatorActor }) {
 
 function ActorActions({ actor, view }: { readonly actor: OperatorActor; readonly view: OperatorView }) {
   const base = ids(actor.applicationId, actor.actorId);
-  const provisioned = actor.allowance?.ok === true;
+  const provisioned = actor.provisioned !== false && actor.allowance?.ok === true;
   if (!provisioned) {
     return (
       <ActionDialog
@@ -146,7 +146,8 @@ function ActorActions({ actor, view }: { readonly actor: OperatorActor; readonly
           ...base,
           { type: "select", name: "grant_id", label: "From grant", options: grantOptions(view, null) },
           { type: "usd", name: "amount", label: "Allocation", placeholder: "0.25" },
-          { type: "text", name: "label", label: "Label (optional)" },
+          // a person who signed in is offered their name (builder-core D48)
+          { type: "text", name: "label", label: "Label (optional)", ...(actor.label ? { value: actor.label } : {}) },
         ]}
       />
     );
@@ -202,7 +203,7 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
         />
       }
     >
-      <Unreadable reading={view.provisioned} what="Provisioned actors" />
+      <Unreadable reading={view.known} what="Known actors" />
       {view.keys ? <Unreadable reading={view.keys} what="Access keys" /> : null}
       {view.actors.length === 0 ? <Empty>{view.keys ? "No actors yet. Provision one, then issue it a key." : "No actors yet. A person who signs in as a builder is the actor their identity provider's sub names; provision that id."}</Empty> : null}
       {view.actors.length > 0 ? (

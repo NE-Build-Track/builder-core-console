@@ -13,7 +13,7 @@ and the tokens `first-run.sh` copies from `deploy/.env`.
 | --- | --- | --- |
 | `clearinghouse`, `signer`, `signer-metrics` | compose network only | Batteries `ca09e47` and the node signer `406b248`, as in `deploy/compose.yaml` |
 | `keycloak` | http://keycloak.localhost:8180 (admin console at `/admin`) | Keycloak 26.8.1, realm `livepeer` from `realm-livepeer.json` |
-| `engine` | http://127.0.0.1:8091 (Swagger at `/docs`) | builder-core `4041ffe`, `LPB_AUTH=jwt`, strict RFC 9068 tokens |
+| `engine` | http://127.0.0.1:8091 (Swagger at `/docs`) | builder-core `245526e`, `LPB_AUTH=jwt`, strict RFC 9068 tokens |
 | `discovery` | compose network only | `lpb discovery` over `../config/orchestrators.txt` |
 | `console` | **http://127.0.0.1:3061** | the console with `CONSOLE_AUTH=oidc` |
 
@@ -23,10 +23,12 @@ stack it is a network alias, so the issuer is one URL everywhere.
 
 ## A paid run
 
-1. Sign in to Operator actions as `operator`.
-2. Provision an actor: actor id = alice's `sub` (above, or the Builder's session bar once she signs in),
-   a grant with unallocated money (the Money page lists it), an amount such as `0.05`, label `alice`.
-3. Sign out, sign in to the Builder as `alice`, and run a job from the catalog. Its cost appears under
+1. Sign in to the Builder as a new person, for example `carol`. Her first sign-in registers her with the
+   engine (builder-core D48); the page says she has no allocation yet.
+2. Sign out, and sign in to Operator actions as `operator`. Carol is on the actor list by name, "not
+   provisioned". Click Provision: her `sub` and name are filled in. Pick a grant with unallocated money
+   (the Money page lists it) and an amount such as `0.05`.
+3. Sign out, sign in to the Builder as `carol`, and run a job from the catalog. Its cost appears under
    My jobs and Usage, and on the Operator page as her allocation's spend.
 
 ## Run
@@ -43,7 +45,7 @@ docker compose -f deploy/keycloak/compose.yaml down        # stop; add -v to for
 | Who | Realm role | Gets | In the console |
 | --- | --- | --- | --- |
 | `operator` | `operator` | `livepeer:admin` (engine admin) | Operator actions |
-| `alice`, `bob` | `builder` | `discover jobs.run jobs.read costs.read events.read` | Builder; the actor is their `sub` |
+| `alice`, `bob`, `carol` | `builder` | `discover jobs.run jobs.read costs.read events.read` | Builder; the actor is their `sub` |
 | `console-reader` (service account) | `reader` | `livepeer:read` (engine auditor) | the background reads |
 
 - **Role-gated scopes.** Each scope is linked to a role, and Keycloak grants it only to users who hold
@@ -64,6 +66,7 @@ docker compose -f deploy/keycloak/compose.yaml down        # stop; add -v to for
   | operator | `b715dc36-0112-4e10-9ce9-7e235669a3bf` |
   | alice | `3c446b40-7123-45f1-bbdd-482f8025d1d5` |
   | bob | `14a5c7ce-7de4-44a0-a1fd-b5855d63116f` |
+  | carol | `5b1d7e90-3c2a-4f8e-9d61-0a7c4e2f8b13` |
 
 - **Lifetimes.** Access tokens live 5 minutes, and the console refreshes them a minute early. Refresh
   tokens rotate, and the single sign-on session lasts 8 hours.

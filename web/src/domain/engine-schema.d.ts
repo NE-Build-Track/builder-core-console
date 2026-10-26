@@ -28,7 +28,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Actors */
+        /**
+         * List Actors
+         * @description Provisioned actors and people an identity provider signed in (D46, D48).
+         */
         get: operations["list_actors_v1_admin_actors_get"];
         put?: never;
         post?: never;
@@ -865,6 +868,27 @@ export interface components {
             timeout_s: number;
         };
         /**
+         * KnownActor
+         * @description One row of the operator's actor list (D46, D48): provisioned, signed in, or both.
+         */
+        KnownActor: {
+            /** Actor Id */
+            actor_id: string;
+            allocation: components["schemas"]["ProvisionedActor"] | null;
+            /** Application Id */
+            application_id: string;
+            /** First Seen At */
+            first_seen_at: string | null;
+            /** Label */
+            label: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /** Name */
+            name: string | null;
+            /** Provisioned */
+            readonly provisioned: boolean;
+        };
+        /**
          * MeasuredUsage
          * @description Work done, in units the capability defines. Retains its source and is never equated with cost.
          */
@@ -1235,6 +1259,7 @@ export interface operations {
             query?: {
                 application_id?: string | null;
                 status?: ("active" | "paused" | "exhausted" | "revoked") | null;
+                provisioned?: boolean | null;
                 limit?: number;
             };
             header?: never;
@@ -1249,7 +1274,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProvisionedActor"][];
+                    "application/json": components["schemas"]["KnownActor"][];
                 };
             };
             /** @description Validation Error */

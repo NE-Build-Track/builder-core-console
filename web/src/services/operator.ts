@@ -3,7 +3,7 @@
  * change for the review step, and describe what came back. Pure functions over readings; the runtime
  * sends the call.
  */
-import type { AccessKey, Allowance, EngineGrant, ProvisionedActor } from "@/domain/engine";
+import type { AccessKey, Allowance, EngineGrant, KnownActor } from "@/domain/engine";
 import { hideSecrets } from "@/domain/exchange";
 import { ident, invalid, oneOf, operationRef, optionalLabel, parsed, text, usd, type Parsed } from "@/domain/forms";
 import {
@@ -322,9 +322,13 @@ export const shownResponse = (value: unknown): unknown => hideSecrets(value);
 export type OperatorActor = {
   readonly applicationId: string;
   readonly actorId: string;
-  /** The label given at provisioning (builder-core #53); null when none, or the actor is known only by a key. */
+  /** The operator's label, else the identity provider's name (builder-core D48); null when neither. */
   readonly label: string | null;
+  /** The identity provider's latest name for this person; null when they never signed in by token. */
+  readonly name: string | null;
   readonly status: string | null;
+  /** From the engine's list; null for an actor known only by a key. */
+  readonly provisioned: boolean | null;
   readonly activeKeys: number;
   readonly revokedKeys: number;
   /** Null until read; the admin key reads allocations in its own application only (gap G9). */
@@ -336,22 +340,25 @@ export type OperatorView = {
   readonly unallocated: Readonly<Record<string, string>>;
   /** Null when engine keys are off (CONSOLE_AUTH=oidc, LPB_AUTH=jwt): the key actions are hidden. */
   readonly keys: Reading<readonly AccessKey[]> | null;
-  readonly provisioned: Reading<readonly ProvisionedActor[]>;
+  readonly known: Reading<readonly KnownActor[]>;
   readonly actors: readonly OperatorActor[];
 };
 
 /**
- * Every actor the operator can act on: the provisioned ones (GET /v1/admin/actors, with their labels) and,
- * when engine keys are on, any actor that holds a key but no allocation yet. Admin keys are not actors.
+ * Every actor the operator can act on: the engine's known actors (GET /v1/admin/actors: provisioned, or
+ * people an identity provider signed in, with their names) and, when engine keys are on, any actor that
+ * holds a key the engine does not list yet. Admin keys are not actors.
  */
-export function actorsOf(provisioned: Reading<readonly ProvisionedActor[]>, keys: readonly AccessKey[] | null): readonly Omit<OperatorActor, "allowance">[] {
+export function actorsOf(known: Reading<readonly KnownActor[]>, keys: readonly AccessKey[] | null): readonly Omit<OperatorActor, "allowance">[] {
   const rows = new Map<string, Omit<OperatorActor, "allowance">>();
-  for (const actor of provisioned.ok ? provisioned.value : []) {
+  for (const actor of known.ok ? known.value : []) {
     rows.set(`${actor.application_id}\u0000${actor.actor_id}`, {
       applicationId: actor.application_id,
       actorId: actor.actor_id,
       label: actor.label ? actor.label : null,
-      status: actor.status,
+      name: actor.name ?? null,
+      status: actor.allocation?.status ?? null,
+      provisioned: actor.provisioned,
       activeKeys: 0,
       revokedKeys: 0,
     });
@@ -359,13 +366,13 @@ export function actorsOf(provisioned: Reading<readonly ProvisionedActor[]>, keys
   for (const holder of keys ? actorsFromKeys(keys) : []) {
     const id = `${holder.applicationId}\u0000${holder.actorId}`;
     const row = rows.get(id);
-    rows.set(id, row ? { ...row, activeKeys: holder.activeKeys, revokedKeys: holder.revokedKeys } : { ...holder, label: null, status: null });
+    rows.set(id, row ? { ...row, activeKeys: holder.activeKeys, revokedKeys: holder.revokedKeys } : { ...holder, label: null, name: null, status: null, provisioned: null });
   }
   return [...rows.values()].sort((a, b) => a.applicationId.localeCompare(b.applicationId) || a.actorId.localeCompare(b.actorId));
 }
 
 /** Actors as the keys show them (gap G2: the engine has no list of provisioned actors). Admin keys are not actors. */
-export function actorsFromKeys(keys: readonly AccessKey[]): readonly Omit<OperatorActor, "allowance" | "label" | "status">[] {
+export function actorsFromKeys(keys: readonly AccessKey[]): readonly Omit<OperatorActor, "allowance" | "label" | "name" | "status" | "provisioned">[] {
   const byActor = new Map<string, { applicationId: string; actorId: string; activeKeys: number; revokedKeys: number }>();
   for (const key of keys) {
     if (key.kind === "admin") continue;

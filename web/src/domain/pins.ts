@@ -6,8 +6,8 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "4041ffe4433d1fee15acb83723e2a019338f394d",
-    note: "tasks/mz/admin-read-actors (PR #53 on #50): releases/m3 (discovery, ISS-08) plus JWT bearer, actors and the auditor; local Keycloak test only",
+    commit: "245526e89ef508bf844b50c065ea59e4d53bdb02",
+    note: "tasks/mz/admin-read-actors (PR #53 on #50): JWT bearer, actors (registered on first sign-in, D48) and the auditor; local Keycloak test only",
   },
   batteries: {
     repository: "NE-Build-Track/clearinghouse-batteries",

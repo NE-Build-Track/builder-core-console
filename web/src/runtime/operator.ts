@@ -83,16 +83,17 @@ export async function commitAction(session: Session, form: FormData): Promise<Ac
 export async function loadOperator(session: Session): Promise<OperatorView> {
   const engine = keyed(session.token);
   const missing = { ok: false as const, source: "engine" as const, problem: { kind: "not_configured" as const, detail: "CONSOLE_ENGINE_URL" }, readAt: new Date().toISOString() };
-  if (!engine) return { grants: missing, keys: missing, provisioned: missing, actors: [], unallocated: {} };
+  if (!engine) return { grants: missing, keys: missing, known: missing, actors: [], unallocated: {} };
   // Under CONSOLE_AUTH=oidc the engine runs LPB_AUTH=jwt: its key routes are gone, so they are not asked.
   const keysOn = readConfig().auth.mode === "keys";
-  const [grants, keys, provisioned, unallocated] = await Promise.all([
+  const [grants, keys, known, unallocated] = await Promise.all([
     engine.grants(),
     keysOn ? engine.adminKeys() : Promise.resolve(null),
     engine.adminActors(1000),
     unallocatedByGrant(),
   ]);
-  const rows = actorsOf(provisioned, keys?.ok ? keys.value : null);
-  const allowances = await Promise.all(rows.map((row) => engine.allowance(row.actorId)));
-  return { grants, keys, provisioned, unallocated, actors: rows.map((row, index) => ({ ...row, allowance: allowances[index] ?? null })) };
+  const rows = actorsOf(known, keys?.ok ? keys.value : null);
+  // A person who only signed in has no allocation to read (D48): no call, the row says "not provisioned".
+  const allowances = await Promise.all(rows.map((row) => (row.provisioned === false ? Promise.resolve(null) : engine.allowance(row.actorId))));
+  return { grants, keys, known, unallocated, actors: rows.map((row, index) => ({ ...row, allowance: allowances[index] ?? null })) };
 }

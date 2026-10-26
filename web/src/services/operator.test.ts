@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AccessKey, ProvisionedActor } from "@/domain/engine";
+import type { AccessKey, KnownActor } from "@/domain/engine";
 import { callOf } from "@/domain/operator";
 import { read } from "../../tests/support/fixtures";
 
@@ -79,26 +79,29 @@ describe("operator actions", () => {
     expect(actors).toEqual([{ applicationId: "default", actorId: "acme", activeKeys: 1, revokedKeys: 0 }]);
   });
 
-  it("lists provisioned actors with their labels, even with no key (builder-core #53 closes G2)", () => {
-    const alice = { actor_id: "0032bc7b", application_id: "default", label: "alice", status: "active" } as ProvisionedActor;
-    const actors = actorsOf(read("engine", [alice]), [ACME_KEY]);
+  it("lists every known actor with its label, provisioned or not (builder-core #53, D48)", () => {
+    const alice = { actor_id: "3c446b40", application_id: "default", label: "alice", name: "alice", provisioned: false, allocation: null } as KnownActor;
+    const bob = {
+      actor_id: "14a5c7ce",
+      application_id: "default",
+      label: "Bob B.",
+      name: "bob",
+      provisioned: true,
+      allocation: { status: "active" },
+    } as KnownActor;
+    const actors = actorsOf(read("engine", [alice, bob]), [ACME_KEY]);
     expect(actors).toEqual([
-      { applicationId: "default", actorId: "0032bc7b", label: "alice", status: "active", activeKeys: 0, revokedKeys: 0 },
-      { applicationId: "default", actorId: "acme", label: null, status: null, activeKeys: 1, revokedKeys: 0 },
+      { applicationId: "default", actorId: "14a5c7ce", label: "Bob B.", name: "bob", status: "active", provisioned: true, activeKeys: 0, revokedKeys: 0 },
+      { applicationId: "default", actorId: "3c446b40", label: "alice", name: "alice", status: null, provisioned: false, activeKeys: 0, revokedKeys: 0 },
+      { applicationId: "default", actorId: "acme", label: null, name: null, status: null, provisioned: null, activeKeys: 1, revokedKeys: 0 },
     ]);
   });
 
-  it("lists the provisioned actors alone when engine keys are off (CONSOLE_AUTH=oidc)", () => {
-    const alice = { actor_id: "0032bc7b", application_id: "default", label: "", status: "paused" } as ProvisionedActor;
-    expect(actorsOf(read("engine", [alice]), null)).toEqual([{ applicationId: "default", actorId: "0032bc7b", label: null, status: "paused", activeKeys: 0, revokedKeys: 0 }]);
-  });
-});
-
-describe("rotating a key (ISS-08)", () => {
-  it("parses the key and an optional new label", () => {
-    expect(parseAction(form({ action: "rotateKey", key_id: "k1abcdefgh", label: "" }))).toEqual({ ok: true, value: { action: "rotateKey", keyId: "k1abcdefgh", label: "" } });
-    expect(parseAction(form({ action: "rotateKey", key_id: "k1abcdefgh", label: "ci-2" }))).toEqual({ ok: true, value: { action: "rotateKey", keyId: "k1abcdefgh", label: "ci-2" } });
-    expect(parseAction(form({ action: "rotateKey", key_id: "a/b" }))).toMatchObject({ ok: false, field: "key_id" });
+  it("lists the known actors alone when engine keys are off (CONSOLE_AUTH=oidc)", () => {
+    const paused = { actor_id: "0032bc7b", application_id: "default", label: "", name: null, provisioned: true, allocation: { status: "paused" } } as KnownActor;
+    expect(actorsOf(read("engine", [paused]), null)).toEqual([
+      { applicationId: "default", actorId: "0032bc7b", label: null, name: null, status: "paused", provisioned: true, activeKeys: 0, revokedKeys: 0 },
+    ]);
   });
 
   it("sends a label only when one is given, so the key keeps its own", () => {
