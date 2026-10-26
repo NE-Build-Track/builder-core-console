@@ -43,6 +43,8 @@ and `GET /v1/jobs/{job_id}` (and `/cost`) with its actor key; the Operator page 
 | `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/rotate-key` | Operator | Replace the allocation's gateway key; the engine keeps the new one. Takes an operation reference. |
 | `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/revoke` | Operator | Stop the allocation for good. |
 | `POST /v1/admin/keys` | Operator | Issue an access key. The token comes back once and is shown once. No operation reference yet (ISS-11). |
+| `GET /v1/admin/keys/{key_id}` | Operator | Inspect one key just before the review of a rotation or revocation: owner, kind, permissions, label, created and revoked times. Never the token or its hash (builder-core ISS-08, D44). |
+| `POST /v1/admin/keys/{key_id}/rotate` | Operator | Rotate an access key: a new key with the same owner, kind and permissions, shown once; the old one answers 401 at once. An optional body `{"label": ...}` renames it. A repeat finds the old key revoked and answers 400, so it never applies twice. |
 | `POST /v1/admin/keys/{key_id}/revoke` | Operator | Revoke an access key. |
 
 ## Batteries

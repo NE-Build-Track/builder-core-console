@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NOW } from "../../tests/support/fixtures";
 
 import { batteriesReader } from "./batteries/reader";
+import { keyedEngine } from "./engine/keyed";
 import { engineReader, httpProblem } from "./engine/reader";
 import { parseSignerMetrics, signerReader } from "./signer/reader";
 
@@ -109,6 +110,22 @@ describe("engine adapter", () => {
     vi.stubGlobal("fetch", fetch);
     await engineReader(settings, { timeoutMs: 1000, now }).reconciliation({ applicationId: "default", actorId: "a" });
     expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("inspects one key with the signed-in key, and reads its refusal as a problem (ISS-08)", async () => {
+    const key = { key_id: "key_a b", actor_id: "acme", application_id: "default", kind: "actor", label: "", permissions: [], created_at: "2026-10-26T10:00:00Z", revoked_at: null };
+    const fetch = vi.fn(async (request: Request) => {
+      expect(request.method).toBe("GET");
+      expect(request.headers.get("authorization")).toBe("Bearer lpk_operator");
+      expect(request.url).toBe("http://e:8080/v1/admin/keys/key_a%20b");
+      return respond(200, key);
+    });
+    vi.stubGlobal("fetch", fetch);
+    const engine = keyedEngine("http://e:8080", "lpk_operator", { timeoutMs: 1000, now });
+    expect(await engine.adminKey("key_a b")).toMatchObject({ ok: true, value: { key_id: "key_a b", actor_id: "acme" } });
+    vi.stubGlobal("fetch", vi.fn(async () => respond(403, { error: "admin.keys requires an admin credential" })));
+    const actorKey = keyedEngine("http://e:8080", "lpk_actor", { timeoutMs: 1000, now }); // the client keeps its fetch
+    expect(await actorKey.adminKey("k1")).toMatchObject({ ok: false, problem: { kind: "http", status: 403 } });
   });
 
   it("turns engine error bodies into a status line", () => {

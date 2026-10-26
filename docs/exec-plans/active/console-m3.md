@@ -51,6 +51,17 @@ Each item names the M3 task it evidences.
 - [x] 2026-10-23 Re-pinned to `878e4f4`, the merge of builder-core PR #42 (FakeEngine and test changes only; the stock server is unchanged).
 - [x] 2026-10-24 Re-pinned to `629f1ab`, the merge of builder-core PRs #43 and #44: a paid job never reads as `none`, per-job evidence versions, payment evidence stored before the paid request (migration `0005`; the engine migrates on start). The REST spec is unchanged.
 - [x] 2026-10-26 Pinned to `d057935`, builder-core PR #48 (ISS-08, D44), to add **Rotate key** and key inspection to the Operator page. The spec only adds `GET /v1/admin/keys/{key_id}` and `POST /v1/admin/keys/{key_id}/rotate`. A missing permission now answers 403 instead of 404 on a job or its cost. Re-pin to the merge.
+- [x] 2026-10-26 Operator: **Rotate** on each active key row. The review and the result:
+  - **Before it is sent:** the review of Rotate and of Revoke now *inspects* the one key
+    (`GET /v1/admin/keys/{key_id}`): its owner, created time, permissions and label (before → after), and a
+    warning when it is already revoked or is an admin key.
+  - **After:** the new key is shown once, naming the key it replaced; the request and response panel hides
+    the token.
+  - **Live on `d057935`:**
+    - console API test 33/33;
+    - an engine probe 22/22 (inspect, rotate, the old token 401 at once, 403/404 on job, cost and result,
+      admin lists every actor, the `keys.*` audit lines, no token in the engine log);
+    - the Rotate flow in a headless browser 15/15.
 - [x] 2026-10-21 Phase 0: re-pinned to `93756ba` (image `builder-console/engine:93756ba`, which reports `0.0.1.dev1+g93756ba27`); the engine spec is identical at both commits, so the generated types are unchanged. Grant creation through the engine failed both ways (an amount: Batteries 403 for the grant desk; no amount: the engine refuses), so `init-secrets.py` now gives this stack's grant desk `grants.fund`; a $1 grant was then created and funded $0.50 twice under one operation reference, which applied once ($1.50). The create response lacks name, status and total: gap G12.
 
 ### Phases

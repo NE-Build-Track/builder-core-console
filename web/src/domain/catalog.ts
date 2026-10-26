@@ -34,6 +34,8 @@ export const CATALOG = [
   { source: "engine", route: "POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/rotate-key", credential: "admin key (Operator)", usedFor: "Operator: rotate the payment key (operation reference)" },
   { source: "engine", route: "POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/revoke", credential: "admin key (Operator)", usedFor: "Operator: revoke an allocation" },
   { source: "engine", route: "POST /v1/admin/keys", credential: "admin key (Operator)", usedFor: "Operator: issue an access key (shown once)" },
+  { source: "engine", route: "GET /v1/admin/keys/{key_id}", credential: "admin key (Operator)", usedFor: "Operator: inspect a key before rotating or revoking it (never its secret)" },
+  { source: "engine", route: "POST /v1/admin/keys/{key_id}/rotate", credential: "admin key (Operator)", usedFor: "Operator: rotate an access key (new key shown once)" },
   { source: "engine", route: "POST /v1/admin/keys/{key_id}/revoke", credential: "admin key (Operator)", usedFor: "Operator: revoke an access key" },
   { source: "batteries", route: "GET /readyz", credential: "none", usedFor: "Health" },
   { source: "batteries", route: "GET /v1/grants", credential: "console-reader", usedFor: "Money" },

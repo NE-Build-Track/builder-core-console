@@ -78,6 +78,7 @@ export function keyedEngine(baseUrl: string, token: string, options: Options): K
 
   return {
     adminKeys: () => call(() => client.GET("/v1/admin/keys", { signal: signal() })),
+    adminKey: (keyId) => call(() => client.GET("/v1/admin/keys/{key_id}", { params: { path: { key_id: keyId } }, signal: signal() })),
     myJobs: (limit) => call(() => client.GET("/v1/jobs", { params: { query: { limit } }, signal: signal() })),
     offerings: () => call(() => client.GET("/v1/offerings", { signal: signal() })),
     runners: (app) => call(() => client.GET("/v1/runners", { params: { query: { app } }, signal: signal() })),

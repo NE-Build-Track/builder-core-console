@@ -78,6 +78,8 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
         kind: oneOf(form, "kind", ["actor", "admin"] as const, "key kind"),
         label: parsed(optionalLabel(form, "label")),
       });
+    case "rotateKey":
+      return all({ action: parsed("rotateKey" as const), keyId: ident(form, "key_id", "Key"), label: parsed(optionalLabel(form, "label")) });
     case "revokeKey":
       return all({ action: parsed("revokeKey" as const), keyId: ident(form, "key_id", "Key") });
   }
@@ -87,7 +89,8 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
 export type ReviewContext = {
   readonly grants: Reading<readonly EngineGrant[]>;
   readonly allowance: Reading<Allowance> | null;
-  readonly keys: Reading<readonly AccessKey[]>;
+  /** The key a key action names, inspected just before review (GET /v1/admin/keys/{key_id}, ISS-08). */
+  readonly key: Reading<AccessKey> | null;
   /** Each grant's unallocated balance from the Batteries ledger, when the console can read it. */
   readonly unallocated: Readonly<Record<string, string>>;
 };
@@ -215,15 +218,28 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
         warnings: input.kind === "admin" ? [...warnings, "An admin key can move money. Issue actor keys to builders."] : warnings,
         button: "Issue the key",
       };
-    case "revokeKey": {
-      const key = context.keys.ok ? context.keys.value.find((item) => item.key_id === input.keyId) : undefined;
+    case "rotateKey": {
+      const key = context.key?.ok ? context.key.value : undefined;
       return {
         ...base,
         lines: [
-          { label: "Key", value: input.keyId, mono: true },
-          ...(key ? [{ label: "Belongs to", value: `${key.actor_id} in ${key.application_id} (${key.kind})`, mono: true }] : []),
-          { label: "Effect", value: "Calls with this key fail at once with 401." },
+          ...keyLines(input.keyId, key),
+          ...(key ? [{ label: "Permissions", value: key.permissions.join(", ") || "none" }, { label: "Label", before: key.label || "none", after: input.label || key.label || "none" }] : []),
+          { label: "Effect", value: "A new key with the same owner and permissions, shown once on the next screen. Calls with the old key fail at once with 401; there is no overlap." },
         ],
+        warnings: [
+          ...warnings,
+          ...(key?.revoked_at ? ["This key is already revoked, so the engine will refuse this (400)."] : []),
+          ...(key?.kind === "admin" ? ["This is an admin key. If it is the one you signed in with, sign in again with the new key after this."] : []),
+        ],
+        button: "Rotate the key",
+      };
+    }
+    case "revokeKey": {
+      const key = context.key?.ok ? context.key.value : undefined;
+      return {
+        ...base,
+        lines: [...keyLines(input.keyId, key), { label: "Effect", value: "Calls with this key fail at once with 401." }],
         warnings: [
           ...warnings,
           "This cannot be undone.",
@@ -234,6 +250,17 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
       };
     }
   }
+}
+
+/** The key as the engine shows it now: who owns it, and whether it still works. */
+function keyLines(keyId: string, key: AccessKey | undefined): ReviewLine[] {
+  if (!key) return [{ label: "Key", value: keyId, mono: true }];
+  return [
+    { label: "Key", value: keyId, mono: true },
+    { label: "Belongs to", value: `${key.actor_id} in ${key.application_id} (${key.kind})`, mono: true },
+    { label: "Created", value: key.created_at },
+    ...(key.revoked_at ? [{ label: "Revoked", value: key.revoked_at }] : []),
+  ];
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -253,6 +280,20 @@ export function resultOf(input: ActionInput, value: unknown): { readonly lines: 
       return {
         lines: [{ label: "Key id", value: keyId, mono: true }, { label: "For", value: `${String(key.actor_id ?? input.actorId)} in ${String(key.application_id ?? input.applicationId)}`, mono: true }],
         secret: token ? { token, keyId, actorId: String(key.actor_id ?? input.actorId), kind: String(key.kind ?? input.kind) } : null,
+      };
+    }
+    case "rotateKey": {
+      const key = record(body.key);
+      const token = typeof body.token === "string" ? body.token : null;
+      const keyId = String(key.key_id ?? "unknown");
+      const owner = String(key.actor_id ?? "unknown");
+      return {
+        lines: [
+          { label: "Key id", value: keyId, mono: true },
+          { label: "For", value: `${owner} in ${String(key.application_id ?? "unknown")}`, mono: true },
+          { label: "Replaces", value: `${input.keyId} (revoked)`, mono: true },
+        ],
+        secret: token ? { token, keyId, actorId: owner, kind: String(key.kind ?? "unknown") } : null,
       };
     }
     case "provision":

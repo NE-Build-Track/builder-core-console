@@ -17,6 +17,7 @@ export type OperatorAction =
   | "rotatePaymentKey"
   | "revokeAllocation"
   | "issueKey"
+  | "rotateKey"
   | "revokeKey";
 
 /** How the review step treats an action (D17). */
@@ -77,6 +78,7 @@ export const ACTIONS: Record<OperatorAction, ActionSpec> = {
     done: "Allocation revoked",
   },
   issueKey: { label: "Issue an access key", kind: "secret", route: "POST /v1/admin/keys", repeat: "no", done: "Key issued" },
+  rotateKey: { label: "Rotate an access key", kind: "secret", route: "POST /v1/admin/keys/{key_id}/rotate", repeat: "same-result", done: "Key rotated" },
   revokeKey: { label: "Revoke an access key", kind: "irreversible", route: "POST /v1/admin/keys/{key_id}/revoke", repeat: "same-result", done: "Key revoked" },
 };
 
@@ -106,6 +108,7 @@ export type ActionInput =
   | { readonly action: "rotatePaymentKey"; readonly applicationId: string; readonly actorId: string; readonly operationRef: string }
   | { readonly action: "revokeAllocation"; readonly applicationId: string; readonly actorId: string }
   | { readonly action: "issueKey"; readonly actorId: string; readonly applicationId: string; readonly kind: "actor" | "admin"; readonly label: string }
+  | { readonly action: "rotateKey"; readonly keyId: string; readonly label: string }
   | { readonly action: "revokeKey"; readonly keyId: string };
 
 /** One planned engine call: the route template, its filled path, and the body. */
@@ -154,6 +157,11 @@ export function callOf(input: ActionInput): PlannedCall {
     case "issueKey": {
       const body: Schemas["IssueKeyBody"] = { actor_id: input.actorId, application_id: input.applicationId, kind: input.kind, label: input.label };
       return plan(input, {}, body);
+    }
+    case "rotateKey": {
+      // No label: the engine keeps the key's own (D44), so send no body rather than an empty one.
+      const body: Schemas["RotateKeyBody"] | undefined = input.label ? { label: input.label } : undefined;
+      return plan(input, { key_id: input.keyId }, body);
     }
     case "revokeKey":
       return plan(input, { key_id: input.keyId });

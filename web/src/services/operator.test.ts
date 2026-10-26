@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { AccessKey } from "@/domain/engine";
 import { callOf } from "@/domain/operator";
 import { read } from "../../tests/support/fixtures";
 
@@ -12,13 +13,12 @@ function form(values: Record<string, string>): FormData {
 }
 
 const REF = "console-fundGrant-1234abcd";
+const ACME_KEY: AccessKey = { key_id: "k1abcdefgh", actor_id: "acme", application_id: "default", kind: "actor", label: "ci", permissions: ["jobs.run"], created_at: "2026-10-21T10:00:00Z", revoked_at: null };
 const context: ReviewContext = {
   grants: read("engine", [{ id: "g1", name: "Pilot", status: "active", currency: "USD", total: "1.5" }]),
   allowance: read("engine", { allocation_id: "al1", status: "active", granted: { amount: "0.25", currency: "USD" }, available: { amount: "0.2", currency: "USD" }, spent: { amount: "0.05", currency: "USD" } }),
   unallocated: { g1: "0.3" },
-  keys: read("engine", [
-    { key_id: "k1abcdefgh", actor_id: "acme", application_id: "default", kind: "actor", label: "", permissions: [], created_at: "2026-10-21T10:00:00Z", revoked_at: null },
-  ]),
+  key: read("engine", ACME_KEY),
 };
 
 describe("operator actions", () => {
@@ -73,10 +73,50 @@ describe("operator actions", () => {
 
   it("lists actors from their keys, never admin keys", () => {
     const actors = actorsFromKeys([
-      ...(context.keys.ok ? context.keys.value : []),
+      ACME_KEY,
       { key_id: "k9", actor_id: "ops", application_id: "default", kind: "admin", label: "", permissions: [], created_at: "2026-10-21T10:00:00Z", revoked_at: null },
     ]);
     expect(actors).toEqual([{ applicationId: "default", actorId: "acme", activeKeys: 1, revokedKeys: 0 }]);
+  });
+});
+
+describe("rotating a key (ISS-08)", () => {
+  it("parses the key and an optional new label", () => {
+    expect(parseAction(form({ action: "rotateKey", key_id: "k1abcdefgh", label: "" }))).toEqual({ ok: true, value: { action: "rotateKey", keyId: "k1abcdefgh", label: "" } });
+    expect(parseAction(form({ action: "rotateKey", key_id: "k1abcdefgh", label: "ci-2" }))).toEqual({ ok: true, value: { action: "rotateKey", keyId: "k1abcdefgh", label: "ci-2" } });
+    expect(parseAction(form({ action: "rotateKey", key_id: "a/b" }))).toMatchObject({ ok: false, field: "key_id" });
+  });
+
+  it("sends a label only when one is given, so the key keeps its own", () => {
+    const template = "/v1/admin/keys/{key_id}/rotate";
+    expect(callOf({ action: "rotateKey", keyId: "k1", label: "" })).toEqual({ method: "POST", template, path: "/v1/admin/keys/k1/rotate" });
+    expect(callOf({ action: "rotateKey", keyId: "k1", label: "ci-2" })).toEqual({ method: "POST", template, path: "/v1/admin/keys/k1/rotate", body: { label: "ci-2" } });
+  });
+
+  it("reviews the key as the engine shows it now, and says the old one stops at once", () => {
+    const review = reviewOf({ action: "rotateKey", keyId: "k1abcdefgh", label: "" }, context);
+    expect(review.kind).toBe("secret");
+    expect(review.lines).toContainEqual({ label: "Belongs to", value: "acme in default (actor)", mono: true });
+    expect(review.lines).toContainEqual({ label: "Permissions", value: "jobs.run" });
+    expect(review.lines).toContainEqual({ label: "Label", before: "ci", after: "ci" });
+    expect(review.lines.map((line) => line.value ?? "").join(" ")).toContain("fail at once with 401");
+    expect(review.button).toBe("Rotate the key");
+    const revoked = reviewOf({ action: "rotateKey", keyId: "k1abcdefgh", label: "" }, { ...context, key: read("engine", { ...ACME_KEY, revoked_at: "2026-10-22T10:00:00Z" }) });
+    expect(revoked.warnings.join(" ")).toContain("already revoked");
+  });
+
+  it("shows the revoke review from the inspected key too", () => {
+    const review = reviewOf({ action: "revokeKey", keyId: "k1abcdefgh" }, context);
+    expect(review.lines).toContainEqual({ label: "Belongs to", value: "acme in default (actor)", mono: true });
+  });
+
+  it("returns the new key once, naming the key it replaced", () => {
+    const rotated = resultOf(
+      { action: "rotateKey", keyId: "k1abcdefgh", label: "" },
+      { key: { key_id: "k2", actor_id: "acme", application_id: "default", kind: "actor" }, token: "lpk_NewNewNewNewNewNewNew" },
+    );
+    expect(rotated.secret).toEqual({ token: "lpk_NewNewNewNewNewNewNew", keyId: "k2", actorId: "acme", kind: "actor" });
+    expect(rotated.lines).toContainEqual({ label: "Replaces", value: "k1abcdefgh (revoked)", mono: true });
   });
 });
 

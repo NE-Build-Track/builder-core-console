@@ -37,17 +37,17 @@ async function unallocatedByGrant(): Promise<Record<string, string>> {
 async function contextFor(session: Session, input: ActionInput): Promise<ReviewContext> {
   const engine = keyed(session.token);
   const unavailable = { ok: false as const, source: "engine" as const, problem: { kind: "not_configured" as const, detail: "CONSOLE_ENGINE_URL" }, readAt: new Date().toISOString() };
-  if (!engine) return { grants: unavailable, allowance: null, keys: unavailable, unallocated: {} };
+  if (!engine) return { grants: unavailable, allowance: null, key: null, unallocated: {} };
   const actorId = "actorId" in input ? input.actorId : null;
   const wantsAllowance = input.action === "fundAllocation" || input.action === "setStatus";
   const drawsOnGrant = input.action === "provision" || input.action === "fundAllocation";
-  const [grants, allowance, keys, unallocated] = await Promise.all([
+  const [grants, allowance, key, unallocated] = await Promise.all([
     engine.grants(),
     wantsAllowance && actorId ? engine.allowance(actorId) : Promise.resolve(null),
-    input.action === "revokeKey" ? engine.adminKeys() : Promise.resolve(unavailable),
+    "keyId" in input ? engine.adminKey(input.keyId) : Promise.resolve(null),
     drawsOnGrant ? unallocatedByGrant() : Promise.resolve({}),
   ]);
-  return { grants, allowance, keys, unallocated };
+  return { grants, allowance, key, unallocated };
 }
 
 export async function reviewAction(session: Session, form: FormData): Promise<ActionState> {

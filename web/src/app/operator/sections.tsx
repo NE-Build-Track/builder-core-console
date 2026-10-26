@@ -293,7 +293,19 @@ export function KeysSection({ view, applicationId }: { readonly view: OperatorVi
                   <td>{key.revoked_at ? <Pill state="unknown">revoked</Pill> : <Pill state="ok">active</Pill>}</td>
                   <td className="r">
                     {key.revoked_at ? null : (
-                      <ActionDialog {...common} quiet danger action="revokeKey" label="Revoke" fields={[{ type: "hidden", name: "key_id", value: key.key_id }]} />
+                      <div className="row-actions">
+                        <ActionDialog
+                          {...common}
+                          quiet
+                          action="rotateKey"
+                          label="Rotate"
+                          fields={[
+                            { type: "hidden", name: "key_id", value: key.key_id },
+                            { type: "text", name: "label", label: "New label (optional)", placeholder: key.label || undefined, hint: "Leave empty to keep the current label." },
+                          ]}
+                        />
+                        <ActionDialog {...common} quiet danger action="revokeKey" label="Revoke" fields={[{ type: "hidden", name: "key_id", value: key.key_id }]} />
+                      </div>
                     )}
                   </td>
                 </tr>
