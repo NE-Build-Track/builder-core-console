@@ -191,8 +191,9 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
         />
       }
     >
-      <Unreadable reading={view.keys} what="Access keys" />
-      {view.actors.length === 0 ? <Empty>No actors yet. Provision one, then issue it a key.</Empty> : null}
+      <Unreadable reading={view.provisioned} what="Provisioned actors" />
+      {view.keys ? <Unreadable reading={view.keys} what="Access keys" /> : null}
+      {view.actors.length === 0 ? <Empty>{view.keys ? "No actors yet. Provision one, then issue it a key." : "No actors yet. A person who signs in as a builder is the actor their identity provider's sub names; provision that id."}</Empty> : null}
       {view.actors.length > 0 ? (
         <div className="table-scroll">
           <table className="data">
@@ -219,8 +220,16 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
             <tbody>
               {view.actors.map((actor) => (
                 <tr key={`${actor.applicationId}/${actor.actorId}`}>
-                  <td className="mono">
-                    <bdi>{actor.actorId}</bdi>
+                  <td>
+                    {actor.label ? (
+                      <>
+                        <bdi>{actor.label}</bdi>
+                        <br />
+                      </>
+                    ) : null}
+                    <span className="mono muted">
+                      <bdi>{actor.actorId}</bdi>
+                    </span>
                   </td>
                   <td className="mono">{actor.applicationId}</td>
                   <td className="r num">{actor.activeKeys}</td>
@@ -238,7 +247,7 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
   );
 }
 
-export function KeysSection({ view, applicationId }: { readonly view: OperatorView; readonly applicationId: string }) {
+export function KeysSection({ view, applicationId }: { readonly view: OperatorView & { readonly keys: NonNullable<OperatorView["keys"]> }; readonly applicationId: string }) {
   const keys = view.keys.ok ? [...view.keys.value].sort((a, b) => b.created_at.localeCompare(a.created_at)) : [];
   return (
     <Section

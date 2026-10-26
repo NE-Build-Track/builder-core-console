@@ -33,3 +33,33 @@ export function classifyKey(area: Area, adminKeys: Reading<readonly AccessKey[]>
   const newest = jobs.value[0];
   return { ok: true, identity: { kind: "actor", actorId: newest?.actor_id ?? null, applicationId: newest?.application_id ?? null } };
 }
+
+/** The scopes each area asks the identity provider for (CONSOLE_OIDC_*_SCOPE[S]). */
+export type AreaScopes = { readonly operator: string; readonly builder: readonly string[] };
+
+/** What the console keeps from the ID token: who signed in. */
+export type Person = { readonly sub: string; readonly name: string | null };
+
+/**
+ * Who signed in through the identity provider (CONSOLE_AUTH=oidc). The provider decides the area by the
+ * scopes it granted, and the engine has the last word: `probe` is one call made with the new access token
+ * (the actor list for an operator, the person's own jobs for a builder). A builder is the actor its `sub`
+ * names, because the engine maps `sub` to `actor_id` (builder-core D45), so gap G13 does not apply.
+ */
+export function classifyPerson(area: Area, granted: readonly string[], scopes: AreaScopes, probe: Reading<unknown>, person: Person): Classified {
+  const has = new Set(granted);
+  if (area === "operator" && !has.has(scopes.operator)) {
+    return { ok: false, message: `Your account is not an operator: the identity provider did not grant ${scopes.operator}.` };
+  }
+  if (area === "builder" && !has.has("jobs.run")) {
+    return { ok: false, message: `Your account is not a builder: the identity provider did not grant jobs.run (asked for ${scopes.builder.join(" ")}).` };
+  }
+  if (!probe.ok) {
+    const problem = probe.problem;
+    if (problem.kind === "http") return { ok: false, message: `The engine refused your token (HTTP ${problem.status}): ${problem.detail}.` };
+    return { ok: false, message: `The engine could not be asked: ${describeProblem(problem)}.` };
+  }
+  return area === "operator"
+    ? { ok: true, identity: { kind: "admin", actorId: null, applicationId: null } }
+    : { ok: true, identity: { kind: "actor", actorId: person.sub, applicationId: null } };
+}

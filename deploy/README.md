@@ -14,6 +14,9 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `discovery` | `builder-console/engine:4041ffe` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
+Testing sign-in through an identity provider instead of keys: [keycloak/README.md](keycloak/README.md), a
+separate compose project with Keycloak, a JWT-only engine and the console (`CONSOLE_AUTH=oidc`).
+
 ## Secrets
 
 Either reuse ChatLPT's values (D3):

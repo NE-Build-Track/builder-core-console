@@ -5,7 +5,8 @@ import createClient from "openapi-fetch";
 import type { EngineSettings, SourceSettings } from "@/config/config";
 import type { EngineHealth } from "@/domain/engine";
 import type { paths } from "@/domain/engine-schema";
-import { failed, ok, type Problem, type Reading } from "@/domain/reading";
+import { describeProblem, failed, ok, type Problem, type Reading } from "@/domain/reading";
+import type { TokenSource } from "@/ports/identity";
 import type { EngineReader } from "@/ports/sources";
 
 import { transportError } from "../http";
@@ -19,17 +20,28 @@ type Outcome<T> = { readonly data?: T; readonly error?: unknown; readonly respon
  * Responses are typed by the client generated from the pinned spec; the engine image and the spec come
  * from the same commit (domain/pins.ts), so the types are the engine's own contract.
  *
- * Only GET is ever called (decision D1). The admin key could do far more (gap G8).
+ * Only GET is ever called (decision D1). The admin key could do far more (gap G8). With CONSOLE_AUTH=oidc
+ * there is no admin key: `tokens` is the console's read-only client-credentials token (an auditor), so
+ * the engine itself refuses any write on this path.
  */
-export function engineReader(settings: SourceSettings<EngineSettings>, options: Options): EngineReader {
+export function engineReader(settings: SourceSettings<EngineSettings>, options: Options, tokens: TokenSource | null = null): EngineReader {
   const at = () => options.now().toISOString();
-  const client = settings.ok
-    ? createClient<paths>({
-        baseUrl: settings.value.url,
-        headers: { Authorization: `Bearer ${settings.value.adminToken}` },
-      })
-    : null;
+  const client = settings.ok ? createClient<paths>({ baseUrl: settings.value.url }) : null;
   const signal = () => AbortSignal.timeout(options.timeoutMs);
+  client?.use({
+    async onRequest({ request }) {
+      const token = await bearer();
+      if (!token.ok) throw new NoReadToken(describeProblem(token.problem));
+      request.headers.set("Authorization", `Bearer ${token.value}`);
+      return request;
+    },
+  });
+
+  async function bearer(): Promise<Reading<string>> {
+    if (settings.ok && settings.value.adminToken) return ok("engine", settings.value.adminToken, at());
+    if (!tokens) return failed("engine", { kind: "not_configured", detail: "CONSOLE_READER_CLIENT_ID, CONSOLE_READER_CLIENT_SECRET" }, at());
+    return tokens.token();
+  }
 
   async function guard<T>(work: (c: NonNullable<typeof client>) => Promise<Reading<T>>): Promise<Reading<T>> {
     if (!client || !settings.ok) {
@@ -38,7 +50,8 @@ export function engineReader(settings: SourceSettings<EngineSettings>, options: 
     try {
       return await work(client);
     } catch (error) {
-      return failed("engine", { kind: "unreachable", detail: transportError(error) }, at());
+      const detail = error instanceof NoReadToken ? `the console's read token: ${error.message}` : transportError(error);
+      return failed("engine", { kind: "unreachable", detail }, at());
     }
   }
 
@@ -90,6 +103,9 @@ export function engineReader(settings: SourceSettings<EngineSettings>, options: 
       call((c) => c.GET("/v1/jobs/{job_id}/cost", { params: { path: { job_id: id } }, signal: signal() })),
   };
 }
+
+/** The read token could not be had, so the request was never sent. */
+class NoReadToken extends Error {}
 
 /** Engine errors are `{"error": "..."}`; FastAPI's validation errors are `{"detail": [...]}`. */
 export function httpProblem(status: number, error: unknown): Problem {

@@ -25,6 +25,7 @@ const ALLOWED: Record<Layer, readonly Layer[]> = {
 /** Third-party packages and the only layers allowed to import them (ARCHITECTURE.md#third-party-boundaries). */
 const CONFINED: Record<string, readonly Layer[]> = {
   "openapi-fetch": ["adapters"],
+  "openid-client": ["adapters"],
   zod: ["domain"],
   "radix-ui": ["ui-kit"],
   "class-variance-authority": ["ui-kit"],
@@ -45,6 +46,8 @@ const BANNED: Record<string, string> = {
 const SERVER_ONLY: readonly Layer[] = ["config", "adapters", "runtime"];
 
 function layerOf(file: string): Layer {
+  // Next.js requires its request proxy at src/proxy.ts; it is routing, so it follows the app layer's rules.
+  if (path.relative(SRC, file) === "proxy.ts") return "app";
   const top = path.relative(SRC, file).split(path.sep)[0] as string;
   if (top === "components") return path.relative(SRC, file).startsWith(path.join("components", "ui")) ? "ui-kit" : "components";
   if (["utils", "domain", "ports", "config", "adapters", "services", "runtime", "app"].includes(top)) return top as Layer;

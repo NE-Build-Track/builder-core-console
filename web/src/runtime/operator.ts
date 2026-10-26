@@ -6,7 +6,7 @@ import { hideSecrets } from "@/domain/exchange";
 import { ACTIONS, callOf, type ActionInput, type ActionState } from "@/domain/operator";
 import { describeProblem } from "@/domain/reading";
 import type { Session } from "@/domain/session";
-import { actorsFromKeys, parseAction, resultOf, reviewOf, type OperatorView, type ReviewContext } from "@/services/operator";
+import { actorsOf, parseAction, resultOf, reviewOf, type OperatorView, type ReviewContext } from "@/services/operator";
 
 import { forgetReads, loadMoney } from "./console";
 import { engineUrl, keyed } from "./session";
@@ -83,9 +83,16 @@ export async function commitAction(session: Session, form: FormData): Promise<Ac
 export async function loadOperator(session: Session): Promise<OperatorView> {
   const engine = keyed(session.token);
   const missing = { ok: false as const, source: "engine" as const, problem: { kind: "not_configured" as const, detail: "CONSOLE_ENGINE_URL" }, readAt: new Date().toISOString() };
-  if (!engine) return { grants: missing, keys: missing, actors: [], unallocated: {} };
-  const [grants, keys, unallocated] = await Promise.all([engine.grants(), engine.adminKeys(), unallocatedByGrant()]);
-  const rows = keys.ok ? actorsFromKeys(keys.value) : [];
+  if (!engine) return { grants: missing, keys: missing, provisioned: missing, actors: [], unallocated: {} };
+  // Under CONSOLE_AUTH=oidc the engine runs LPB_AUTH=jwt: its key routes are gone, so they are not asked.
+  const keysOn = readConfig().auth.mode === "keys";
+  const [grants, keys, provisioned, unallocated] = await Promise.all([
+    engine.grants(),
+    keysOn ? engine.adminKeys() : Promise.resolve(null),
+    engine.adminActors(1000),
+    unallocatedByGrant(),
+  ]);
+  const rows = actorsOf(provisioned, keys?.ok ? keys.value : null);
   const allowances = await Promise.all(rows.map((row) => engine.allowance(row.actorId)));
-  return { grants, keys, unallocated, actors: rows.map((row, index) => ({ ...row, allowance: allowances[index] ?? null })) };
+  return { grants, keys, provisioned, unallocated, actors: rows.map((row, index) => ({ ...row, allowance: allowances[index] ?? null })) };
 }

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { AccessKey } from "@/domain/engine";
+import type { AccessKey, ProvisionedActor } from "@/domain/engine";
 import { callOf } from "@/domain/operator";
 import { read } from "../../tests/support/fixtures";
 
-import { actorsFromKeys, parseAction, resultOf, reviewOf, type ReviewContext } from "./operator";
+import { actorsFromKeys, actorsOf, parseAction, resultOf, reviewOf, type ReviewContext } from "./operator";
 
 function form(values: Record<string, string>): FormData {
   const data = new FormData();
@@ -77,6 +77,20 @@ describe("operator actions", () => {
       { key_id: "k9", actor_id: "ops", application_id: "default", kind: "admin", label: "", permissions: [], created_at: "2026-10-21T10:00:00Z", revoked_at: null },
     ]);
     expect(actors).toEqual([{ applicationId: "default", actorId: "acme", activeKeys: 1, revokedKeys: 0 }]);
+  });
+
+  it("lists provisioned actors with their labels, even with no key (builder-core #53 closes G2)", () => {
+    const alice = { actor_id: "0032bc7b", application_id: "default", label: "alice", status: "active" } as ProvisionedActor;
+    const actors = actorsOf(read("engine", [alice]), [ACME_KEY]);
+    expect(actors).toEqual([
+      { applicationId: "default", actorId: "0032bc7b", label: "alice", status: "active", activeKeys: 0, revokedKeys: 0 },
+      { applicationId: "default", actorId: "acme", label: null, status: null, activeKeys: 1, revokedKeys: 0 },
+    ]);
+  });
+
+  it("lists the provisioned actors alone when engine keys are off (CONSOLE_AUTH=oidc)", () => {
+    const alice = { actor_id: "0032bc7b", application_id: "default", label: "", status: "paused" } as ProvisionedActor;
+    expect(actorsOf(read("engine", [alice]), null)).toEqual([{ applicationId: "default", actorId: "0032bc7b", label: null, status: "paused", activeKeys: 0, revokedKeys: 0 }]);
   });
 });
 

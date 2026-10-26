@@ -3,7 +3,7 @@
  * change for the review step, and describe what came back. Pure functions over readings; the runtime
  * sends the call.
  */
-import type { AccessKey, Allowance, EngineGrant } from "@/domain/engine";
+import type { AccessKey, Allowance, EngineGrant, ProvisionedActor } from "@/domain/engine";
 import { hideSecrets } from "@/domain/exchange";
 import { ident, invalid, oneOf, operationRef, optionalLabel, parsed, text, usd, type Parsed } from "@/domain/forms";
 import {
@@ -322,6 +322,9 @@ export const shownResponse = (value: unknown): unknown => hideSecrets(value);
 export type OperatorActor = {
   readonly applicationId: string;
   readonly actorId: string;
+  /** The label given at provisioning (builder-core #53); null when none, or the actor is known only by a key. */
+  readonly label: string | null;
+  readonly status: string | null;
   readonly activeKeys: number;
   readonly revokedKeys: number;
   /** Null until read; the admin key reads allocations in its own application only (gap G9). */
@@ -331,12 +334,38 @@ export type OperatorActor = {
 export type OperatorView = {
   readonly grants: Reading<readonly EngineGrant[]>;
   readonly unallocated: Readonly<Record<string, string>>;
-  readonly keys: Reading<readonly AccessKey[]>;
+  /** Null when engine keys are off (CONSOLE_AUTH=oidc, LPB_AUTH=jwt): the key actions are hidden. */
+  readonly keys: Reading<readonly AccessKey[]> | null;
+  readonly provisioned: Reading<readonly ProvisionedActor[]>;
   readonly actors: readonly OperatorActor[];
 };
 
+/**
+ * Every actor the operator can act on: the provisioned ones (GET /v1/admin/actors, with their labels) and,
+ * when engine keys are on, any actor that holds a key but no allocation yet. Admin keys are not actors.
+ */
+export function actorsOf(provisioned: Reading<readonly ProvisionedActor[]>, keys: readonly AccessKey[] | null): readonly Omit<OperatorActor, "allowance">[] {
+  const rows = new Map<string, Omit<OperatorActor, "allowance">>();
+  for (const actor of provisioned.ok ? provisioned.value : []) {
+    rows.set(`${actor.application_id}\u0000${actor.actor_id}`, {
+      applicationId: actor.application_id,
+      actorId: actor.actor_id,
+      label: actor.label ? actor.label : null,
+      status: actor.status,
+      activeKeys: 0,
+      revokedKeys: 0,
+    });
+  }
+  for (const holder of keys ? actorsFromKeys(keys) : []) {
+    const id = `${holder.applicationId}\u0000${holder.actorId}`;
+    const row = rows.get(id);
+    rows.set(id, row ? { ...row, activeKeys: holder.activeKeys, revokedKeys: holder.revokedKeys } : { ...holder, label: null, status: null });
+  }
+  return [...rows.values()].sort((a, b) => a.applicationId.localeCompare(b.applicationId) || a.actorId.localeCompare(b.actorId));
+}
+
 /** Actors as the keys show them (gap G2: the engine has no list of provisioned actors). Admin keys are not actors. */
-export function actorsFromKeys(keys: readonly AccessKey[]): readonly Omit<OperatorActor, "allowance">[] {
+export function actorsFromKeys(keys: readonly AccessKey[]): readonly Omit<OperatorActor, "allowance" | "label" | "status">[] {
   const byActor = new Map<string, { applicationId: string; actorId: string; activeKeys: number; revokedKeys: number }>();
   for (const key of keys) {
     if (key.kind === "admin") continue;

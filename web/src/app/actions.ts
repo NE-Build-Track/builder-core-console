@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import type { ActionState } from "@/domain/operator";
 import type { Area, SignInState } from "@/domain/session";
 import { commitAction, reviewAction, valuesOf } from "@/runtime/operator";
-import { signIn } from "@/runtime/session";
+import { providerLogoutUrl, signIn } from "@/runtime/session";
 
 import { endSession, keepSession, sessionFor } from "./session-cookies";
 
@@ -33,14 +33,23 @@ export async function signInBuilder(_previous: SignInState, form: FormData): Pro
   return signInTo("builder", form);
 }
 
-export async function signOutOperator(): Promise<void> {
-  await endSession("operator");
+/** Ends the area's session; one that came from the identity provider also logs out there. */
+async function signOutOf(area: Area): Promise<void> {
+  const session = await sessionFor(area);
+  await endSession(area);
+  if (session?.via === "oidc") {
+    const logout = await providerLogoutUrl(area);
+    if (logout) redirect(logout);
+  }
   refresh();
 }
 
+export async function signOutOperator(): Promise<void> {
+  await signOutOf("operator");
+}
+
 export async function signOutBuilder(): Promise<void> {
-  await endSession("builder");
-  refresh();
+  await signOutOf("builder");
 }
 
 /** The key just issued, used to sign in to the Builder area (outcome 1, then the journey). */

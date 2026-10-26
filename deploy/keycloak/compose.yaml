@@ -1,0 +1,104 @@
+# Local Keycloak test of the console's OIDC sign-in against a JWT-only engine (builder-core PR #50/#53).
+# A separate compose project from deploy/compose.yaml: no signer, no Batteries, nothing is paid.
+# Keycloak is reached at http://keycloak.localhost:8180 from the browser (*.localhost is loopback) and from
+# the containers (a network alias), so the issuer is one URL everywhere. See README.md here.
+name: builder-console-keycloak
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: [start-dev, --import-realm, --http-port=8180, --hostname=http://keycloak.localhost:8180]
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./realm-livepeer.json:/opt/keycloak/data/import/realm-livepeer.json:ro
+    ports: ["127.0.0.1:8180:8180"]
+    networks:
+      default:
+        aliases: [keycloak.localhost]
+    healthcheck:
+      test: [CMD-SHELL, "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      retries: 30
+
+  # The stock engine, JWT only (LPB_AUTH=jwt): engine API keys are off, so the console signs in through
+  # Keycloak. Unpaid: no signer and no Batteries, so a job is refused before anything is spent.
+  engine:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:4041ffe
+    build:
+      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#4041ffe4433d1fee15acb83723e2a019338f394d
+      dockerfile: deploy/dev-stack/engine/Dockerfile
+      args:
+        BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"
+    environment:
+      LPB_ENGINE_ID: builder-console-keycloak
+      LPB_DATABASE_URL: sqlite+aiosqlite:////data/livepeer-builder.db
+      LPB_HTTP_HOST: 0.0.0.0
+      LPB_HTTP_PORT: "8080"
+      LPB_LOG_JSON: "true"
+      LPB_DISCOVERY_URL: http://discovery:8939/discovery
+      LPB_AUTH: jwt
+      LPB_JWT_ISSUER: http://keycloak.localhost:8180/realms/livepeer
+      LPB_JWT_AUDIENCE: https://engine.builder.local
+      LPB_JWT_ALLOW_HTTP: "true"  # local Keycloak over http (builder-core D47); never in production
+      LPB_JWT_ADMIN_SCOPE: livepeer:admin
+      LPB_JWT_ADMIN_READ_SCOPE: livepeer:read
+    ports: ["127.0.0.1:${ENGINE_PORT:-8091}:8080"]
+    volumes: [engine-data:/data]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/livez')"]
+      interval: 15s
+      timeout: 3s
+      start_period: 20s
+      retries: 3
+
+  discovery:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:4041ffe
+    command: [lpb, discovery]
+    environment:
+      LPD_ORCHESTRATORS: /etc/lpd/orchestrators.txt
+      LPD_HTTP_HOST: 0.0.0.0
+    volumes: [../config/orchestrators.txt:/etc/lpd/orchestrators.txt:ro]
+    depends_on: [engine]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  # The console, signing people in through Keycloak (CONSOLE_AUTH=oidc). Open http://127.0.0.1:3061: the
+  # address registered as the client's redirect URL. Its own reads use the console-reader service account.
+  console:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/console:keycloak
+    build:
+      context: ../..
+      dockerfile: deploy/console/Dockerfile
+    environment:
+      CONSOLE_AUTH: oidc
+      CONSOLE_ENGINE_URL: http://engine:8080
+      CONSOLE_DISCOVERY_URL: http://discovery:8939
+      CONSOLE_OIDC_ISSUER: http://keycloak.localhost:8180/realms/livepeer
+      CONSOLE_OIDC_CLIENT_ID: builder-console
+      CONSOLE_OIDC_CLIENT_SECRET: ${BUILDER_CONSOLE_CLIENT_SECRET}
+      CONSOLE_OIDC_REDIRECT_URL: http://127.0.0.1:3061/auth/callback
+      CONSOLE_OIDC_ALLOW_HTTP: "true"  # local Keycloak only
+      CONSOLE_READER_CLIENT_ID: console-reader
+      CONSOLE_READER_CLIENT_SECRET: ${CONSOLE_READER_CLIENT_SECRET}
+      CONSOLE_SESSION_SECRET: ${CONSOLE_SESSION_SECRET}
+    ports: ["127.0.0.1:3061:3000"]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      engine:
+        condition: service_started
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+volumes:
+  engine-data:

@@ -1,10 +1,11 @@
 /** The Builder area's door (decision D16): sign in with an actor key, or the signed-in bar and area tabs. */
 import Link from "next/link";
 
+import { ProviderSignIn } from "@/components/console/act/provider-sign-in";
 import { SessionBar } from "@/components/console/act/session-bar";
 import { SignIn } from "@/components/console/act/sign-in";
 import { viewOf, type Session } from "@/domain/session";
-import { signInEnabled } from "@/runtime/session";
+import { authMode, signInEnabled, signInOff } from "@/runtime/session";
 
 import { signInBuilder, signOutBuilder } from "../actions";
 
@@ -16,6 +17,23 @@ const TABS = [
 
 export function BuilderSignIn({ message }: { readonly message: string | null }) {
   const enabled = signInEnabled();
+  if (authMode() === "oidc") {
+    const off = signInOff();
+    return (
+      <ProviderSignIn area="builder" enabled={enabled} message={message}>
+        {off ? (
+          <p className="note" role="note">
+            Sign-in is off: {off}.
+          </p>
+        ) : (
+          <p>
+            Builders sign in through the organisation&apos;s identity provider. The engine knows each person as the actor their token&apos;s <code>sub</code>{" "}
+            names; an operator provisions that actor an allocation before its jobs can be paid. The builder never holds a wallet, a payment key or a token.
+          </p>
+        )}
+      </ProviderSignIn>
+    );
+  }
   return (
     <SignIn area="builder" action={signInBuilder} enabled={enabled}>
       {message ? (

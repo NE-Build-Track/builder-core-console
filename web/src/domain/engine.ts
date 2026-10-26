@@ -15,6 +15,8 @@ export type Runner = Schemas["Runner"];
 export type NetworkRate = Schemas["NetworkRate"];
 export type EngineGrant = Schemas["GrantRecord"];
 export type AccessKey = Schemas["AccessKey"];
+/** An actor the engine provisioned (GET /v1/admin/actors, builder-core #53): its allocation, status and label. */
+export type ProvisionedActor = Schemas["ProvisionedActor"];
 export type Allowance = Schemas["Allowance"];
 export type Money = Schemas["Money-Output"];
 export type CostSummary = Schemas["CostSummary"];
