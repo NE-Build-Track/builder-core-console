@@ -178,6 +178,10 @@ function ActorActions({ actor, view }: { readonly actor: OperatorActor; readonly
 }
 
 export function ActorsSection({ view, applicationId }: { readonly view: OperatorView; readonly applicationId: string }) {
+  // With engine keys off (CONSOLE_AUTH=oidc) an actor is a person from the identity provider, named by sub.
+  const actorHint = view.keys
+    ? "Letters, digits and . _ : @ -"
+    : "The person's sub from the identity provider, not their username: they see it on their Builder session bar.";
   return (
     <Section
       id="h-op-actors"
@@ -190,7 +194,7 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
           label="Provision an actor"
           fields={[
             { type: "text", name: "application_id", label: "Application", value: applicationId },
-            { type: "text", name: "actor_id", label: "Actor id", placeholder: "acme-studio", hint: "Letters, digits and . _ : @ -" },
+            { type: "text", name: "actor_id", label: "Actor id", placeholder: view.keys ? "acme-studio" : "3c446b40-7123-…", hint: actorHint },
             { type: "select", name: "grant_id", label: "From grant", options: grantOptions(view, null) },
             { type: "usd", name: "amount", label: "Allocation", placeholder: "0.25" },
             { type: "text", name: "label", label: "Label (optional)" },

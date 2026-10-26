@@ -31,7 +31,16 @@ function record(value: unknown): Record<string, unknown> | null {
  * One generic job form for any offering (decision D19), its request shown before it is sent (D18), and
  * the output and job record as they arrive (D20). Example inputs are the console's own presets.
  */
-export function JobRunner({ offerings, initialApp }: { readonly offerings: readonly OfferingChoice[]; readonly initialApp: string | null }) {
+export function JobRunner({
+  offerings,
+  initialApp,
+  actorId = null,
+}: {
+  readonly offerings: readonly OfferingChoice[];
+  readonly initialApp: string | null;
+  /** Named in a 402 refusal, so the builder can pass it to an operator. */
+  readonly actorId?: string | null;
+}) {
   const firstPreset = presetFor(initialApp && initialApp === presetFor("image").app ? "image" : "chat");
   const startApp = initialApp ?? (offerings.some((item) => item.app === firstPreset.app) ? firstPreset.app : offerings[0]?.app) ?? "";
   const [presetId, setPresetId] = useState<Preset["id"]>(firstPreset.id);
@@ -224,12 +233,12 @@ export function JobRunner({ offerings, initialApp }: { readonly offerings: reado
           </button>
         </div>
       </form>
-      {run ? <RunResult key={runs} run={run} jobState={jobState} /> : null}
+      {run ? <RunResult key={runs} run={run} jobState={jobState} actorId={actorId} /> : null}
     </div>
   );
 }
 
-function RunResult({ run, jobState }: { readonly run: Run; readonly jobState: JobState | null }) {
+function RunResult({ run, jobState, actorId }: { readonly run: Run; readonly jobState: JobState | null; readonly actorId: string | null }) {
   return (
     <section className="panel run-result" aria-labelledby="run-result-title">
       <h3 id="run-result-title">{run.phase === "refused" ? "The engine did not run it" : run.phase === "stopped" ? "Stopped" : run.phase === "running" ? "Running" : "Finished"}</h3>
@@ -237,6 +246,11 @@ function RunResult({ run, jobState }: { readonly run: Run; readonly jobState: Jo
         <div className="problem" role="alert">
           <strong>{run.message}</strong>
           <span>The response below has the engine&apos;s own words, and the job when there is one.</span>
+          {run.call.status === 402 && actorId ? (
+            <span>
+              An operator provisions an allocation for your actor id <code>{actorId}</code> in Operator actions; then run again.
+            </span>
+          ) : null}
         </div>
       ) : (
         <OutputView key={run.output.contentType} output={run.output} />

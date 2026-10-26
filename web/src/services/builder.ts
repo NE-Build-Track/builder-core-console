@@ -162,3 +162,21 @@ export function parseRun(value: unknown): Parsed<RunInput> {
   if (typeof ref !== "string" || !/^[A-Za-z0-9._:-]{8,200}$/.test(ref)) return invalid("operationRef", "The run lost its operation reference; try again.");
   return parsed({ app, path, method, payload: payload as Record<string, unknown>, stream, timeoutS: timeout.value, maxAttempts: attempts.value, operationRef: ref });
 }
+
+/** Shown to a builder whose actor has no allocation: every paid run is refused (HTTP 402) until an operator provisions one. */
+export type AllocationNotice = { readonly actorId: string; readonly message: string };
+
+/**
+ * Whether the signed-in builder can pay for a run at all. The engine answers its own allowance read with
+ * 404 "no allocation pays for actor …" until an operator provisions that actor, so the page says so first,
+ * with the id the operator needs (under CONSOLE_AUTH=oidc, the person's `sub`, not their username).
+ */
+export function allocationNotice(allowance: Reading<Allowance>, actorId: string | null): AllocationNotice | null {
+  if (allowance.ok || actorId === null) return null;
+  const problem = allowance.problem;
+  if (problem.kind !== "http" || problem.status !== 404 || !problem.detail.startsWith("no allocation")) return null;
+  return {
+    actorId,
+    message: "You have no allocation yet, so the engine refuses every run (HTTP 402). Give an operator your actor id to provision one.",
+  };
+}

@@ -4,7 +4,7 @@ import type { JobState, RunInput } from "@/domain/builder";
 import { mapReading, type Reading } from "@/domain/reading";
 import type { Session } from "@/domain/session";
 import type { RunStarted } from "@/ports/keyed";
-import { catalog, jobRow, jobState, usage, type CatalogView, type JobRow, type UsageView } from "@/services/builder";
+import { allocationNotice, catalog, jobRow, jobState, usage, type AllocationNotice, type CatalogView, type JobRow, type UsageView } from "@/services/builder";
 import { windowBounds, type WindowName } from "@/utils/time";
 
 import { forgetReads, sharedSources } from "./console";
@@ -22,6 +22,13 @@ export async function loadCatalog(session: Session): Promise<CatalogView> {
   if (!engine) return missingEngine();
   const [offerings, health] = await Promise.all([engine.offerings(), sharedSources().engine.health()]);
   return catalog(offerings, health, new Date());
+}
+
+/** Null when the builder's actor can pay, or its allowance could not be read for another reason. */
+export async function loadAllocationNotice(session: Session, actorId: string | null): Promise<AllocationNotice | null> {
+  const engine = keyed(session.token);
+  if (!engine) return null;
+  return allocationNotice(await engine.allowance(), actorId);
 }
 
 export type MyJobs = { readonly jobs: Reading<readonly JobRow[]>; readonly actorId: string | null };
