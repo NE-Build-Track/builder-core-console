@@ -1,10 +1,10 @@
 /**
  * The network as this stack sees it: what the engine offers per app, the runners behind each offer, and
- * the orchestrators the signer discovers (docs/product-specs/console.md#network).
+ * the orchestrators the discovery service serves (docs/product-specs/console.md#network).
  */
 import type { Runner } from "@/domain/engine";
 import { ok, type Reading } from "@/domain/reading";
-import type { DiscoveredOrchestrator } from "@/domain/signer";
+import type { DiscoveredOrchestrator } from "@/domain/discovery";
 import type { AppNetwork, NetworkView, OfferingStats, OrchestratorView } from "@/domain/views";
 import type { Sources } from "@/ports/sources";
 import { mapLimited } from "@/utils/concurrency";
@@ -61,7 +61,7 @@ export function offeringStats(runners: readonly Runner[]): OfferingStats {
 export async function network(sources: Sources): Promise<NetworkView> {
   const [offerings, discovery, health] = await Promise.all([
     sources.engine.offerings(),
-    sources.signer.discovery(),
+    sources.discovery.inventory(),
     sources.engine.health(),
   ]);
   const now = sources.now();

@@ -21,7 +21,7 @@ Every write is reviewed before it is sent and shows its exact REST call and resp
 | Page | Shows | Reads |
 | --- | --- | --- |
 | Health | A verdict per component and the checks behind it | engine `/readyz`, reconciliation; Batteries `/readyz`; signer `/readyz`, `/metrics` |
-| Network | Apps on offer, runners (GPU, capacity, price), orchestrators | engine offerings and runners; signer discovery |
+| Network | Apps on offer, runners (GPU, capacity, price), orchestrators | engine offerings and runners; the discovery service |
 | Money | Grants → allocations → gateway keys, ledger, escrow | Batteries management API; engine grants |
 | Users | Actors, keys, allowance, 30-day spend, reconciliation | engine admin keys, allowance, costs, reconciliation |
 | Usage | Fees by day, app, orchestrator, allocation; cost classes | Batteries usage and sessions; engine cost summary |

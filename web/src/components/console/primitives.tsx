@@ -11,7 +11,7 @@ import { Icon, type IconName } from "./icons";
 import { Amount, Ago } from "./values";
 import { vars } from "./vars";
 
-const SOURCE_TITLES: Record<SourceName, string> = { engine: "Engine", batteries: "Batteries", signer: "Signer" };
+const SOURCE_TITLES: Record<SourceName, string> = { engine: "Engine", batteries: "Batteries", signer: "Signer", discovery: "Discovery" };
 
 export function PageHead({
   icon,

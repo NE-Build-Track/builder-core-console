@@ -4,7 +4,7 @@
  * the page shows what it has and names what it could not reach (docs/design-docs/core-beliefs.md).
  */
 
-export type SourceName = "engine" | "batteries" | "signer";
+export type SourceName = "engine" | "batteries" | "signer" | "discovery";
 
 export type Reading<T> =
   | { readonly ok: true; readonly source: SourceName; readonly value: T; readonly readAt: string }

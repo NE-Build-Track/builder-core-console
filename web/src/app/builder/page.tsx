@@ -66,7 +66,7 @@ async function Builder({ searchParams }: { readonly searchParams: Search }) {
         end={view.discovery.ok ? <Pill state={view.discovery.value.discovery_fresh ? "ok" : "warn"}>{view.discovery.value.discovery_fresh ? "Discovery fresh" : "Discovery stale"}</Pill> : null}
       >
         <Unreadable reading={view.entries} what="Offerings" />
-        {view.entries.ok && entries.length === 0 ? <Empty>The engine sees no offerings. Is the signer running and discovery fresh?</Empty> : null}
+        {view.entries.ok && entries.length === 0 ? <Empty>The engine sees no offerings. Is the discovery service serving and discovery fresh?</Empty> : null}
         {entries.length > 0 ? (
           <div className="table-scroll catalog-scroll">
             <table className="data">

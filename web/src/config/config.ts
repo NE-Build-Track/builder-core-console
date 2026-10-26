@@ -11,11 +11,13 @@ export type SourceSettings<T> = { readonly ok: true; readonly value: T } | { rea
 export type EngineSettings = { readonly url: string; readonly adminToken: string };
 export type BatteriesSettings = { readonly url: string; readonly token: string };
 export type SignerSettings = { readonly url: string; readonly metricsUrl: string };
+export type DiscoverySettings = { readonly url: string };
 
 export type ConsoleConfig = {
   readonly engine: SourceSettings<EngineSettings>;
   readonly batteries: SourceSettings<BatteriesSettings>;
   readonly signer: SourceSettings<SignerSettings>;
+  readonly discovery: SourceSettings<DiscoverySettings>;
   readonly applicationId: string;
   readonly cacheTtlMs: number;
   /** Per-request timeout for every upstream read. */
@@ -81,6 +83,9 @@ export function readConfig(env: Env = process.env): ConsoleConfig {
       { CONSOLE_SIGNER_URL: url(env, "CONSOLE_SIGNER_URL"), CONSOLE_SIGNER_METRICS_URL: url(env, "CONSOLE_SIGNER_METRICS_URL") },
       (v) => ({ url: v.CONSOLE_SIGNER_URL as string, metricsUrl: v.CONSOLE_SIGNER_METRICS_URL as string }),
     ),
+    discovery: settings({ CONSOLE_DISCOVERY_URL: url(env, "CONSOLE_DISCOVERY_URL") }, (v) => ({
+      url: v.CONSOLE_DISCOVERY_URL as string,
+    })),
     applicationId: text(env, "CONSOLE_APPLICATION_ID") ?? "default",
     cacheTtlMs: number(env, "CONSOLE_CACHE_TTL_S", 15, 0, 300) * 1000,
     timeoutMs: number(env, "CONSOLE_TIMEOUT_S", 8, 1, 60) * 1000,

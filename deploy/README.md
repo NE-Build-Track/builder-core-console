@@ -10,7 +10,8 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
 | `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:629f1ab` | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `engine` | `builder-console/engine:985f23d` | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `discovery` | `builder-console/engine:985f23d` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 ## Secrets
@@ -18,15 +19,15 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 Either reuse ChatLPT's values (D3):
 
 ```sh
-mkdir -m 700 deploy/secrets deploy/config/pinned-certs
+mkdir -m 700 deploy/secrets
 cp -p ../chatlpt-sample-enterprise-app/deploy/secrets/* deploy/secrets/
-cp -p ../chatlpt-sample-enterprise-app/deploy/config/pinned-certs/*.pem deploy/config/pinned-certs/
 python3 deploy/init-secrets.py      # adds the read-only console-reader; lets the grant desk fund grants
 ```
 
 or start fresh with `python3 deploy/init-secrets.py` on an empty `deploy/secrets/`, then add
-`keystore.json`, `keystore-password` and `rpc-url` (mode 0600) and pin orchestrator certificates with
-`python3 deploy/config/pin-orchestrator-certs.py`.
+`keystore.json`, `keystore-password` and `rpc-url` (mode 0600). No orchestrator certificates are
+pinned: the signer only signs, and the discovery service leaves out orchestrators with untrusted TLS.
+The orchestrators to discover are in `deploy/config/orchestrators.txt`.
 
 ## First run
 

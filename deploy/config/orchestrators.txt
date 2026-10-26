@@ -1,0 +1,8 @@
+# builder-core's discovery service, static directory (LPD_ORCHESTRATORS; the same list as ChatLPT).
+# Orchestrators whose TLS certificate the system trust store rejects are left out at probe time, so a
+# self-signed one listed here is harmless; the engine could not call it anyway.
+https://hky.eliteencoder.net:8936
+https://ai1.eliteencoder.net:8936
+https://orch-us-central.xodeapp.xyz:18935
+https://us-central-metrics.speedybird.xyz:28935
+https://orch-eu-central.open-pool.com:443

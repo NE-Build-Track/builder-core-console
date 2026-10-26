@@ -1,6 +1,7 @@
 import "server-only";
 
 import { batteriesReader } from "@/adapters/batteries/reader";
+import { discoveryReader } from "@/adapters/discovery/reader";
 import { engineReader } from "@/adapters/engine/reader";
 import { signerReader } from "@/adapters/signer/reader";
 import { readConfig } from "@/config/config";
@@ -31,6 +32,7 @@ function build(): Sources {
     engine: cached("engine", engineReader(config.engine, options), cache),
     batteries: cached("batteries", batteriesReader(config.batteries, { ...options, maxRows: config.maxListRows }), cache),
     signer: cached("signer", signerReader(config.signer, options), cache),
+    discovery: cached("discovery", discoveryReader(config.discovery, options), cache),
     applicationId: config.applicationId,
     now,
   };

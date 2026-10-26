@@ -5,7 +5,8 @@
 import type { EngineHealth, Reconciliation } from "@/domain/engine";
 import { shortCommit, PINS } from "@/domain/pins";
 import { describeProblem, mapReading, type Reading } from "@/domain/reading";
-import type { DiscoveredOrchestrator, SignerMetrics, SignerReadiness } from "@/domain/signer";
+import type { DiscoveredOrchestrator } from "@/domain/discovery";
+import type { SignerMetrics, SignerReadiness } from "@/domain/signer";
 import type { Check, ComponentHealth, StackHealth, State, Topology, Verdict } from "@/domain/views";
 import type { Sources } from "@/ports/sources";
 import { mapLimited } from "@/utils/concurrency";
@@ -281,7 +282,7 @@ export async function stackHealth(sources: Sources): Promise<StackHealth> {
     sources.batteries.ready(),
     sources.signer.readiness(),
     sources.signer.metrics(),
-    sources.signer.discovery(),
+    sources.discovery.inventory(),
     sources.batteries.usage(),
     sources.batteries.sessions(),
   ]);

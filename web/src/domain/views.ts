@@ -19,7 +19,8 @@ import type {
   Runner,
 } from "./engine";
 import type { Reading } from "./reading";
-import type { DiscoveredOrchestrator, SignerMetrics, SignerReadiness } from "./signer";
+import type { DiscoveredOrchestrator } from "./discovery";
+import type { SignerMetrics, SignerReadiness } from "./signer";
 
 export type State = "ok" | "warn" | "bad" | "unknown";
 

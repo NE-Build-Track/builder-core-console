@@ -30,12 +30,9 @@ services:
     network_mode: service:clearinghouse  # Kafka and the webhook listen on this namespace's loopback
     entrypoint: ["/usr/local/bin/livepeer-signer"]
     command: [--data-dir, /data/node, --config, /etc/signer.toml]
-    environment:
-      SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/pinned  # system CAs + certificates pinned by config/pin-orchestrator-certs.py
     volumes:
       - paid-state:/data
       - ./config/signer.toml:/etc/signer.toml:ro
-      - ./config/pinned-certs:/etc/ssl/pinned:ro
       - ./secrets:/run/secrets:ro
     depends_on:
       clearinghouse:
@@ -56,9 +53,9 @@ services:
     restart: unless-stopped
 
   engine:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:629f1ab
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:985f23d
     build:
-      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#629f1ab0ff84d1b350db7aea66c01989262d1325
+      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#985f23d4da7646b76a99810e94af8019011d2bb2
       dockerfile: deploy/dev-stack/engine/Dockerfile
       args:
         BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"  # hatch-vcs derives the engine version from .git
@@ -69,6 +66,7 @@ services:
       LPB_DATABASE_URL: sqlite+aiosqlite:////data/livepeer-builder.db
       LPB_HTTP_HOST: 0.0.0.0
       LPB_HTTP_PORT: "8080"
+      LPB_DISCOVERY_URL: http://discovery:8939/discovery  # the signer only signs (builder-core D43)
     ports: ["127.0.0.1:${ENGINE_PORT:-8090}:8080"]  # Swagger and curl: the stack's write path (deploy/README.md#operating)
     volumes: [engine-data:/data]
     depends_on: [signer]
@@ -78,6 +76,27 @@ services:
       timeout: 3s
       start_period: 20s
       retries: 3
+    restart: unless-stopped
+
+  # builder-core's discovery service (`lpb discovery`): the engine image, the static directory in
+  # config/orchestrators.txt. The engine and the console's Network page both read its GET /discovery.
+  discovery:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:985f23d
+    command: [lpb, discovery]
+    environment:
+      LPD_ORCHESTRATORS: /etc/lpd/orchestrators.txt
+      LPD_HTTP_HOST: 0.0.0.0
+    volumes: [./config/orchestrators.txt:/etc/lpd/orchestrators.txt:ro]
+    depends_on: [engine]  # shares the engine's image, which `make images` builds there
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8939/healthz')"]
+      interval: 15s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     restart: unless-stopped
 
   console:
@@ -93,6 +112,7 @@ services:
       CONSOLE_BATTERIES_URL: http://clearinghouse:8081
       CONSOLE_SIGNER_URL: http://clearinghouse:8937
       CONSOLE_SIGNER_METRICS_URL: http://clearinghouse:8939
+      CONSOLE_DISCOVERY_URL: http://discovery:8939
     ports: ["127.0.0.1:${CONSOLE_PORT:-3060}:3000"]  # no sign-in in v1: keep it on loopback (docs/SECURITY.md)
     depends_on: [engine]
     healthcheck:
