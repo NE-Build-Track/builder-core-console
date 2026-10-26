@@ -4,6 +4,7 @@ import { NOW } from "../../tests/support/fixtures";
 
 import { batteriesReader } from "./batteries/reader";
 import { keyedEngine } from "./engine/keyed";
+import { discoveryReader } from "./discovery/reader";
 import { engineReader, httpProblem } from "./engine/reader";
 import { parseSignerMetrics, signerReader } from "./signer/reader";
 
@@ -39,7 +40,29 @@ describe("signer adapter", () => {
 
   it("says which setting is missing", async () => {
     const reader = signerReader({ ok: false, missing: "CONSOLE_SIGNER_URL" }, { timeoutMs: 1000, now });
-    expect(await reader.discovery()).toMatchObject({ ok: false, problem: { kind: "not_configured", detail: "CONSOLE_SIGNER_URL" } });
+    expect(await reader.readiness()).toMatchObject({ ok: false, problem: { kind: "not_configured", detail: "CONSOLE_SIGNER_URL" } });
+  });
+});
+
+describe("discovery adapter", () => {
+  const settings = { ok: true as const, value: { url: "http://discovery:8939" } };
+  const inventory = [{ address: "https://hky.example:8936", runners: [{ url: "https://hky.example:8936/apps/r1/app", app: "a/b" }] }];
+
+  it("reads the discovery service's /discovery inventory", async () => {
+    const fetch = vi.fn(async () => respond(200, inventory));
+    vi.stubGlobal("fetch", fetch);
+    const reading = await discoveryReader(settings, { timeoutMs: 1000, now }).inventory();
+    expect(String((fetch.mock.calls[0] as unknown[])[0])).toBe("http://discovery:8939/discovery");
+    expect(reading).toMatchObject({ ok: true, source: "discovery", value: [{ address: "https://hky.example:8936", last_seen: null }] });
+  });
+
+  it("reports an HTTP error, a body it does not recognise, and a missing setting", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => respond(503, "not ready")));
+    expect(await discoveryReader(settings, { timeoutMs: 1000, now }).inventory()).toMatchObject({ ok: false, problem: { kind: "http", status: 503 } });
+    vi.stubGlobal("fetch", vi.fn(async () => respond(200, { not: "a list" })));
+    expect(await discoveryReader(settings, { timeoutMs: 1000, now }).inventory()).toMatchObject({ ok: false, problem: { kind: "unexpected" } });
+    const missing = discoveryReader({ ok: false, missing: "CONSOLE_DISCOVERY_URL" }, { timeoutMs: 1000, now });
+    expect(await missing.inventory()).toMatchObject({ ok: false, problem: { kind: "not_configured", detail: "CONSOLE_DISCOVERY_URL" } });
   });
 });
 

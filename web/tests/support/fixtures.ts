@@ -6,8 +6,9 @@ import type { Allocation, ApiKey, Grant, LedgerRow, PaymentSession, UsageEvent }
 import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, Reconciliation } from "@/domain/engine";
 import { failed, ok, type Problem, type Reading, type SourceName } from "@/domain/reading";
 import { PINS, shortCommit } from "@/domain/pins";
-import type { DiscoveredOrchestrator, SignerMetrics, SignerReadiness } from "@/domain/signer";
-import type { BatteriesReader, EngineReader, SignerReader, Sources } from "@/ports/sources";
+import type { DiscoveredOrchestrator } from "@/domain/discovery";
+import type { SignerMetrics, SignerReadiness } from "@/domain/signer";
+import type { BatteriesReader, DiscoveryReader, EngineReader, SignerReader, Sources } from "@/ports/sources";
 
 export const NOW = new Date("2026-10-20T18:00:00.000Z");
 const AT = NOW.toISOString();
@@ -284,18 +285,30 @@ export function signerFake(overrides: Partial<SignerReader> = {}): SignerReader 
   return {
     readiness: async () => read<SignerReadiness>("signer", { ready: true, detail: "ready" }),
     metrics: async () => read("signer", healthyMetrics),
-    discovery: async () => read("signer", [orchestrator]),
+    ...overrides,
+  };
+}
+
+export function discoveryFake(overrides: Partial<DiscoveryReader> = {}): DiscoveryReader {
+  return {
+    inventory: async () => read<readonly DiscoveredOrchestrator[]>("discovery", [orchestrator]),
     ...overrides,
   };
 }
 
 export function fakeSources(
-  overrides: { engine?: Partial<EngineReader>; batteries?: Partial<BatteriesReader>; signer?: Partial<SignerReader> } = {},
+  overrides: {
+    engine?: Partial<EngineReader>;
+    batteries?: Partial<BatteriesReader>;
+    signer?: Partial<SignerReader>;
+    discovery?: Partial<DiscoveryReader>;
+  } = {},
 ): Sources {
   return {
     engine: engineFake(overrides.engine),
     batteries: batteriesFake(overrides.batteries),
     signer: signerFake(overrides.signer),
+    discovery: discoveryFake(overrides.discovery),
     applicationId: "default",
     now: () => NOW,
   };

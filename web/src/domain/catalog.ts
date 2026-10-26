@@ -47,5 +47,5 @@ export const CATALOG = [
   { source: "batteries", route: "GET /v1/escrow/report", credential: "console-reader", usedFor: "Money: payer deposit and reserve" },
   { source: "signer", route: "GET /readyz", credential: "none (metrics relay)", usedFor: "Health: able to pay" },
   { source: "signer", route: "GET /metrics", credential: "none (metrics relay)", usedFor: "Health: accounting outbox" },
-  { source: "signer", route: "GET /discover-orchestrators", credential: "none", usedFor: "Network: orchestrators" },
+  { source: "discovery", route: "GET /discovery", credential: "none", usedFor: "Network: orchestrators; nav count" },
 ] as const satisfies readonly CatalogEntry[];

@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/actors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Actors */
+        get: operations["list_actors_v1_admin_actors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/applications/{application_id}/actors/{actor_id}/allocation": {
         parameters: {
             query?: never;
@@ -28,7 +45,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Actor */
+        get: operations["get_actor_v1_admin_applications__application_id__actors__actor_id__allocation_get"];
         put?: never;
         /** Provision */
         post: operations["provision_v1_admin_applications__application_id__actors__actor_id__allocation_post"];
@@ -473,7 +491,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "actor" | "admin" | "service";
+            kind: "actor" | "admin" | "auditor" | "service";
             /** Label */
             label: string;
             /** Permissions */
@@ -717,7 +735,7 @@ export interface components {
              * @default actor
              * @enum {string}
              */
-            kind: "actor" | "admin" | "service";
+            kind: "actor" | "admin" | "auditor" | "service";
             /**
              * Label
              * @default
@@ -961,6 +979,11 @@ export interface components {
             currency: "USD" | "ETH";
             /** Grant Id */
             grant_id: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
             secret_ref: components["schemas"]["SecretRef"];
             /**
              * Status
@@ -1203,6 +1226,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EngineHealth"];
+                };
+            };
+        };
+    };
+    list_actors_v1_admin_actors_get: {
+        parameters: {
+            query?: {
+                application_id?: string | null;
+                status?: ("active" | "paused" | "exhausted" | "revoked") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionedActor"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_actor_v1_admin_applications__application_id__actors__actor_id__allocation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+                actor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionedActor"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

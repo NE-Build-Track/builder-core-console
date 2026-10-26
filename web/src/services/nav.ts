@@ -9,7 +9,7 @@ import { groupKeys } from "./users";
 export async function navCounts(sources: Sources): Promise<NavCounts> {
   const [health, discovery, grants, keys, projections, usage] = await Promise.all([
     stackHealth(sources),
-    sources.signer.discovery(),
+    sources.discovery.inventory(),
     sources.batteries.grants(),
     sources.engine.keys(),
     sources.engine.costProjections(),

@@ -10,7 +10,8 @@ The console reads `CONSOLE_*` variables (compose sets the URLs; `deploy/.env` ho
 | `CONSOLE_ENGINE_ADMIN_TOKEN` | — | `lpk_` admin key (`first-run.sh`) |
 | `CONSOLE_BATTERIES_URL` | compose: `http://clearinghouse:8081` | Batteries management API |
 | `CONSOLE_BATTERIES_TOKEN` | — | `console-reader` token (`*.read`) |
-| `CONSOLE_SIGNER_URL` | compose: `http://clearinghouse:8937` | Signer discovery |
+| `CONSOLE_SIGNER_URL` | compose: `http://clearinghouse:8937` | The signer's signing port. The console reads nothing there (the signer only signs, builder-core D43) |
+| `CONSOLE_DISCOVERY_URL` | compose: `http://discovery:8939` | The discovery service's `GET /discovery` (Network page, nav count) |
 | `CONSOLE_SIGNER_METRICS_URL` | compose: `http://clearinghouse:8939` | Signer `/readyz` and `/metrics` via the relay |
 | `CONSOLE_APPLICATION_ID` | `default` | The application the admin key reads (gap G9) |
 | `CONSOLE_CACHE_TTL_S` | `15` (0–300) | How long one upstream read is reused |

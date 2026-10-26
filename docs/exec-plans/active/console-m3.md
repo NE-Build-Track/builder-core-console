@@ -62,6 +62,7 @@ Each item names the M3 task it evidences.
     - an engine probe 22/22 (inspect, rotate, the old token 401 at once, 403/404 on job, cost and result,
       admin lists every actor, the `keys.*` audit lines, no token in the engine log);
     - the Rotate flow in a headless browser 15/15.
+- [x] 2026-10-26 Pinned to builder-core `985f23d` (`tasks/mz/discovery-service`, #45): a discovery service in the stack (`lpb discovery`, static list `deploy/config/orchestrators.txt`); the engine and the Network page read its `GET /discovery` (`CONSOLE_DISCOVERY_URL`); the signer has no orchestrator list or pinned certificates. Re-pin to the merge on `releases/m3`.
 - [x] 2026-10-21 Phase 0: re-pinned to `93756ba` (image `builder-console/engine:93756ba`, which reports `0.0.1.dev1+g93756ba27`); the engine spec is identical at both commits, so the generated types are unchanged. Grant creation through the engine failed both ways (an amount: Batteries 403 for the grant desk; no amount: the engine refuses), so `init-secrets.py` now gives this stack's grant desk `grants.fund`; a $1 grant was then created and funded $0.50 twice under one operation reference, which applied once ($1.50). The create response lacks name, status and total: gap G12.
 
 ### Phases

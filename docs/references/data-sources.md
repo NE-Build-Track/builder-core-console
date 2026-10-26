@@ -73,7 +73,8 @@ Available but not yet read: `GET /v1/settlements` (empty without the on-chain li
 The node remote signer. Two listeners:
 
 - **Signing port** at `CONSOLE_SIGNER_URL` (`http://clearinghouse:8937`; the signer shares the
-  clearinghouse network namespace). The console calls only discovery here, never a signing route.
+  clearinghouse network namespace). The console calls nothing here: the signer only signs (builder-core
+  D43), and the console never calls a signing route.
 - **Metrics listener** at `CONSOLE_SIGNER_METRICS_URL` (`http://clearinghouse:8939`). The signer binds
   it to loopback only, so the `signer-metrics` relay re-exposes it on the compose network (D10, gap G5).
 
@@ -81,4 +82,14 @@ The node remote signer. Two listeners:
 | --- | --- | --- |
 | `GET /readyz` | Health | 200 when chain access, a positive deposit and reserve, no scheduled withdrawal, a fresh price rate and a healthy outbox all hold; 503 with a reason otherwise. |
 | `GET /metrics` | Health | Prometheus text: `livepeer_signer_up`, `livepeer_signer_kafka_outbox_healthy`, `_pending_events`, `_pending_bytes`, `_oldest_event_age_seconds`, `_publish_errors_total`, `_enqueue_errors_total`, `_storage_errors_total`. |
-| `GET /discover-orchestrators` | Network | Orchestrators with runners, capacity, price and `last_seen`. |
+
+## Discovery
+
+The discovery service, `lpb discovery` from the pinned builder-core, at `CONSOLE_DISCOVERY_URL`
+(`http://discovery:8939`). It lists orchestrators (here a static list, `deploy/config/orchestrators.txt`),
+probes each one's `/discovery` over trusted TLS, and serves the merged inventory. The engine reads the
+same inventory through `LPB_DISCOVERY_URL`, so the Network page shows exactly what the engine can buy.
+
+| Route | Page | Notes |
+| --- | --- | --- |
+| `GET /discovery` | Network, nav count | livepeer-node's inventory: one entry per serving orchestrator, `address` and `runners` (capacity, price, GPU). No `last_seen`: the service serves only what answered within its retention window. |
