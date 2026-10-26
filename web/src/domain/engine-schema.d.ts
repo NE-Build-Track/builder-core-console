@@ -176,6 +176,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/keys/{key_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Key */
+        get: operations["get_key_v1_admin_keys__key_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/keys/{key_id}/revoke": {
         parameters: {
             query?: never;
@@ -187,6 +204,23 @@ export interface paths {
         put?: never;
         /** Revoke Key */
         post: operations["revoke_key_v1_admin_keys__key_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/keys/{key_id}/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate Key */
+        post: operations["rotate_key_v1_admin_keys__key_id__rotate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -983,6 +1017,11 @@ export interface components {
             /** Operation Ref */
             operation_ref: string;
         };
+        /** RotateKeyBody */
+        RotateKeyBody: {
+            /** Label */
+            label?: string | null;
+        };
         /** Runner */
         Runner: {
             /** App */
@@ -1512,6 +1551,37 @@ export interface operations {
             };
         };
     };
+    get_key_v1_admin_keys__key_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessKey"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     revoke_key_v1_admin_keys__key_id__revoke_post: {
         parameters: {
             query?: never;
@@ -1529,6 +1599,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rotate_key_v1_admin_keys__key_id__rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RotateKeyBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuedKey"];
+                };
             };
             /** @description Validation Error */
             422: {
