@@ -326,6 +326,7 @@
   ],
   "users": [
     {
+      "id": "b715dc36-0112-4e10-9ce9-7e235669a3bf",
       "username": "operator",
       "enabled": true,
       "firstName": "Olive",
@@ -344,6 +345,7 @@
       ]
     },
     {
+      "id": "3c446b40-7123-45f1-bbdd-482f8025d1d5",
       "username": "alice",
       "enabled": true,
       "firstName": "Alice",
@@ -362,6 +364,7 @@
       ]
     },
     {
+      "id": "14a5c7ce-7de4-44a0-a1fd-b5855d63116f",
       "username": "bob",
       "enabled": true,
       "firstName": "Bob",
@@ -380,6 +383,7 @@
       ]
     },
     {
+      "id": "11a7d615-b94a-4d66-b5d8-917b48d44806",
       "username": "service-account-console-reader",
       "enabled": true,
       "serviceAccountClientId": "console-reader",

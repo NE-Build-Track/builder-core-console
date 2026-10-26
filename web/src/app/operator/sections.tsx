@@ -43,7 +43,14 @@ export function GrantsSection({ view }: { readonly view: OperatorView }) {
         />
       }
     >
-      <Unreadable reading={view.grants} what="Grants" />
+      {!view.grants.ok && view.grants.problem.kind === "http" && view.grants.problem.status === 404 ? (
+        <p className="note" role="note">
+          The engine&apos;s grant desk is off: it runs without a Batteries operator token (<code>LPB_BATTERIES_OPERATOR_TOKEN</code>), so there are no
+          grants to list or fund, and provisioning cannot draw on one.
+        </p>
+      ) : (
+        <Unreadable reading={view.grants} what="Grants" />
+      )}
       {view.grants.ok && view.grants.value.length === 0 ? <Empty>No grants yet. Create one to start.</Empty> : null}
       {view.grants.ok && view.grants.value.length > 0 ? (
         <div className="table-scroll">
@@ -202,9 +209,11 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
               <tr>
                 <th scope="col">Actor</th>
                 <th scope="col">Application</th>
-                <th scope="col" className="r">
-                  Keys
-                </th>
+                {view.keys ? (
+                  <th scope="col" className="r">
+                    Keys
+                  </th>
+                ) : null}
                 <th scope="col">Allocation</th>
                 <th scope="col" className="r">
                   Granted
@@ -232,7 +241,7 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
                     </span>
                   </td>
                   <td className="mono">{actor.applicationId}</td>
-                  <td className="r num">{actor.activeKeys}</td>
+                  {view.keys ? <td className="r num">{actor.activeKeys}</td> : null}
                   <AllocationCells actor={actor} />
                   <td className="r">
                     <ActorActions actor={actor} view={view} />

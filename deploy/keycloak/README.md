@@ -2,11 +2,16 @@
 
 Sign in to the console through an identity provider (decision D21) against an engine that accepts only
 JWTs (builder-core PR #50, `LPB_AUTH=jwt`, and PR #53: the actor list and the read-only auditor). It is
-a separate compose project from `deploy/compose.yaml` and spends nothing: there is no signer and no
-Batteries, so grants, provisioning and paid jobs answer errors here.
+a separate compose project from `deploy/compose.yaml`, and it is paid. Batteries and the signer run
+exactly as there, on the same funded payer: the `builder-console_paid-state` volume, `deploy/secrets`,
+and the tokens `first-run.sh` copies from `deploy/.env`.
+
+**One signer per payer.** Stop `deploy/compose.yaml`, ChatLPT and inference-gateway before
+`up`: they all sign for the same wallet.
 
 | Service | Reached at | What it is |
 | --- | --- | --- |
+| `clearinghouse`, `signer`, `signer-metrics` | compose network only | Batteries `ca09e47` and the node signer `406b248`, as in `deploy/compose.yaml` |
 | `keycloak` | http://keycloak.localhost:8180 (admin console at `/admin`) | Keycloak 26.8.1, realm `livepeer` from `realm-livepeer.json` |
 | `engine` | http://127.0.0.1:8091 (Swagger at `/docs`) | builder-core `4041ffe`, `LPB_AUTH=jwt`, strict RFC 9068 tokens |
 | `discovery` | compose network only | `lpb discovery` over `../config/orchestrators.txt` |
@@ -15,6 +20,14 @@ Batteries, so grants, provisioning and paid jobs answer errors here.
 Open the console at `127.0.0.1:3061` exactly: it is the address registered as the client's redirect URL.
 `keycloak.localhost` needs no hosts entry: browsers resolve `*.localhost` to loopback, and inside the
 stack it is a network alias, so the issuer is one URL everywhere.
+
+## A paid run
+
+1. Sign in to Operator actions as `operator`.
+2. Provision an actor: actor id = alice's `sub` (above, or the Builder's session bar once she signs in),
+   a grant with unallocated money (the Money page lists it), an amount such as `0.05`, label `alice`.
+3. Sign out, sign in to the Builder as `alice`, and run a job from the catalog. Its cost appears under
+   My jobs and Usage, and on the Operator page as her allocation's spend.
 
 ## Run
 
@@ -42,6 +55,16 @@ docker compose -f deploy/keycloak/compose.yaml down        # stop; add -v to for
 - **Audience.** The `engine-audience` scope puts the engine's resource identifier,
   `https://engine.builder.local`, in `aud`. ID tokens have no such audience and say `typ: JWT`, so the
   engine refuses them.
+- **Fixed user ids.** Each user's `id`, and so its token `sub` and engine actor, is pinned in the realm
+  file. Keycloak's dev mode keeps nothing across a container re-creation and re-imports the realm, so
+  without pinned ids an actor's allocation would no longer match its person.
+
+  | User | `sub` (engine actor id) |
+  | --- | --- |
+  | operator | `b715dc36-0112-4e10-9ce9-7e235669a3bf` |
+  | alice | `3c446b40-7123-45f1-bbdd-482f8025d1d5` |
+  | bob | `14a5c7ce-7de4-44a0-a1fd-b5855d63116f` |
+
 - **Lifetimes.** Access tokens live 5 minutes, and the console refreshes them a minute early. Refresh
   tokens rotate, and the single sign-on session lasts 8 hours.
 
