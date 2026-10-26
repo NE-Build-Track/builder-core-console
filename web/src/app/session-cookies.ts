@@ -3,7 +3,7 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 
 import type { Area, Session } from "@/domain/session";
-import { COOKIE_NAMES, openSession, SESSION_MAX_AGE_S } from "@/runtime/session";
+import { COOKIE_NAMES, ID_COOKIE_NAMES, openSession, SESSION_MAX_AGE_S } from "@/runtime/session";
 
 /**
  * The writing areas' cookies (decision D16): httpOnly, SameSite=Strict, sealed by the runtime. Read at
@@ -30,6 +30,11 @@ export async function keepSession(area: Area, sealed: string): Promise<void> {
   });
 }
 
-export async function endSession(area: Area): Promise<void> {
-  (await cookies()).delete(COOKIE_NAMES[area]);
+/** Ends the area's session; returns its sealed ID token (oidc), for the provider's logout. */
+export async function endSession(area: Area): Promise<string | undefined> {
+  const jar = await cookies();
+  const idToken = jar.get(ID_COOKIE_NAMES[area])?.value;
+  jar.delete(COOKIE_NAMES[area]);
+  jar.delete(ID_COOKIE_NAMES[area]);
+  return idToken;
 }

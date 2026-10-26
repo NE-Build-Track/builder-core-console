@@ -53,6 +53,7 @@ function tokensOf(response: oidc.TokenEndpointResponse & oidc.TokenEndpointRespo
     scopes: (response.scope ?? "").split(" ").filter(Boolean),
     sub: claims?.sub ?? null,
     name,
+    idToken: response.id_token ?? null,
   };
 }
 
@@ -86,6 +87,9 @@ export function identityProvider(settings: OidcSettings, options: Options): Iden
           code_challenge_method: PKCE_METHOD,
           state: pending.state,
           nonce: pending.nonce,
+          // Always ask who is signing in: each area is entered as a role, and silently reusing the
+          // provider's session could sign in whoever used this browser last (an operator, as a builder).
+          prompt: "login",
         });
         return { url: url.href, pending };
       }),
@@ -104,11 +108,13 @@ export function identityProvider(settings: OidcSettings, options: Options): Iden
         return tokensOf(response, options.now());
       }),
     refresh: (refreshToken) => attempt(async (c) => tokensOf(await oidc.refreshTokenGrant(c, refreshToken), options.now())),
-    logoutUrl: async (after) => {
+    logoutUrl: async (after, idTokenHint) => {
       try {
         const c = await config();
         if (!c.serverMetadata().end_session_endpoint) return null;
-        return oidc.buildEndSessionUrl(c, { client_id: settings.clientId, post_logout_redirect_uri: after }).href;
+        const parameters: Record<string, string> = { client_id: settings.clientId, post_logout_redirect_uri: after };
+        if (idTokenHint) parameters.id_token_hint = idTokenHint;
+        return oidc.buildEndSessionUrl(c, parameters).href;
       } catch {
         return null;
       }

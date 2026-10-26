@@ -20,6 +20,8 @@ export type Tokens = {
   readonly scopes: readonly string[];
   readonly sub: string | null;
   readonly name: string | null;
+  /** The ID token itself, kept only to name the session at logout (`id_token_hint`). */
+  readonly idToken: string | null;
 };
 
 export interface IdentityProvider {
@@ -29,8 +31,11 @@ export interface IdentityProvider {
   finish(query: URLSearchParams, pending: PendingSignIn): Promise<Reading<Tokens>>;
   /** A new access token before the old one expires. `sub` and `name` stay with the session. */
   refresh(refreshToken: string): Promise<Reading<Tokens>>;
-  /** The provider's logout page, which returns to `after`; null when it has none. */
-  logoutUrl(after: string): Promise<string | null>;
+  /**
+   * The provider's logout, which returns to `after`; null when it has none. With `idTokenHint` the
+   * provider knows whose session ends and logs out without asking (OIDC RP-Initiated Logout).
+   */
+  logoutUrl(after: string, idTokenHint: string | null): Promise<string | null>;
 }
 
 export interface TokenSource {

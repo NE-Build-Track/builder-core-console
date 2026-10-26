@@ -46,6 +46,12 @@ describe("sign-in through the identity provider (CONSOLE_AUTH=oidc)", () => {
     expect(classifyPerson("builder", ["openid", "livepeer:admin"], scopes, works, alice)).toMatchObject({ ok: false, message: expect.stringContaining("jobs.run") });
   });
 
+  it("names the account the provider signed in, so a person still logged in as someone else sees it", () => {
+    const operator = { sub: "b715dc36", name: "operator" };
+    expect(classifyPerson("builder", ["openid", "livepeer:admin"], scopes, works, operator)).toMatchObject({ ok: false, message: expect.stringContaining("operator is not a builder") });
+    expect(classifyPerson("operator", ["openid", "jobs.run"], scopes, works, alice)).toMatchObject({ ok: false, message: expect.stringContaining("alice is not an operator") });
+  });
+
   it("says why the engine refused the token", () => {
     const wrongType = broken("engine", { kind: "http", status: 401, detail: "the token type 'JWT' is not an access token (at+jwt)" });
     expect(classifyPerson("builder", ["jobs.run"], scopes, wrongType, alice)).toMatchObject({ ok: false, message: expect.stringContaining("at+jwt") });

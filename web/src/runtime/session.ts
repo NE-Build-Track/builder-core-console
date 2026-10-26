@@ -19,6 +19,8 @@ import { classifyKey, classifyPerson } from "@/services/signin";
  */
 
 export const COOKIE_NAMES: Record<Area, string> = { operator: "bc_operator", builder: "bc_builder" };
+/** oidc: the ID token, sealed in its own cookie (the session cookie has no room for it), for logout's id_token_hint. */
+export const ID_COOKIE_NAMES: Record<Area, string> = { operator: "bc_operator_id", builder: "bc_builder_id" };
 /** The sign-in in progress at the provider: state, nonce and PKCE verifier, sealed (SameSite=Lax: it comes back cross-site). */
 export const PENDING_COOKIE = "bc_oidc_pending";
 export const PENDING_MAX_AGE_S = 600;
@@ -127,7 +129,9 @@ function isPending(value: unknown, now: Date): value is PendingSignIn {
   );
 }
 
-export type Finished = (SignInResult & { readonly area: Area | null }) | { readonly ok: false; readonly message: string; readonly area: Area | null };
+export type Finished =
+  | { readonly ok: true; readonly area: Area; readonly sealed: string; readonly sealedIdToken: string | null; readonly session: Session }
+  | { readonly ok: false; readonly message: string; readonly area: Area | null };
 
 /** The provider sent the browser back: exchange the code, ask the engine, and seal the session. */
 export async function finishSignIn(query: URLSearchParams, sealedPending: string | undefined, now: Date = new Date()): Promise<Finished> {
@@ -138,7 +142,7 @@ export async function finishSignIn(query: URLSearchParams, sealedPending: string
   const area = pending.area;
   const tokens = await ready.provider.finish(query, pending);
   if (!tokens.ok) return { ok: false, area, message: `The identity provider refused the sign-in: ${describeProblem(tokens.problem)}.` };
-  const { accessToken, refreshToken, expiresAt, scopes, sub, name } = tokens.value;
+  const { accessToken, refreshToken, expiresAt, scopes, sub, name, idToken } = tokens.value;
   if (!sub) return { ok: false, area, message: "The identity provider's ID token names nobody (no sub)." };
   const engine = keyed(accessToken);
   if (!engine) return { ok: false, area, message: "The console has no engine URL (CONSOLE_ENGINE_URL)." };
@@ -157,7 +161,7 @@ export async function finishSignIn(query: URLSearchParams, sealedPending: string
     refreshToken,
     tokenExpiresAt: expiresAt,
   };
-  return { ok: true, area, sealed: seal(ready.secret, session), session };
+  return { ok: true, area, sealed: seal(ready.secret, session), sealedIdToken: idToken ? seal(ready.secret, { area, idToken }) : null, session };
 }
 
 /** A refresh in flight or just done, by refresh token: parallel requests (a page and its prefetches) share one. */
@@ -190,10 +194,15 @@ export async function refreshSession(session: Session, now: Date = new Date()): 
  * Where to send the browser after signing out of an identity-provider session: the provider's logout,
  * which ends its single sign-on too (so the next person is asked to log in), then back to the area.
  */
-export async function providerLogoutUrl(area: Area): Promise<string | null> {
+export async function providerLogoutUrl(area: Area, sealedIdToken: string | undefined): Promise<string | null> {
   const ready = oidc();
   if (!ready) return null;
-  return ready.provider.logoutUrl(new URL(`/${area}`, ready.settings.redirectUrl).href);
+  const opened = sealedIdToken ? unseal(ready.secret, sealedIdToken) : null;
+  const hint =
+    opened !== null && typeof opened === "object" && (opened as Record<string, unknown>).area === area && typeof (opened as Record<string, unknown>).idToken === "string"
+      ? ((opened as Record<string, unknown>).idToken as string)
+      : null;
+  return ready.provider.logoutUrl(new URL(`/${area}`, ready.settings.redirectUrl).href, hint);
 }
 
 function isSession(value: unknown, area: Area): value is Session {

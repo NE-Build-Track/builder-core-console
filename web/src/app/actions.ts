@@ -36,9 +36,9 @@ export async function signInBuilder(_previous: SignInState, form: FormData): Pro
 /** Ends the area's session; one that came from the identity provider also logs out there. */
 async function signOutOf(area: Area): Promise<void> {
   const session = await sessionFor(area);
-  await endSession(area);
+  const idToken = await endSession(area);
   if (session?.via === "oidc") {
-    const logout = await providerLogoutUrl(area);
+    const logout = await providerLogoutUrl(area, idToken);
     if (logout) redirect(logout);
   }
   refresh();

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { COOKIE_NAMES, finishSignIn, PENDING_COOKIE, SESSION_MAX_AGE_S } from "@/runtime/session";
+import { COOKIE_NAMES, finishSignIn, ID_COOKIE_NAMES, PENDING_COOKIE, SESSION_MAX_AGE_S } from "@/runtime/session";
 
 /**
  * The identity provider sends the browser back here with a code. The console exchanges it on the server,
@@ -21,13 +21,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const response = finished.ok ? moveTo(`/${area}`) : moveTo(`/${area}?signin=${encodeURIComponent(finished.message)}`);
   response.cookies.delete({ name: PENDING_COOKIE, path: "/auth/callback" });
   if (finished.ok) {
-    response.cookies.set(COOKIE_NAMES[area], finished.sealed, {
-      httpOnly: true,
-      sameSite: "strict",
-      path: "/",
-      maxAge: SESSION_MAX_AGE_S,
-      secure: request.nextUrl.protocol === "https:",
-    });
+    const options = { httpOnly: true, sameSite: "strict", path: "/", maxAge: SESSION_MAX_AGE_S, secure: request.nextUrl.protocol === "https:" } as const;
+    response.cookies.set(COOKIE_NAMES[area], finished.sealed, options);
+    if (finished.sealedIdToken) response.cookies.set(ID_COOKIE_NAMES[area], finished.sealedIdToken, options);
   }
   return response;
 }

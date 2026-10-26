@@ -48,11 +48,12 @@ export type Person = { readonly sub: string; readonly name: string | null };
  */
 export function classifyPerson(area: Area, granted: readonly string[], scopes: AreaScopes, probe: Reading<unknown>, person: Person): Classified {
   const has = new Set(granted);
+  const who = person.name ?? "This account";
   if (area === "operator" && !has.has(scopes.operator)) {
-    return { ok: false, message: `Your account is not an operator: the identity provider did not grant ${scopes.operator}.` };
+    return { ok: false, message: `${who} is not an operator: the identity provider did not grant ${scopes.operator}. Sign in with an operator account.` };
   }
   if (area === "builder" && !has.has("jobs.run")) {
-    return { ok: false, message: `Your account is not a builder: the identity provider did not grant jobs.run (asked for ${scopes.builder.join(" ")}).` };
+    return { ok: false, message: `${who} is not a builder: the identity provider did not grant jobs.run (asked for ${scopes.builder.join(" ")}). Sign in with a builder account.` };
   }
   if (!probe.ok) {
     const problem = probe.problem;
