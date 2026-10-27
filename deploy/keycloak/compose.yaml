@@ -71,9 +71,9 @@ services:
   # The stock engine, JWT only (LPB_AUTH=jwt): engine API keys are off, so the console signs in through
   # Keycloak. Paid through the signer and Batteries above, per actor; its own database and engine id.
   engine:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:245526e
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:0dbfe6e
     build:
-      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#245526e89ef508bf844b50c065ea59e4d53bdb02
+      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#0dbfe6eae9197692650810eedc275cbe707139d1
       dockerfile: deploy/dev-stack/engine/Dockerfile
       args:
         BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"
@@ -112,7 +112,7 @@ services:
       retries: 3
 
   discovery:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:245526e
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:0dbfe6e
     command: [lpb, discovery]
     environment:
       LPD_ORCHESTRATORS: /etc/lpd/orchestrators.txt

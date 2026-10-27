@@ -10,8 +10,8 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
 | `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:245526e` | `127.0.0.1:8090` (Swagger at `/docs`) |
-| `discovery` | `builder-console/engine:245526e` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
+| `engine` | `builder-console/engine:0dbfe6e` | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `discovery` | `builder-console/engine:0dbfe6e` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 Testing sign-in through an identity provider instead of keys: [keycloak/README.md](keycloak/README.md), a
