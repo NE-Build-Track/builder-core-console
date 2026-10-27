@@ -3,7 +3,7 @@
  * ChatLPT's stack on 20 October 2026 (same pins as this repository), so tests run on real shapes.
  */
 import type { Allocation, ApiKey, Grant, LedgerRow, PaymentSession, UsageEvent } from "@/domain/batteries";
-import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, Reconciliation } from "@/domain/engine";
+import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, KnownActor, Reconciliation } from "@/domain/engine";
 import { failed, ok, type Problem, type Reading, type SourceName } from "@/domain/reading";
 import { PINS, shortCommit } from "@/domain/pins";
 import type { DiscoveredOrchestrator } from "@/domain/discovery";
@@ -249,6 +249,10 @@ export function engineFake(overrides: Partial<EngineReader> = {}): EngineReader 
       ]),
     grants: async () => read("engine", [{ id: grant.id, name: "ChatLPT", status: "active", currency: "USD", total: "2" }]),
     keys: async () => read("engine", [accessKey(), accessKey({ key_id: "admin-1", kind: "admin", actor_id: "admin", label: "console" })]),
+    actors: async () =>
+      read("engine", [
+        { actor_id: "customer-42", application_id: "default", label: "", name: null, provisioned: true, allocation: null, first_seen_at: null, last_seen_at: null } as KnownActor,
+      ]),
     allowance: async () =>
       read("engine", {
         allocation_id: allocation.id,

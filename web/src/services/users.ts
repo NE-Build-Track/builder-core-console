@@ -37,21 +37,46 @@ export function groupKeys(keys: readonly AccessKey[]): { readonly actors: ActorK
   };
 }
 
+/** One actor before its money is read: from the engine's actor list, its keys, or both. */
+type Listed = { readonly applicationId: string; readonly actorId: string; readonly label: string | null; readonly provisioned: boolean | null; readonly keys: readonly AccessKey[] };
+
 export async function users(sources: Sources): Promise<UsersView> {
-  const [keys, applicationReconciliation] = await Promise.all([
+  const [keys, known, applicationReconciliation] = await Promise.all([
     sources.engine.keys(),
+    sources.engine.actors(),
     sources.engine.reconciliation({ applicationId: sources.applicationId }),
   ]);
-  if (!keys.ok) {
+  // Under LPB_AUTH=jwt the engine has no key routes (404): its actor list (builder-core #53) is the only source.
+  const keysOn = !(!keys.ok && keys.problem.kind === "http" && keys.problem.status === 404);
+  if (!known.ok && !keys.ok) {
     return {
-      actors: keys,
+      actors: keysOn ? keys : known,
+      keysOn,
       admins: [],
       applicationId: sources.applicationId,
       applicationReconciliation,
       counts: { actors: 0, applications: 0, activeKeys: 0, balanced: 0, unbalanced: 0 },
     };
   }
-  const { actors, admins } = groupKeys(keys.value);
+  const grouped = keys.ok ? groupKeys(keys.value) : { actors: [], admins: [] };
+  const listed = new Map<string, Listed>();
+  for (const actor of known.ok ? known.value : []) {
+    listed.set(`${actor.application_id}\u0000${actor.actor_id}`, {
+      applicationId: actor.application_id,
+      actorId: actor.actor_id,
+      label: actor.label ? actor.label : null,
+      provisioned: actor.provisioned,
+      keys: [],
+    });
+  }
+  for (const holder of grouped.actors) {
+    const id = `${holder.applicationId}\u0000${holder.actorId}`;
+    const row = listed.get(id);
+    listed.set(id, row ? { ...row, keys: holder.keys } : { ...holder, label: null, provisioned: null });
+  }
+  const actors = [...listed.values()].sort((a, b) => a.applicationId.localeCompare(b.applicationId) || a.actorId.localeCompare(b.actorId));
+  const admins = grouped.admins;
+  const readAt = known.ok ? known.readAt : keys.ok ? keys.readAt : sources.now().toISOString();
   const window = windowBounds("30d", sources.now());
   const rows = await mapLimited(actors, 4, async (actor): Promise<ActorView> => {
     // Allowance and cost reads use the admin key's own application (gap G9).
@@ -64,6 +89,8 @@ export async function users(sources: Sources): Promise<UsersView> {
     return {
       applicationId: actor.applicationId,
       actorId: actor.actorId,
+      label: actor.label,
+      provisioned: actor.provisioned,
       keys: actor.keys,
       activeKeys: actor.keys.filter((key) => key.revoked_at === null).length,
       allowance,
@@ -73,7 +100,8 @@ export async function users(sources: Sources): Promise<UsersView> {
     };
   });
   return {
-    actors: ok("engine", rows, keys.readAt),
+    actors: ok("engine", rows, readAt),
+    keysOn,
     admins,
     applicationId: sources.applicationId,
     applicationReconciliation,

@@ -13,18 +13,7 @@ import type {
   PaymentSession,
   UsageEvent,
 } from "@/domain/batteries";
-import type {
-  AccessKey,
-  Allowance,
-  CostSummary,
-  EngineGrant,
-  EngineHealth,
-  Job,
-  JobCost,
-  Offering,
-  Reconciliation,
-  Runner,
-} from "@/domain/engine";
+import type { AccessKey, Allowance, CostSummary, EngineGrant, EngineHealth, Job, JobCost, KnownActor, Offering, Reconciliation, Runner } from "@/domain/engine";
 import type { Reading } from "@/domain/reading";
 import type { DiscoveredOrchestrator } from "@/domain/discovery";
 import type { SignerMetrics, SignerReadiness } from "@/domain/signer";
@@ -36,6 +25,8 @@ export interface EngineReader {
   runners(app: string): Promise<Reading<readonly Runner[]>>;
   grants(): Promise<Reading<readonly EngineGrant[]>>;
   keys(): Promise<Reading<readonly AccessKey[]>>;
+  /** GET /v1/admin/actors: provisioned actors and people who signed in (builder-core #53, D48). */
+  actors(): Promise<Reading<readonly KnownActor[]>>;
   allowance(actorId: string): Promise<Reading<Allowance>>;
   costSummary(query: {
     readonly start: string;

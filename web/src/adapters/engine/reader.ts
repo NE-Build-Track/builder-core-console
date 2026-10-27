@@ -80,6 +80,7 @@ export function engineReader(settings: SourceSettings<EngineSettings>, options: 
     runners: (app) => call((c) => c.GET("/v1/runners", { params: { query: { app } }, signal: signal() })),
     grants: () => call((c) => c.GET("/v1/admin/grants", { signal: signal() })),
     keys: () => call((c) => c.GET("/v1/admin/keys", { signal: signal() })),
+    actors: () => call((c) => c.GET("/v1/admin/actors", { params: { query: { limit: 1000 } }, signal: signal() })),
     allowance: (actorId) =>
       call((c) => c.GET("/v1/allowance", { params: { query: { actor_id: actorId } }, signal: signal() })),
     costSummary: ({ start, end, actorId }) =>
