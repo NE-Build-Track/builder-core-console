@@ -6,7 +6,7 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 | Service | Source | Pin |
 | --- | --- | --- |
 | `clearinghouse` | `NE-Build-Track/clearinghouse-batteries`, `examples/compose/Dockerfile` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
-| `signer` | `NE-Build-Track/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
+| `signer` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
 | `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `0dbfe6eae9197692650810eedc275cbe707139d1` (`tasks/mz/admin-read-actors`, builder-core PR #53 on #50: `releases/m3` with the discovery service and ISS-08, plus JWT bearer, the actor collection and the auditor; local Keycloak test branch) |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relay only (D10) |
 | `console` | this repository, `deploy/console/Dockerfile` | — |
