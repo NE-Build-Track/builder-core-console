@@ -2,7 +2,7 @@
  * Engine types, generated from the pinned builder-core OpenAPI spec (openapi/engine.openapi.json). The types are
  * identical at a89216d, 93756ba, ad6bba9, 165e601, a22bc98, b89c1bb, 878e4f4 and 629f1ab; from 165e601 the spec adds
  * only the bearer security scheme. d057935 (ISS-08) adds GET /v1/admin/keys/{key_id} and
- * POST /v1/admin/keys/{key_id}/rotate, with RotateKeyBody. a2e61e4 (builder-core #69, on releases/m3 2134e29) adds
+ * POST /v1/admin/keys/{key_id}/rotate, with RotateKeyBody. d3df806 (releases/m3, the merge of builder-core #69; the spec is identical at its head a2e61e4) adds
  * the actor collection and the auditor, `payment_state` on each session, `JobCost.billable`, the `payment_unknown`
  * outcome and the native HTTP request fields.
  * Regenerate with `pnpm gen:api`; never edit engine-schema.d.ts by hand.
