@@ -1,7 +1,7 @@
 /**
  * Users are the engine's actors: identities that hold access keys and, in per_actor mode, an allocation
- * of their own (docs/product-specs/console.md#users). The engine has no actor list (gap G2), so actors
- * come from the key list, and their money is read one actor at a time.
+ * of their own (docs/product-specs/console.md#users). They come from the engine's actor list (builder-core #69),
+ * plus any key holder it does not list yet, and their money is read one actor at a time.
  */
 import type { AccessKey } from "@/domain/engine";
 import { ok } from "@/domain/reading";

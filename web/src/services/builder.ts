@@ -2,7 +2,7 @@
  * The Builder area's views (decisions D15, D19): the live catalog with each rate's unit, source and age;
  * one builder's jobs; and their allowance and wholesale network cost. Pure functions over readings.
  */
-import { COST_CLASSES, type Allowance, type CostClass, type CostSummary, type EngineHealth, type Fees, type Job, type JobCost, type NetworkRate, type Offering } from "@/domain/engine";
+import { COST_CLASSES, mayHavePaid, type Allowance, type CostClass, type CostSummary, type EngineHealth, type Fees, type Job, type JobCost, type NetworkRate, type Offering } from "@/domain/engine";
 import { isFinalState, type JobState, type RunInput } from "@/domain/builder";
 import { invalid, parsed, wholeNumber, type Parsed } from "@/domain/forms";
 import { mapReading, type Reading } from "@/domain/reading";
@@ -124,7 +124,7 @@ export function usage(allowance: Reading<Allowance>, summary: Reading<CostSummar
 export function jobState(job: Reading<Job>, cost: Reading<JobCost>): JobState {
   const final = job.ok && isFinalState(job.value.state);
   const costSettled = cost.ok && cost.value.status !== "pending";
-  const nothingPaid = job.ok && !job.value.attempts.some((attempt) => attempt.payment_sent);
+  const nothingPaid = job.ok && !mayHavePaid(job.value); // a signer that never answered may have charged
   return {
     job: job.ok ? job.value : null,
     cost: cost.ok ? cost.value : null,

@@ -371,7 +371,7 @@ export function actorsOf(known: Reading<readonly KnownActor[]>, keys: readonly A
   return [...rows.values()].sort((a, b) => a.applicationId.localeCompare(b.applicationId) || a.actorId.localeCompare(b.actorId));
 }
 
-/** Actors as the keys show them (gap G2: the engine has no list of provisioned actors). Admin keys are not actors. */
+/** Actors as the keys show them, added to the engine's actor list for key holders it does not list yet. Admin keys are not actors. */
 export function actorsFromKeys(keys: readonly AccessKey[]): readonly Omit<OperatorActor, "allowance" | "label" | "name" | "status" | "provisioned">[] {
   const byActor = new Map<string, { applicationId: string; actorId: string; activeKeys: number; revokedKeys: number }>();
   for (const key of keys) {

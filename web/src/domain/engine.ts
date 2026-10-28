@@ -30,7 +30,7 @@ export type Reconciliation = Schemas["Reconciliation"];
 export type Job = Schemas["Job"];
 export type Attempt = Schemas["Attempt"];
 
-/** How a paid attempt is classified (docs/references/glossary.md#cost-classes). */
+/** How a paid attempt is classified (builder-core docs/contracts/payments.md#cost-classification). */
 export const COST_CLASSES = ["delivered", "failed_after_payment", "uncertain", "pending"] as const;
 export type CostClass = (typeof COST_CLASSES)[number];
 
@@ -40,3 +40,25 @@ export const COST_CLASS_LABELS: Record<CostClass, string> = {
   uncertain: "Uncertain",
   pending: "Pending",
 };
+
+/**
+ * Whether an attempt paid. Since builder-core D54 a manifest is stored before the signer is asked, so an
+ * attempt whose signer never answered (`payment_unknown`, or a manifest still `unknown`) may have paid
+ * though `payment_sent` is false. Its cost stays pending until usage settles it.
+ */
+export type AttemptPayment = "paid" | "unknown" | "none";
+
+export function attemptPayment(attempt: Attempt): AttemptPayment {
+  if (attempt.payment_sent) return "paid";
+  if (attempt.outcome === "payment_unknown" || attempt.sessions.some((session) => session.payment_state === "unknown")) return "unknown";
+  return "none";
+}
+
+export function mayHavePaid(job: Job): boolean {
+  return job.attempts.some((attempt) => attemptPayment(attempt) !== "none");
+}
+
+/** Every class a job's attempts fell into, in attempt order: a job that failed over is several (builder-core D52). */
+export function costClasses(cost: JobCost): readonly CostClass[] {
+  return [...new Set(cost.attempts.map((attempt) => attempt.cost_class))];
+}

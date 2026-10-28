@@ -52,7 +52,8 @@ describe("run requests from the browser", () => {
 });
 
 describe("a job settling", () => {
-  const job = (state: string, paid: boolean) => ({ id: "j", state, attempts: [{ payment_sent: paid }] }) as unknown as Job;
+  const job = (state: string, paid: boolean, outcome = "succeeded", sessions: { payment_state: string }[] = []) =>
+    ({ id: "j", state, attempts: [{ payment_sent: paid, outcome, sessions }] }) as unknown as Job;
   const cost = (status: string) => ({ status }) as unknown as JobCost;
 
   it("waits for a paid job's cost, but not for one that paid nothing", () => {
@@ -60,6 +61,14 @@ describe("a job settling", () => {
     expect(jobState(read("engine", job("succeeded", true)), read("engine", cost("pending"))).settled).toBe(false);
     expect(jobState(read("engine", job("succeeded", true)), read("engine", cost("observed"))).settled).toBe(true);
     expect(jobState(read("engine", job("failed", false)), read("engine", cost("pending"))).settled).toBe(true);
+  });
+
+  it("keeps waiting when the signer never answered: it may have charged (builder-core D54)", () => {
+    const unknown = job("uncertain", false, "payment_unknown", [{ payment_state: "unknown" }]);
+    expect(jobState(read("engine", unknown), read("engine", cost("pending"))).settled).toBe(false);
+    expect(jobState(read("engine", unknown), read("engine", cost("observed"))).settled).toBe(true);
+    const refused = job("failed", false, "payment_refused", [{ payment_state: "unpaid" }]);
+    expect(jobState(read("engine", refused), read("engine", cost("pending"))).settled).toBe(true); // nothing paid
   });
 });
 

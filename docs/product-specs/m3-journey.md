@@ -50,7 +50,7 @@ evidence did.
 | Engine use | As a service (`lpb serve`) | Embedded and service side by side (ISS-32); ChatLPT is the embedded showcase |
 | Access | Engine keys issued by the operator | Enterprise sign-in replacing the console's flow (ISS-33) |
 | Payment configurations | `per_actor` (one allocation per actor) | `per_application` (one shared allocation) (ISS-31) |
-| Recovery | Failures after payment shown as `uncertain` | Broader recovery coverage (ISS-35) |
+| Recovery | Failures after payment shown as `failed_after_payment`, or `uncertain` when the runner may have run; a failover after payment shows each attempt's class | Broader recovery coverage (ISS-35) |
 | Catalog | Two jobs; the rest of the catalog visible but not tested | More representative jobs as needed; no full-catalog test |
 
 Held: the integration events feed in ISS-18, revisited when there is room (decision 4).

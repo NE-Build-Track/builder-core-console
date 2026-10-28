@@ -15,8 +15,8 @@ with `CONSOLE_ENGINE_ADMIN_TOKEN`, an `lpk_` admin key from `lpb bootstrap-admin
 | `GET /readyz` | Health, Network, footer | No auth. Answers 503 with the same `EngineHealth` body when not ready; the console reads that as an unready engine, not a failure. Gives discovery freshness, cost-sync time and error, running jobs, allocation mode, version. |
 | `GET /v1/offerings` | Network | Apps on offer, runner counts, rate range. |
 | `GET /v1/runners` | Network | Per app (`?app=`): runner URL, orchestrator, capacity, GPU, price, version. |
-| `GET /v1/admin/grants` | Money | The engine's view of Batteries grants (through its grant-desk credential). |
-| `GET /v1/admin/keys` | Users | Every access key: actor, application, kind, permissions, revoked. Actors are derived from this (gap G2). |
+| `GET /v1/admin/grants` | Money | The engine's view of Batteries grants (through its grant-desk credential). Admin only: the auditor reader never asks (builder-core #69), and the Money page says so. |
+| `GET /v1/admin/keys` | Users | Every access key: actor, application, kind, permissions, revoked. The Users and Operator pages add these to `GET /v1/admin/actors`, for key holders the engine does not list yet. |
 | `GET /v1/allowance` | Users | `?actor_id=`: the actor's allocation, granted, spent, available. Scoped to the admin key's application (gap G9). |
 | `GET /v1/costs/summary` | Users, Usage | Spend by cost class over a window, optionally per actor (gap G9). |
 | `GET /v1/costs/projections` | Jobs | The 25 newest job costs (gap G3). |

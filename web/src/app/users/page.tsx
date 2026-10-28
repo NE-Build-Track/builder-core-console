@@ -21,7 +21,7 @@ export default function UsersPage() {
     <PageView>
       <PageHead icon="users" eyebrow="Engine actors" title="Users">
         Every actor the engine knows (provisioned, signed in, or holding a key), the allocation behind it, and whether the engine&apos;s cost for that actor matches Batteries.{" "}
-        <GapChip id="G2" /> <GapChip id="G9" />
+        <GapChip id="G9" />
       </PageHead>
       <Streamed tiles={4}>
         <Users />
