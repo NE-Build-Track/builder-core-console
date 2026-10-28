@@ -4,7 +4,7 @@
  */
 import { z } from "zod";
 
-/** The signer's Prometheus gauges and counters at NE-Build-Track/node 406b248. */
+/** The signer's Prometheus gauges and counters at livepeer/node 406b248. */
 export const SIGNER_METRICS = [
   "livepeer_signer_up",
   "livepeer_signer_kafka_outbox_healthy",

@@ -15,7 +15,7 @@ export const PINS = {
     note: "same as ChatLPT and builder-core's dev stack",
   },
   signer: {
-    repository: "NE-Build-Track/node",
+    repository: "livepeer/node",
     commit: "406b248f6cb8728e6e7eba1809901f589060bc6b",
     note: "v1.0.2, same as ChatLPT and builder-core's dev stack",
   },
