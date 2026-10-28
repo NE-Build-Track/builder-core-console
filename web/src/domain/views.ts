@@ -19,7 +19,8 @@ import type {
   Runner,
 } from "./engine";
 import type { Reading } from "./reading";
-import type { DiscoveredOrchestrator, SignerMetrics, SignerReadiness } from "./signer";
+import type { DiscoveredOrchestrator } from "./discovery";
+import type { SignerMetrics, SignerReadiness } from "./signer";
 
 export type State = "ok" | "warn" | "bad" | "unknown";
 
@@ -170,6 +171,10 @@ export type MoneyView = {
 export type ActorView = {
   readonly applicationId: string;
   readonly actorId: string;
+  /** The operator's label, else the identity provider's name (builder-core D48); null when neither. */
+  readonly label: string | null;
+  /** From the engine's actor list; null for an actor known only by its keys. */
+  readonly provisioned: boolean | null;
   readonly keys: readonly AccessKey[];
   readonly activeKeys: number;
   /** Null when the actor is outside CONSOLE_APPLICATION_ID (gap G9). */
@@ -182,6 +187,8 @@ export type ActorView = {
 
 export type UsersView = {
   readonly actors: Reading<readonly ActorView[]>;
+  /** False when the engine's API keys are off (LPB_AUTH=jwt): actors come from its actor list alone. */
+  readonly keysOn: boolean;
   readonly admins: readonly AccessKey[];
   readonly applicationId: string;
   readonly applicationReconciliation: Reading<Reconciliation>;

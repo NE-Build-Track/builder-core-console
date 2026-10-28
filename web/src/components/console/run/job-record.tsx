@@ -1,10 +1,12 @@
 /**
- * A job's record as it settles after a run: state, each attempt and whether it paid, the result
- * reference, and the wholesale network cost followed from pending to its final status.
+ * A job's record as it settles after a run: state, each attempt and whether it paid (or may have:
+ * builder-core D54), the result reference, and the wholesale network cost followed from pending to its
+ * final status, with the billable part when a failover makes them differ (D52).
  */
 import Link from "next/link";
 
 import type { JobState } from "@/domain/builder";
+import { attemptPayment, mayHavePaid, type Job } from "@/domain/engine";
 import type { State } from "@/domain/views";
 
 import { Amount, Id, Pill } from "../values";
@@ -17,6 +19,16 @@ const COST_WORDS: Record<string, string> = {
   observed: "observed",
   corrected: "corrected",
 };
+
+const PAYMENT_WORDS = { paid: "paid", unknown: "payment unknown", none: "not paid" } as const;
+
+/** What a failed job's payment means (builder-core D52, D54). The engine never pays twice for it. */
+function failureNote(job: Job): string {
+  if (job.state === "uncertain") return "The runner may have run and been charged, so the outcome is uncertain; the engine pays no one else for it.";
+  if (job.failure?.payment_sent) return "Payment went out, but the work was refused or failed. That charge is failed after payment, never billable.";
+  if (mayHavePaid(job)) return "The signer gave no answer, so it may have charged. The cost stays pending until usage settles it.";
+  return "Nothing was paid.";
+}
 
 export function JobRecord({ jobId, state }: { readonly jobId: string; readonly state: JobState | null }) {
   const job = state?.job ?? null;
@@ -37,7 +49,7 @@ export function JobRecord({ jobId, state }: { readonly jobId: string; readonly s
           <strong>
             {job.failure.kind}: {job.failure.message}
           </strong>
-          <span>{job.failure.payment_sent ? "Payment went out, so the outcome is uncertain and it is never retried by itself." : "Nothing was paid."}</span>
+          <span>{failureNote(job)}</span>
         </div>
       ) : null}
       {job && job.attempts.length > 0 ? (
@@ -47,7 +59,7 @@ export function JobRecord({ jobId, state }: { readonly jobId: string; readonly s
               <b>Attempt {attempt.number}</b>
               <span className="mono">{attempt.orchestrator_url ?? "no orchestrator"}</span>
               <span>{attempt.outcome}</span>
-              <span>{attempt.payment_sent ? "paid" : "not paid"}</span>
+              <span>{PAYMENT_WORDS[attemptPayment(attempt)]}</span>
               {attempt.status_code ? <span className="muted">HTTP {attempt.status_code}</span> : null}
             </li>
           ))}
@@ -67,6 +79,12 @@ export function JobRecord({ jobId, state }: { readonly jobId: string; readonly s
         {cost && cost.fees.fee_usd !== null && cost.status !== "none" ? (
           <span>
             <Amount value={cost.fees.fee_usd} head={6} /> wholesale · {cost.fees.row_count} ticket{cost.fees.row_count === 1 ? "" : "s"}
+            {cost.billable?.fee_usd != null && cost.billable.fee_usd !== cost.fees.fee_usd ? (
+              <>
+                {" "}
+                · <Amount value={cost.billable.fee_usd} head={6} /> billable (the delivered attempt only)
+              </>
+            ) : null}
           </span>
         ) : null}
       </div>

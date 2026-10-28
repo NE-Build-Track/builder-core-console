@@ -11,7 +11,7 @@ import { Icon, type IconName } from "./icons";
 import { Amount, Ago } from "./values";
 import { vars } from "./vars";
 
-const SOURCE_TITLES: Record<SourceName, string> = { engine: "Engine", batteries: "Batteries", signer: "Signer" };
+const SOURCE_TITLES: Record<SourceName, string> = { engine: "Engine", batteries: "Batteries", signer: "Signer", discovery: "Discovery", identity: "Identity provider" };
 
 export function PageHead({
   icon,
@@ -195,6 +195,13 @@ export function GapChip({ id }: { readonly id: GapId }) {
 /** A failed reading, named by source and problem. Renders nothing for a successful one. */
 export function Unreadable({ reading, what }: { readonly reading: Reading<unknown>; readonly what: string }) {
   if (reading.ok) return null;
+  if (reading.problem.kind === "not_permitted") {
+    return (
+      <p className="empty-state" role="status">
+        {what}: {describeProblem(reading.problem)}
+      </p>
+    );
+  }
   return (
     <p className="problem" role="status">
       <strong>

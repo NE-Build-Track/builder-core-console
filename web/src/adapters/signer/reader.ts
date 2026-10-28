@@ -2,17 +2,17 @@ import "server-only";
 
 import type { SignerSettings, SourceSettings } from "@/config/config";
 import { failed, ok } from "@/domain/reading";
-import { discoverySchema, SIGNER_METRICS, type SignerMetrics } from "@/domain/signer";
+import { SIGNER_METRICS, type SignerMetrics } from "@/domain/signer";
 import type { SignerReader } from "@/ports/sources";
 
-import { brief, getText, parseJson } from "../http";
+import { brief, getText } from "../http";
 
 type Options = { readonly timeoutMs: number; readonly now: () => Date };
 
 /**
  * The node remote signer (docs/references/data-sources.md#signer). /readyz and /metrics come from the
- * metrics listener through the signer-metrics relay (gap G5); discovery comes from the signing port.
- * The console never calls a signing route.
+ * metrics listener through the signer-metrics relay (gap G5). The signer only signs: discovery is the
+ * discovery service (adapters/discovery). The console never calls a signing route.
  */
 export function signerReader(settings: SourceSettings<SignerSettings>, options: Options): SignerReader {
   const at = () => options.now().toISOString();
@@ -39,23 +39,6 @@ export function signerReader(settings: SourceSettings<SignerSettings>, options: 
       const { status, body } = result.fetched;
       if (status !== 200) return failed("signer", { kind: "http", status, detail: brief(body) }, at());
       return ok("signer", parseSignerMetrics(body), at());
-    },
-
-    async discovery() {
-      if (!settings.ok) return notConfigured();
-      const result = await getText(`${settings.value.url}/discover-orchestrators`, {
-        headers: { accept: "application/json" },
-        timeoutMs: options.timeoutMs,
-      });
-      if (!result.ok) return failed("signer", result.problem, at());
-      const { status, body } = result.fetched;
-      if (status !== 200) return failed("signer", { kind: "http", status, detail: brief(body) }, at());
-      const json = parseJson(body);
-      const parsed = json.ok ? discoverySchema.safeParse(json.value) : null;
-      if (!parsed?.success) {
-        return failed("signer", { kind: "unexpected", detail: "discover-orchestrators is not a discovery list" }, at());
-      }
-      return ok("signer", parsed.data, at());
     },
   };
 }

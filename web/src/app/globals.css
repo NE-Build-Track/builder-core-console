@@ -733,6 +733,7 @@
   .sessions { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
   .sessions li { display: inline-flex; gap: 8px; align-items: center; padding: 4px 9px; border-radius: 8px; font-size: var(--step--2); background: var(--surface); border: 1px solid var(--line-soft); }
   .sessions li[data-match="unmatched"] { border-style: dashed; border-color: color-mix(in oklch, var(--warn) 50%, transparent); }
+  .sessions li[data-match="refused"] { border-style: dotted; color: var(--muted); }
 
   .lookup { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
   .lookup .field { display: grid; gap: 6px; flex: 1 1 22rem; min-inline-size: 0; }

@@ -9,7 +9,7 @@ import { PINS, shortCommit } from "@/domain/pins";
 
 export const metadata: Metadata = { title: "Sources & gaps" };
 
-const SOURCE_TITLES = { engine: "Engine", batteries: "Batteries", signer: "Signer" } as const;
+const SOURCE_TITLES = { engine: "Engine", batteries: "Batteries", signer: "Signer", discovery: "Discovery" } as const;
 
 export default function SourcesPage() {
   const counts = Object.entries(SOURCE_TITLES).map(([key, title]) => ({ title, routes: CATALOG.filter((entry) => entry.source === key).length }));
@@ -25,7 +25,7 @@ export default function SourcesPage() {
             {count.routes}
           </Tile>
         ))}
-        <Tile label="Known gaps" sub={`G1–G${GAPS.length}`}>
+        <Tile label="Known gaps" sub="open">
           {GAPS.length}
         </Tile>
       </Grid>

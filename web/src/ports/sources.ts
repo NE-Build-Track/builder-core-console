@@ -13,20 +13,10 @@ import type {
   PaymentSession,
   UsageEvent,
 } from "@/domain/batteries";
-import type {
-  AccessKey,
-  Allowance,
-  CostSummary,
-  EngineGrant,
-  EngineHealth,
-  Job,
-  JobCost,
-  Offering,
-  Reconciliation,
-  Runner,
-} from "@/domain/engine";
+import type { AccessKey, Allowance, CostSummary, EngineGrant, EngineHealth, Job, JobCost, KnownActor, Offering, Reconciliation, Runner } from "@/domain/engine";
 import type { Reading } from "@/domain/reading";
-import type { DiscoveredOrchestrator, SignerMetrics, SignerReadiness } from "@/domain/signer";
+import type { DiscoveredOrchestrator } from "@/domain/discovery";
+import type { SignerMetrics, SignerReadiness } from "@/domain/signer";
 
 export interface EngineReader {
   /** GET /readyz. A 503 still carries the health body, so it is a successful reading of an unready engine. */
@@ -35,6 +25,8 @@ export interface EngineReader {
   runners(app: string): Promise<Reading<readonly Runner[]>>;
   grants(): Promise<Reading<readonly EngineGrant[]>>;
   keys(): Promise<Reading<readonly AccessKey[]>>;
+  /** GET /v1/admin/actors: provisioned actors and people who signed in (builder-core #69, D48). */
+  actors(): Promise<Reading<readonly KnownActor[]>>;
   allowance(actorId: string): Promise<Reading<Allowance>>;
   costSummary(query: {
     readonly start: string;
@@ -65,13 +57,18 @@ export interface BatteriesReader {
 export interface SignerReader {
   readiness(): Promise<Reading<SignerReadiness>>;
   metrics(): Promise<Reading<SignerMetrics>>;
-  discovery(): Promise<Reading<readonly DiscoveredOrchestrator[]>>;
+}
+
+/** The discovery service (lpb discovery): the orchestrators it serves and their runners. */
+export interface DiscoveryReader {
+  inventory(): Promise<Reading<readonly DiscoveredOrchestrator[]>>;
 }
 
 export type Sources = {
   readonly engine: EngineReader;
   readonly batteries: BatteriesReader;
   readonly signer: SignerReader;
+  readonly discovery: DiscoveryReader;
   /** The engine application the admin key reads (CONSOLE_APPLICATION_ID, gap G9). */
   readonly applicationId: string;
   readonly now: () => Date;

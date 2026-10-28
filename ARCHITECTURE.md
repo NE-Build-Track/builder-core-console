@@ -13,21 +13,23 @@ flowchart LR
         Pages["app/: server-rendered pages"]
         RT["runtime/: wiring + TTL cache"]
         SVC["services/: health, network, money, users, usage, jobs"]
-        AD["adapters/: engine, Batteries, signer (GET only)"]
+        AD["adapters/: engine, Batteries, signer, discovery (GET only)"]
     end
     subgraph Stack["builder stack (deploy/compose.yaml)"]
-        Engine["engine: stock lpb serve (builder-core 629f1ab)"]
+        Engine["engine: stock lpb serve (builder-core d3df806)"]
         Bat["clearinghouse: Batteries (ca09e47)"]
         Signer["signer: node remote signer (406b248)"]
         Relay["signer-metrics: socat relay"]
+        Disc["discovery: builder-core lpb discovery (static list)"]
     end
     Orch["Orchestrators (network)"]
     Browser -->|"HTTP, 127.0.0.1 only"| Pages --> RT --> SVC --> AD
     AD -->|"admin lpk_ key"| Engine
     AD -->|"console-reader token (*.read)"| Bat
-    AD -->|"/discover-orchestrators"| Signer
+    AD -->|"/discovery"| Disc
     AD -->|"/readyz, /metrics"| Relay -.->|"loopback in shared namespace"| Signer
     Engine --> Signer -->|"webhook, Kafka"| Bat
+    Engine -->|"LPB_DISCOVERY_URL: /discovery"| Disc -->|"/discovery, trusted TLS"| Orch
     Engine -->|"paid HTTP"| Orch
     Engine -->|"management API, usage"| Bat
 ```

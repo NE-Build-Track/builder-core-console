@@ -6,7 +6,7 @@ import { hideSecrets } from "@/domain/exchange";
 import { ACTIONS, callOf, type ActionInput, type ActionState } from "@/domain/operator";
 import { describeProblem } from "@/domain/reading";
 import type { Session } from "@/domain/session";
-import { actorsFromKeys, parseAction, resultOf, reviewOf, type OperatorView, type ReviewContext } from "@/services/operator";
+import { actorsOf, parseAction, resultOf, reviewOf, type OperatorView, type ReviewContext } from "@/services/operator";
 
 import { forgetReads, loadMoney } from "./console";
 import { engineUrl, keyed } from "./session";
@@ -37,17 +37,17 @@ async function unallocatedByGrant(): Promise<Record<string, string>> {
 async function contextFor(session: Session, input: ActionInput): Promise<ReviewContext> {
   const engine = keyed(session.token);
   const unavailable = { ok: false as const, source: "engine" as const, problem: { kind: "not_configured" as const, detail: "CONSOLE_ENGINE_URL" }, readAt: new Date().toISOString() };
-  if (!engine) return { grants: unavailable, allowance: null, keys: unavailable, unallocated: {} };
+  if (!engine) return { grants: unavailable, allowance: null, key: null, unallocated: {} };
   const actorId = "actorId" in input ? input.actorId : null;
   const wantsAllowance = input.action === "fundAllocation" || input.action === "setStatus";
   const drawsOnGrant = input.action === "provision" || input.action === "fundAllocation";
-  const [grants, allowance, keys, unallocated] = await Promise.all([
+  const [grants, allowance, key, unallocated] = await Promise.all([
     engine.grants(),
     wantsAllowance && actorId ? engine.allowance(actorId) : Promise.resolve(null),
-    input.action === "revokeKey" ? engine.adminKeys() : Promise.resolve(unavailable),
+    "keyId" in input ? engine.adminKey(input.keyId) : Promise.resolve(null),
     drawsOnGrant ? unallocatedByGrant() : Promise.resolve({}),
   ]);
-  return { grants, allowance, keys, unallocated };
+  return { grants, allowance, key, unallocated };
 }
 
 export async function reviewAction(session: Session, form: FormData): Promise<ActionState> {
@@ -83,9 +83,17 @@ export async function commitAction(session: Session, form: FormData): Promise<Ac
 export async function loadOperator(session: Session): Promise<OperatorView> {
   const engine = keyed(session.token);
   const missing = { ok: false as const, source: "engine" as const, problem: { kind: "not_configured" as const, detail: "CONSOLE_ENGINE_URL" }, readAt: new Date().toISOString() };
-  if (!engine) return { grants: missing, keys: missing, actors: [], unallocated: {} };
-  const [grants, keys, unallocated] = await Promise.all([engine.grants(), engine.adminKeys(), unallocatedByGrant()]);
-  const rows = keys.ok ? actorsFromKeys(keys.value) : [];
-  const allowances = await Promise.all(rows.map((row) => engine.allowance(row.actorId)));
-  return { grants, keys, unallocated, actors: rows.map((row, index) => ({ ...row, allowance: allowances[index] ?? null })) };
+  if (!engine) return { grants: missing, keys: missing, known: missing, actors: [], unallocated: {} };
+  // Under CONSOLE_AUTH=oidc the engine runs LPB_AUTH=jwt: its key routes are gone, so they are not asked.
+  const keysOn = readConfig().auth.mode === "keys";
+  const [grants, keys, known, unallocated] = await Promise.all([
+    engine.grants(),
+    keysOn ? engine.adminKeys() : Promise.resolve(null),
+    engine.adminActors(1000),
+    unallocatedByGrant(),
+  ]);
+  const rows = actorsOf(known, keys?.ok ? keys.value : null);
+  // A person who only signed in has no allocation to read (D48): no call, the row says "not provisioned".
+  const allowances = await Promise.all(rows.map((row) => (row.provisioned === false ? Promise.resolve(null) : engine.allowance(row.actorId))));
+  return { grants, keys, known, unallocated, actors: rows.map((row, index) => ({ ...row, allowance: allowances[index] ?? null })) };
 }

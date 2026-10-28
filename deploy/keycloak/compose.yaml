@@ -1,0 +1,162 @@
+# Local Keycloak test of the console's OIDC sign-in against a JWT-only engine (builder-core JWT bearer and #69).
+# A separate compose project from deploy/compose.yaml, paid: Batteries and the signer run exactly as there,
+# with the same payer and credentials (deploy/secrets) but their own ledger (the paid-state volume here), so
+# this stack's grants and actors start empty and never mix with deploy/compose.yaml's. One signer per payer:
+# stop deploy/compose.yaml, ChatLPT and inference-gateway first (they share the payer).
+# Keycloak is reached at http://keycloak.localhost:8180 from the browser (*.localhost is loopback) and from
+# the containers (a network alias), so the issuer is one URL everywhere. See README.md here.
+name: builder-console-keycloak
+
+services:
+  clearinghouse:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/clearinghouse:ca09e47
+    build:
+      context: https://github.com/livepeer/clearinghouse-batteries.git#ca09e47c067682fb48c3f15425546fb6aa5b6659
+      dockerfile: examples/compose/Dockerfile
+    command: [serve, --config-file, /etc/clearinghouse.toml]
+    volumes:
+      - paid-state:/data
+      - ../config/clearinghouse.toml:/etc/clearinghouse.toml:ro
+      - ../secrets:/run/secrets:ro
+    healthcheck:
+      test: [CMD, curl, -fsS, http://127.0.0.1:8081/readyz]
+      interval: 5s
+      retries: 12
+
+  signer:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/node:406b248
+    build:
+      context: https://github.com/livepeer/node.git#406b248f6cb8728e6e7eba1809901f589060bc6b
+      dockerfile: docker/Dockerfile
+    user: "0:0"  # dev only: lets the container read bind-mounted secrets regardless of host uid
+    network_mode: service:clearinghouse  # Kafka and the webhook listen on this namespace's loopback
+    entrypoint: ["/usr/local/bin/livepeer-signer"]
+    command: [--data-dir, /data/node, --config, /etc/signer.toml]
+    volumes:
+      - paid-state:/data
+      - ../config/signer.toml:/etc/signer.toml:ro
+      - ../secrets:/run/secrets:ro
+    depends_on:
+      clearinghouse:
+        condition: service_healthy
+
+  signer-metrics:
+    image: alpine/socat:1.8.0.3
+    network_mode: service:clearinghouse
+    command: ["TCP-LISTEN:8939,fork,reuseaddr", "TCP:127.0.0.1:8938"]
+    depends_on: [signer]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: [start-dev, --import-realm, --http-port=8180, --hostname=http://keycloak.localhost:8180]
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./realm-livepeer.json:/opt/keycloak/data/import/realm-livepeer.json:ro
+    ports: ["127.0.0.1:8180:8180"]
+    networks:
+      default:
+        aliases: [keycloak.localhost]
+    healthcheck:
+      test: [CMD-SHELL, "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      retries: 30
+
+  # The stock engine, JWT only (LPB_AUTH=jwt): engine API keys are off, so the console signs in through
+  # Keycloak. Paid through the signer and Batteries above, per actor; its own database and engine id.
+  engine:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:d3df806
+    build:
+      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#d3df80657ef1b497d1b6dff90fb7e27d9e03bc58
+      dockerfile: deploy/dev-stack/engine/Dockerfile
+      args:
+        BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"
+    environment:
+      LPB_ENGINE_ID: builder-console-keycloak  # namespaces Batteries idempotency keys apart from deploy/compose.yaml
+      LPB_ALLOCATION_MODE: per_actor
+      LPB_SIGNER_URL: http://clearinghouse:8937
+      LPB_BATTERIES_URL: http://clearinghouse:8081
+      LPB_BATTERIES_TOKEN: ${LPB_BATTERIES_TOKEN}
+      LPB_BATTERIES_OPERATOR_TOKEN: ${LPB_BATTERIES_OPERATOR_TOKEN}
+      LPB_SECRET_KEY: ${LPB_SECRET_KEY}
+      LPB_DEFAULT_CURRENCY: USD
+      LPB_DATABASE_URL: sqlite+aiosqlite:////data/livepeer-builder.db
+      LPB_HTTP_HOST: 0.0.0.0
+      LPB_HTTP_PORT: "8080"
+      LPB_LOG_JSON: "true"
+      LPB_DISCOVERY_URL: http://discovery:8939/discovery
+      LPB_AUTH: jwt
+      LPB_JWT_ISSUER: http://keycloak.localhost:8180/realms/livepeer
+      LPB_JWT_AUDIENCE: https://engine.builder.local
+      LPB_JWT_ALLOW_HTTP: "true"  # local Keycloak over http (builder-core D47); never in production
+      LPB_JWT_ADMIN_SCOPE: livepeer:admin
+      LPB_JWT_ADMIN_READ_SCOPE: livepeer:read
+    ports: ["127.0.0.1:${ENGINE_PORT:-8091}:8080"]
+    volumes: [engine-data:/data]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      signer:
+        condition: service_started
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/livez')"]
+      interval: 15s
+      timeout: 3s
+      start_period: 20s
+      retries: 3
+
+  discovery:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:d3df806
+    command: [lpb, discovery]
+    environment:
+      LPD_ORCHESTRATORS: /etc/lpd/orchestrators.txt
+      LPD_HTTP_HOST: 0.0.0.0
+    volumes: [../config/orchestrators.txt:/etc/lpd/orchestrators.txt:ro]
+    depends_on: [engine]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  # The console, signing people in through Keycloak (CONSOLE_AUTH=oidc). Open http://127.0.0.1:3061: the
+  # address registered as the client's redirect URL. Its own reads use the console-reader service account.
+  console:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/console:keycloak
+    build:
+      context: ../..
+      dockerfile: deploy/console/Dockerfile
+    environment:
+      CONSOLE_AUTH: oidc
+      CONSOLE_ENGINE_URL: http://engine:8080
+      CONSOLE_DISCOVERY_URL: http://discovery:8939
+      CONSOLE_BATTERIES_URL: http://clearinghouse:8081
+      CONSOLE_BATTERIES_TOKEN: ${CONSOLE_BATTERIES_TOKEN}  # Batteries *.read only
+      CONSOLE_SIGNER_URL: http://clearinghouse:8937
+      CONSOLE_SIGNER_METRICS_URL: http://clearinghouse:8939
+      CONSOLE_OIDC_ISSUER: http://keycloak.localhost:8180/realms/livepeer
+      CONSOLE_OIDC_CLIENT_ID: builder-console
+      CONSOLE_OIDC_CLIENT_SECRET: ${BUILDER_CONSOLE_CLIENT_SECRET}
+      CONSOLE_OIDC_REDIRECT_URL: http://127.0.0.1:3061/auth/callback
+      CONSOLE_OIDC_ALLOW_HTTP: "true"  # local Keycloak only
+      CONSOLE_READER_CLIENT_ID: console-reader
+      CONSOLE_READER_CLIENT_SECRET: ${CONSOLE_READER_CLIENT_SECRET}
+      CONSOLE_SESSION_SECRET: ${CONSOLE_SESSION_SECRET}
+    ports: ["127.0.0.1:3061:3000"]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      engine:
+        condition: service_started
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+volumes:
+  engine-data:
+  paid-state:  # this stack's own Batteries ledger, Kafka and signer events; the payer is deploy/secrets

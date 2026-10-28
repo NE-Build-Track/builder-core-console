@@ -6,6 +6,8 @@
 
 export type Area = "operator" | "builder";
 export type KeyKind = "admin" | "actor";
+/** How a session began: a pasted engine key, or the identity provider (CONSOLE_AUTH=oidc). */
+export type SignInVia = "key" | "oidc";
 
 export type Session = {
   readonly area: Area;
@@ -17,10 +19,16 @@ export type Session = {
   readonly prefix: string;
   readonly signedInAt: string;
   readonly expiresAt: string;
+  readonly via: SignInVia;
+  /** The person's name from the ID token; null for a key. */
+  readonly name: string | null;
+  /** oidc only: the refresh token, and when the access token in `token` expires. */
+  readonly refreshToken: string | null;
+  readonly tokenExpiresAt: string | null;
 };
 
-/** What pages may show about a session: everything but the key. */
-export type SessionView = Omit<Session, "token">;
+/** What pages may show about a session: everything but the tokens. */
+export type SessionView = Omit<Session, "token" | "refreshToken">;
 
 export const SESSION_HOURS = 8;
 
@@ -32,7 +40,26 @@ export function keyPrefix(token: string): string {
 }
 
 export function viewOf(session: Session): SessionView {
-  return { area: session.area, kind: session.kind, actorId: session.actorId, applicationId: session.applicationId, prefix: session.prefix, signedInAt: session.signedInAt, expiresAt: session.expiresAt };
+  return {
+    area: session.area,
+    kind: session.kind,
+    actorId: session.actorId,
+    applicationId: session.applicationId,
+    prefix: session.prefix,
+    signedInAt: session.signedInAt,
+    expiresAt: session.expiresAt,
+    via: session.via,
+    name: session.name,
+    tokenExpiresAt: session.tokenExpiresAt,
+  };
+}
+
+/** Refresh an identity-provider token this long before it expires, so no call is sent with a dying token. */
+export const REFRESH_EARLY_S = 60;
+
+export function needsRefresh(session: Pick<Session, "via" | "tokenExpiresAt">, now: Date): boolean {
+  if (session.via !== "oidc" || session.tokenExpiresAt === null) return false;
+  return Date.parse(session.tokenExpiresAt) - now.getTime() <= REFRESH_EARLY_S * 1000;
 }
 
 export function isExpired(session: Pick<Session, "expiresAt">, now: Date): boolean {

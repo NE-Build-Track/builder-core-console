@@ -3,11 +3,12 @@
  * ChatLPT's stack on 20 October 2026 (same pins as this repository), so tests run on real shapes.
  */
 import type { Allocation, ApiKey, Grant, LedgerRow, PaymentSession, UsageEvent } from "@/domain/batteries";
-import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, Reconciliation } from "@/domain/engine";
+import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, KnownActor, Reconciliation } from "@/domain/engine";
 import { failed, ok, type Problem, type Reading, type SourceName } from "@/domain/reading";
 import { PINS, shortCommit } from "@/domain/pins";
-import type { DiscoveredOrchestrator, SignerMetrics, SignerReadiness } from "@/domain/signer";
-import type { BatteriesReader, EngineReader, SignerReader, Sources } from "@/ports/sources";
+import type { DiscoveredOrchestrator } from "@/domain/discovery";
+import type { SignerMetrics, SignerReadiness } from "@/domain/signer";
+import type { BatteriesReader, DiscoveryReader, EngineReader, SignerReader, Sources } from "@/ports/sources";
 
 export const NOW = new Date("2026-10-20T18:00:00.000Z");
 const AT = NOW.toISOString();
@@ -189,7 +190,7 @@ export const job: Job = {
       runner_url: "https://orch-us-central.xodeapp.xyz:18935/apps/runner_ogm53upg/app",
       orchestrator_url: "https://orch-us-central.xodeapp.xyz:18935",
       allocation_id: "AaFWEnucfhuOCn95t02zMw",
-      sessions: [{ manifest_id: "e7621a15", match: "matched", payment_session_id: "AaFWE2x3eK-5vLFI1BMpdw" }],
+      sessions: [{ manifest_id: "e7621a15", match: "matched", payment_session_id: "AaFWE2x3eK-5vLFI1BMpdw", payment_state: "paid" }],
       payment_sent: true,
       outcome: "succeeded",
       status_code: 200,
@@ -248,6 +249,10 @@ export function engineFake(overrides: Partial<EngineReader> = {}): EngineReader 
       ]),
     grants: async () => read("engine", [{ id: grant.id, name: "ChatLPT", status: "active", currency: "USD", total: "2" }]),
     keys: async () => read("engine", [accessKey(), accessKey({ key_id: "admin-1", kind: "admin", actor_id: "admin", label: "console" })]),
+    actors: async () =>
+      read("engine", [
+        { actor_id: "customer-42", application_id: "default", label: "", name: null, provisioned: true, allocation: null, first_seen_at: null, last_seen_at: null } as KnownActor,
+      ]),
     allowance: async () =>
       read("engine", {
         allocation_id: allocation.id,
@@ -284,18 +289,30 @@ export function signerFake(overrides: Partial<SignerReader> = {}): SignerReader 
   return {
     readiness: async () => read<SignerReadiness>("signer", { ready: true, detail: "ready" }),
     metrics: async () => read("signer", healthyMetrics),
-    discovery: async () => read("signer", [orchestrator]),
+    ...overrides,
+  };
+}
+
+export function discoveryFake(overrides: Partial<DiscoveryReader> = {}): DiscoveryReader {
+  return {
+    inventory: async () => read<readonly DiscoveredOrchestrator[]>("discovery", [orchestrator]),
     ...overrides,
   };
 }
 
 export function fakeSources(
-  overrides: { engine?: Partial<EngineReader>; batteries?: Partial<BatteriesReader>; signer?: Partial<SignerReader> } = {},
+  overrides: {
+    engine?: Partial<EngineReader>;
+    batteries?: Partial<BatteriesReader>;
+    signer?: Partial<SignerReader>;
+    discovery?: Partial<DiscoveryReader>;
+  } = {},
 ): Sources {
   return {
     engine: engineFake(overrides.engine),
     batteries: batteriesFake(overrides.batteries),
     signer: signerFake(overrides.signer),
+    discovery: discoveryFake(overrides.discovery),
     applicationId: "default",
     now: () => NOW,
   };

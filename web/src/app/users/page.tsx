@@ -20,8 +20,8 @@ export default function UsersPage() {
   return (
     <PageView>
       <PageHead icon="users" eyebrow="Engine actors" title="Users">
-        Every actor that holds an engine key, the allocation behind it, and whether the engine&apos;s cost for that actor matches Batteries.{" "}
-        <GapChip id="G2" /> <GapChip id="G9" />
+        Every actor the engine knows (provisioned, signed in, or holding a key), the allocation behind it, and whether the engine&apos;s cost for that actor matches Batteries.{" "}
+        <GapChip id="G9" />
       </PageHead>
       <Streamed tiles={4}>
         <Users />
@@ -83,10 +83,14 @@ async function Users() {
             {String(counts.actors)}
           </CountUp>
         </Tile>
-        <Tile label="Active keys">
-          <CountUp to={counts.activeKeys} format="int">
-            {String(counts.activeKeys)}
-          </CountUp>
+        <Tile label="Active keys" sub={view.keysOn ? undefined : "engine keys are off"}>
+          {view.keysOn ? (
+            <CountUp to={counts.activeKeys} format="int">
+              {String(counts.activeKeys)}
+            </CountUp>
+          ) : (
+            "—"
+          )}
         </Tile>
         <Tile label="Balanced" sub={<Pill state="ok">engine = Batteries</Pill>}>
           {counts.balanced}
@@ -96,9 +100,16 @@ async function Users() {
         </Tile>
       </Grid>
 
-      <Section id="h-actors" title="Actors" description={`Grouped from GET /v1/admin/keys. Allocation, balance and 30-day spend read for application “${view.applicationId}”.`} reveal>
-        <Unreadable reading={view.actors} what="Access keys" />
-        {view.actors.ok && actors.length === 0 ? <Empty>No actor keys have been issued yet. Issue one through the engine (deploy/README.md).</Empty> : null}
+      <Section
+        id="h-actors"
+        title="Actors"
+        description={`From GET /v1/admin/actors${view.keysOn ? " and GET /v1/admin/keys" : " (engine keys are off: people sign in through the identity provider)"}. Allocation, balance and 30-day spend read for application “${view.applicationId}”.`}
+        reveal
+      >
+        <Unreadable reading={view.actors} what="Actors" />
+        {view.actors.ok && actors.length === 0 ? (
+          <Empty>{view.keysOn ? "No actors yet. Provision one, or issue an actor key, in Operator actions." : "No actors yet. A builder appears here after their first sign-in."}</Empty>
+        ) : null}
         {actors.length > 0 ? (
           <div className="table-scroll">
             <table className="data">
@@ -107,9 +118,11 @@ async function Users() {
                 <tr>
                   <th scope="col">Actor</th>
                   <th scope="col">Application</th>
-                  <th scope="col" className="r">
-                    Keys
-                  </th>
+                  {view.keysOn ? (
+                    <th scope="col" className="r">
+                      Keys
+                    </th>
+                  ) : null}
                   <th scope="col">Allocation</th>
                   <th scope="col" className="r">
                     Available
@@ -120,7 +133,7 @@ async function Users() {
               </thead>
               <tbody>
                 {actors.map((actor) => (
-                  <ActorRow key={`${actor.applicationId}/${actor.actorId}`} actor={actor} maxSpent={maxSpent} />
+                  <ActorRow key={`${actor.applicationId}/${actor.actorId}`} actor={actor} maxSpent={maxSpent} keysOn={view.keysOn} />
                 ))}
               </tbody>
             </table>
@@ -171,20 +184,28 @@ async function Users() {
   );
 }
 
-function ActorRow({ actor, maxSpent }: { readonly actor: ActorView; readonly maxSpent: number }) {
+function ActorRow({ actor, maxSpent, keysOn }: { readonly actor: ActorView; readonly maxSpent: number; readonly keysOn: boolean }) {
   const spent = approximate(actor.spentUsd ?? "0");
   return (
     <tr>
       <th scope="row">
-        <bdi className="mono">{actor.actorId}</bdi>
+        {actor.label ? (
+          <>
+            <bdi>{actor.label}</bdi>
+            <br />
+          </>
+        ) : null}
+        <bdi className={actor.label ? "mono muted" : "mono"}>{actor.actorId}</bdi>
       </th>
       <td className="mono">
         <bdi>{actor.applicationId}</bdi>
       </td>
-      <td className="r num">
-        {actor.activeKeys}
-        {actor.keys.length > actor.activeKeys ? <span className="muted"> +{actor.keys.length - actor.activeKeys} revoked</span> : null}
-      </td>
+      {keysOn ? (
+        <td className="r num">
+          {actor.activeKeys}
+          {actor.keys.length > actor.activeKeys ? <span className="muted"> +{actor.keys.length - actor.activeKeys} revoked</span> : null}
+        </td>
+      ) : null}
       <td className="mono">
         {actor.allowance === null ? (
           <span className="muted">not readable (G9)</span>

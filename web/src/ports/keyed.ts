@@ -5,7 +5,7 @@
  * ports with write methods (tests/structure/writes.test.ts).
  */
 import type { RunInput } from "@/domain/builder";
-import type { AccessKey, Allowance, CostSummary, EngineGrant, Job, JobCost, Offering, Runner } from "@/domain/engine";
+import type { AccessKey, Allowance, CostSummary, EngineGrant, Job, JobCost, Offering, KnownActor, Runner } from "@/domain/engine";
 import type { Exchange } from "@/domain/exchange";
 import type { PlannedCall } from "@/domain/operator";
 import type { Problem, Reading } from "@/domain/reading";
@@ -34,7 +34,11 @@ export type RunStarted =
 export interface KeyedEngine {
   /** Probes for sign-in: an admin key may list keys; any working key may list its own jobs. */
   adminKeys(): Promise<Reading<readonly AccessKey[]>>;
+  /** Admin only: one key as the engine stores it, never its secret (ISS-08), for the key actions' review. */
+  adminKey(keyId: string): Promise<Reading<AccessKey>>;
   myJobs(limit: number): Promise<Reading<readonly Job[]>>;
+  /** Admin or auditor: every known actor, provisioned or only signed in (GET /v1/admin/actors, builder-core D48). */
+  adminActors(limit: number): Promise<Reading<readonly KnownActor[]>>;
   offerings(): Promise<Reading<readonly Offering[]>>;
   runners(app: string): Promise<Reading<readonly Runner[]>>;
   job(id: string): Promise<Reading<Job>>;

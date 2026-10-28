@@ -4,7 +4,7 @@
  * the page shows what it has and names what it could not reach (docs/design-docs/core-beliefs.md).
  */
 
-export type SourceName = "engine" | "batteries" | "signer";
+export type SourceName = "engine" | "batteries" | "signer" | "discovery" | "identity";
 
 export type Reading<T> =
   | { readonly ok: true; readonly source: SourceName; readonly value: T; readonly readAt: string }
@@ -23,7 +23,9 @@ export type Problem =
   /** The source answered with an HTTP error. */
   | { readonly kind: "http"; readonly status: number; readonly detail: string }
   /** The source answered 200 with a body the console does not recognise. */
-  | { readonly kind: "unexpected"; readonly detail: string };
+  | { readonly kind: "unexpected"; readonly detail: string }
+  /** The console's credential for this source may not read it: not a fault, nothing was asked. */
+  | { readonly kind: "not_permitted"; readonly detail: string };
 
 export function ok<T>(source: SourceName, value: T, readAt: string): Reading<T> {
   return { ok: true, source, value, readAt };
@@ -43,6 +45,8 @@ export function describeProblem(problem: Problem): string {
       return `HTTP ${problem.status}: ${problem.detail}`;
     case "unexpected":
       return `unexpected response: ${problem.detail}`;
+    case "not_permitted":
+      return `not available to the console's credential: ${problem.detail}`;
   }
 }
 

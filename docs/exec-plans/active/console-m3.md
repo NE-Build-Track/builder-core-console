@@ -50,6 +50,27 @@ Each item names the M3 task it evidences.
 - [x] 2026-10-23 Re-pinned to `b89c1bb`, the merge of builder-core PR #41 on `releases/m3` (the same code as `a22bc98`, which was shown live: console API 33/33, engine sweep 42/42).
 - [x] 2026-10-23 Re-pinned to `878e4f4`, the merge of builder-core PR #42 (FakeEngine and test changes only; the stock server is unchanged).
 - [x] 2026-10-24 Re-pinned to `629f1ab`, the merge of builder-core PRs #43 and #44: a paid job never reads as `none`, per-job evidence versions, payment evidence stored before the paid request (migration `0005`; the engine migrates on start). The REST spec is unchanged.
+- [x] 2026-10-26 Pinned to `d057935`, builder-core PR #48 (ISS-08, D44), to add **Rotate key** and key inspection to the Operator page. The spec only adds `GET /v1/admin/keys/{key_id}` and `POST /v1/admin/keys/{key_id}/rotate`. A missing permission now answers 403 instead of 404 on a job or its cost. Re-pin to the merge.
+- [x] 2026-10-26 Operator: **Rotate** on each active key row. The review and the result:
+  - **Before it is sent:** the review of Rotate and of Revoke now *inspects* the one key
+    (`GET /v1/admin/keys/{key_id}`): its owner, created time, permissions and label (before → after), and a
+    warning when it is already revoked or is an admin key.
+  - **After:** the new key is shown once, naming the key it replaced; the request and response panel hides
+    the token.
+  - **Live on `d057935`:**
+    - console API test 33/33;
+    - an engine probe 22/22 (inspect, rotate, the old token 401 at once, 403/404 on job, cost and result,
+      admin lists every actor, the `keys.*` audit lines, no token in the engine log);
+    - the Rotate flow in a headless browser 15/15.
+- [x] 2026-10-28 Display for builder-core `releases/m3` (D52, D54):
+  - **Unknown payments:** an attempt whose signer never answered (`payment_unknown`, or a manifest still `unknown`) reads as "payment unknown", not "not paid", and the Builder keeps waiting for its cost.
+  - **Wording:** a failed job's note follows its state, so "never retried" is gone.
+  - **Sessions:** each shows its payment state, and a refused (`unpaid`) one is never shown as waiting for usage.
+  - **Cost classes:** a job that failed over shows every cost class its attempts fell into, and `billable` sits beside the fees when they differ. The Usage page's cost-class notes are current.
+  - **Gaps:** G2 is closed (both pages read `GET /v1/admin/actors`). G1 and G8 are now this repository's: the Jobs page does not use builder-core's job list yet, and the keys-mode reader still holds an admin key.
+- [x] 2026-10-28 Re-pinned to `d3df806`, the merge of builder-core PR #69 on `releases/m3`. The spec is identical to `a2e61e4`, so the types are unchanged, and #7 leaves draft.
+- [x] 2026-10-28 Pinned to builder-core `a2e61e4`, the head of PR #69 (#53 rebuilt on `releases/m3` `2134e29`), on #7's branch after merging `main`. Both stacks now build the signer from `livepeer/node` and Batteries from `livepeer/clearinghouse-batteries` (the same commits). `pins.test.ts` checks both compose files and refuses NE-Build-Track forks, and CI and `make compose-config` check the Keycloak stack too. The spec adds `payment_state`, `billable`, `payment_unknown` and the native HTTP fields, and the types are regenerated. `GET /v1/admin/grants` is refused to the auditor (#69), so the reader no longer asks with that token (`not_permitted`, shown as a note). Volumes from `0dbfe6e` are reset (`down -v`), because #69 renumbers the actor migrations. Re-pin to #69's merge.
+- [x] 2026-10-26 Pinned to builder-core `985f23d` (`tasks/mz/discovery-service`, #45): a discovery service in the stack (`lpb discovery`, static list `deploy/config/orchestrators.txt`); the engine and the Network page read its `GET /discovery` (`CONSOLE_DISCOVERY_URL`); the signer has no orchestrator list or pinned certificates. Re-pin to the merge on `releases/m3`.
 - [x] 2026-10-21 Phase 0: re-pinned to `93756ba` (image `builder-console/engine:93756ba`, which reports `0.0.1.dev1+g93756ba27`); the engine spec is identical at both commits, so the generated types are unchanged. Grant creation through the engine failed both ways (an amount: Batteries 403 for the grant desk; no amount: the engine refuses), so `init-secrets.py` now gives this stack's grant desk `grants.fund`; a $1 grant was then created and funded $0.50 twice under one operation reference, which applied once ($1.50). The create response lacks name, status and total: gap G12.
 
 ### Phases

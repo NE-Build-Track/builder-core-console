@@ -43,7 +43,14 @@ export function GrantsSection({ view }: { readonly view: OperatorView }) {
         />
       }
     >
-      <Unreadable reading={view.grants} what="Grants" />
+      {!view.grants.ok && view.grants.problem.kind === "http" && view.grants.problem.status === 404 ? (
+        <p className="note" role="note">
+          The engine&apos;s grant desk is off: it runs without a Batteries operator token (<code>LPB_BATTERIES_OPERATOR_TOKEN</code>), so there are no
+          grants to list or fund, and provisioning cannot draw on one.
+        </p>
+      ) : (
+        <Unreadable reading={view.grants} what="Grants" />
+      )}
       {view.grants.ok && view.grants.value.length === 0 ? <Empty>No grants yet. Create one to start.</Empty> : null}
       {view.grants.ok && view.grants.value.length > 0 ? (
         <div className="table-scroll">
@@ -99,7 +106,7 @@ export function GrantsSection({ view }: { readonly view: OperatorView }) {
 function AllocationCells({ actor }: { readonly actor: OperatorActor }) {
   const allowance = actor.allowance;
   if (!allowance?.ok) {
-    const missing = allowance && !allowance.ok && allowance.problem.kind === "http" && allowance.problem.status === 404;
+    const missing = actor.provisioned === false || (allowance && !allowance.ok && allowance.problem.kind === "http" && allowance.problem.status === 404);
     return (
       <>
         <td>
@@ -127,7 +134,7 @@ function AllocationCells({ actor }: { readonly actor: OperatorActor }) {
 
 function ActorActions({ actor, view }: { readonly actor: OperatorActor; readonly view: OperatorView }) {
   const base = ids(actor.applicationId, actor.actorId);
-  const provisioned = actor.allowance?.ok === true;
+  const provisioned = actor.provisioned !== false && actor.allowance?.ok === true;
   if (!provisioned) {
     return (
       <ActionDialog
@@ -139,7 +146,8 @@ function ActorActions({ actor, view }: { readonly actor: OperatorActor; readonly
           ...base,
           { type: "select", name: "grant_id", label: "From grant", options: grantOptions(view, null) },
           { type: "usd", name: "amount", label: "Allocation", placeholder: "0.25" },
-          { type: "text", name: "label", label: "Label (optional)" },
+          // a person who signed in is offered their name (builder-core D48)
+          { type: "text", name: "label", label: "Label (optional)", ...(actor.label ? { value: actor.label } : {}) },
         ]}
       />
     );
@@ -171,6 +179,10 @@ function ActorActions({ actor, view }: { readonly actor: OperatorActor; readonly
 }
 
 export function ActorsSection({ view, applicationId }: { readonly view: OperatorView; readonly applicationId: string }) {
+  // With engine keys off (CONSOLE_AUTH=oidc) an actor is a person from the identity provider, named by sub.
+  const actorHint = view.keys
+    ? "Letters, digits and . _ : @ -"
+    : "The person's sub from the identity provider, not their username: they see it on their Builder session bar.";
   return (
     <Section
       id="h-op-actors"
@@ -183,7 +195,7 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
           label="Provision an actor"
           fields={[
             { type: "text", name: "application_id", label: "Application", value: applicationId },
-            { type: "text", name: "actor_id", label: "Actor id", placeholder: "acme-studio", hint: "Letters, digits and . _ : @ -" },
+            { type: "text", name: "actor_id", label: "Actor id", placeholder: view.keys ? "acme-studio" : "3c446b40-7123-…", hint: actorHint },
             { type: "select", name: "grant_id", label: "From grant", options: grantOptions(view, null) },
             { type: "usd", name: "amount", label: "Allocation", placeholder: "0.25" },
             { type: "text", name: "label", label: "Label (optional)" },
@@ -191,8 +203,9 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
         />
       }
     >
-      <Unreadable reading={view.keys} what="Access keys" />
-      {view.actors.length === 0 ? <Empty>No actors yet. Provision one, then issue it a key.</Empty> : null}
+      <Unreadable reading={view.known} what="Known actors" />
+      {view.keys ? <Unreadable reading={view.keys} what="Access keys" /> : null}
+      {view.actors.length === 0 ? <Empty>{view.keys ? "No actors yet. Provision one, then issue it a key." : "No actors yet. A person who signs in as a builder is the actor their identity provider's sub names; provision that id."}</Empty> : null}
       {view.actors.length > 0 ? (
         <div className="table-scroll">
           <table className="data">
@@ -201,9 +214,11 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
               <tr>
                 <th scope="col">Actor</th>
                 <th scope="col">Application</th>
-                <th scope="col" className="r">
-                  Keys
-                </th>
+                {view.keys ? (
+                  <th scope="col" className="r">
+                    Keys
+                  </th>
+                ) : null}
                 <th scope="col">Allocation</th>
                 <th scope="col" className="r">
                   Granted
@@ -219,11 +234,19 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
             <tbody>
               {view.actors.map((actor) => (
                 <tr key={`${actor.applicationId}/${actor.actorId}`}>
-                  <td className="mono">
-                    <bdi>{actor.actorId}</bdi>
+                  <td>
+                    {actor.label ? (
+                      <>
+                        <bdi>{actor.label}</bdi>
+                        <br />
+                      </>
+                    ) : null}
+                    <span className="mono muted">
+                      <bdi>{actor.actorId}</bdi>
+                    </span>
                   </td>
                   <td className="mono">{actor.applicationId}</td>
-                  <td className="r num">{actor.activeKeys}</td>
+                  {view.keys ? <td className="r num">{actor.activeKeys}</td> : null}
                   <AllocationCells actor={actor} />
                   <td className="r">
                     <ActorActions actor={actor} view={view} />
@@ -238,7 +261,7 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
   );
 }
 
-export function KeysSection({ view, applicationId }: { readonly view: OperatorView; readonly applicationId: string }) {
+export function KeysSection({ view, applicationId }: { readonly view: OperatorView & { readonly keys: NonNullable<OperatorView["keys"]> }; readonly applicationId: string }) {
   const keys = view.keys.ok ? [...view.keys.value].sort((a, b) => b.created_at.localeCompare(a.created_at)) : [];
   return (
     <Section
@@ -293,7 +316,19 @@ export function KeysSection({ view, applicationId }: { readonly view: OperatorVi
                   <td>{key.revoked_at ? <Pill state="unknown">revoked</Pill> : <Pill state="ok">active</Pill>}</td>
                   <td className="r">
                     {key.revoked_at ? null : (
-                      <ActionDialog {...common} quiet danger action="revokeKey" label="Revoke" fields={[{ type: "hidden", name: "key_id", value: key.key_id }]} />
+                      <div className="row-actions">
+                        <ActionDialog
+                          {...common}
+                          quiet
+                          action="rotateKey"
+                          label="Rotate"
+                          fields={[
+                            { type: "hidden", name: "key_id", value: key.key_id },
+                            { type: "text", name: "label", label: "New label (optional)", placeholder: key.label || undefined, hint: "Leave empty to keep the current label." },
+                          ]}
+                        />
+                        <ActionDialog {...common} quiet danger action="revokeKey" label="Revoke" fields={[{ type: "hidden", name: "key_id", value: key.key_id }]} />
+                      </div>
                     )}
                   </td>
                 </tr>

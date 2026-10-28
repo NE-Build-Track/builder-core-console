@@ -32,7 +32,7 @@ describe("docs", () => {
     const routes: Set<string> = new Set(CATALOG.map((entry) => entry.route.replace(/^(GET|POST) /, "")));
     const adapters = sourceFiles().filter((file) => file.includes(`${path.sep}adapters${path.sep}`) && !file.endsWith(".test.ts"));
     const used = adapters.flatMap((file) =>
-      [...read(file).matchAll(/["'`](?:\$\{[^}]+\})?(\/(?:v1|readyz|metrics|discover-orchestrators)[^"'`?$]*)/g)].map((match) => ({
+      [...read(file).matchAll(/["'`](?:\$\{[^}]+\})?(\/(?:v1|readyz|metrics|discovery)[^"'`?$]*)/g)].map((match) => ({
         file,
         route: match[1] as string,
       })),

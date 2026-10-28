@@ -6,11 +6,11 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "629f1ab0ff84d1b350db7aea66c01989262d1325",
-    note: "releases/m3: the merge of PR #28 (streaming) and PR #31 (gateway 3238731, D41); the commit ChatLPT pins",
+    commit: "d3df80657ef1b497d1b6dff90fb7e27d9e03bc58",
+    note: "releases/m3, the merge of PR #69: JWT bearer, actors (registered on first sign-in, D48) and the auditor",
   },
   batteries: {
-    repository: "NE-Build-Track/clearinghouse-batteries",
+    repository: "livepeer/clearinghouse-batteries",
     commit: "ca09e47c067682fb48c3f15425546fb6aa5b6659",
     note: "same as ChatLPT and builder-core's dev stack",
   },

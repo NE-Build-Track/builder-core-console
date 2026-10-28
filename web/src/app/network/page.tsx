@@ -14,7 +14,7 @@ export default function NetworkPage() {
   return (
     <PageView>
       <PageHead icon="network" eyebrow="Network" title="Network">
-        What the engine can buy right now: apps on offer, the orchestrators the signer discovers, and every runner with its GPU, free slots and
+        What the engine can buy right now: apps on offer, the orchestrators the discovery service serves, and every runner with its GPU, free slots and
         price.
       </PageHead>
       <Streamed tiles={4}>
@@ -208,9 +208,9 @@ async function Network() {
         ) : null}
       </Section>
 
-      <Section id="h-orchs" title="Orchestrators" description="GET /discover-orchestrators on the signer. The ring shows free slots out of capacity.">
+      <Section id="h-orchs" title="Orchestrators" description="GET /discovery on the discovery service: what the engine reads. The ring shows free slots out of capacity.">
         <Unreadable reading={view.orchestrators} what="Orchestrators" />
-        {view.orchestrators.ok && view.orchestrators.value.length === 0 ? <Empty>The signer discovers no orchestrators.</Empty> : null}
+        {view.orchestrators.ok && view.orchestrators.value.length === 0 ? <Empty>The discovery service serves no orchestrators. Check its /readyz.</Empty> : null}
         {view.orchestrators.ok && view.orchestrators.value.length > 0 ? (
           <Grid min="20rem">
             {view.orchestrators.value.map((orchestrator) => (

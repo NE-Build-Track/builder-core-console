@@ -1,7 +1,9 @@
 import "server-only";
 
 import { batteriesReader } from "@/adapters/batteries/reader";
+import { discoveryReader } from "@/adapters/discovery/reader";
 import { engineReader } from "@/adapters/engine/reader";
+import { readerTokens } from "@/adapters/oidc/provider";
 import { signerReader } from "@/adapters/signer/reader";
 import { readConfig } from "@/config/config";
 import type { Sources } from "@/ports/sources";
@@ -27,10 +29,16 @@ function build(): Sources {
   const now = () => new Date();
   cache = ttlCache(config.cacheTtlMs);
   const options = { timeoutMs: config.timeoutMs, now };
+  // With CONSOLE_AUTH=oidc the background reads hold no admin key: they use the console's own read-only
+  // client-credentials token, which the engine maps to an auditor (builder-core D46).
+  const auth = config.auth;
+  const tokens =
+    auth.mode === "oidc" && auth.oidc.ok && auth.reader.ok ? readerTokens(auth.oidc.value.issuer, auth.reader.value, auth.oidc.value.allowHttp, options) : null;
   return {
-    engine: cached("engine", engineReader(config.engine, options), cache),
+    engine: cached("engine", engineReader(config.engine, options, tokens), cache),
     batteries: cached("batteries", batteriesReader(config.batteries, { ...options, maxRows: config.maxListRows }), cache),
     signer: cached("signer", signerReader(config.signer, options), cache),
+    discovery: cached("discovery", discoveryReader(config.discovery, options), cache),
     applicationId: config.applicationId,
     now,
   };
@@ -61,6 +69,8 @@ export const loadNavCounts = () => navCounts(current());
 export const consoleSettings = () => {
   const config = readConfig();
   return {
+    /** "keys" or "oidc": with oidc the engine's API keys are off, so key actions are hidden. */
+    authMode: config.auth.mode,
     applicationId: config.applicationId,
     cacheTtlS: config.cacheTtlMs / 1000,
     maxListRows: config.maxListRows,

@@ -5,7 +5,8 @@
 import type { EngineHealth, Reconciliation } from "@/domain/engine";
 import { shortCommit, PINS } from "@/domain/pins";
 import { describeProblem, mapReading, type Reading } from "@/domain/reading";
-import type { DiscoveredOrchestrator, SignerMetrics, SignerReadiness } from "@/domain/signer";
+import type { DiscoveredOrchestrator } from "@/domain/discovery";
+import type { SignerMetrics, SignerReadiness } from "@/domain/signer";
 import type { Check, ComponentHealth, StackHealth, State, Topology, Verdict } from "@/domain/views";
 import type { Sources } from "@/ports/sources";
 import { mapLimited } from "@/utils/concurrency";
@@ -192,11 +193,11 @@ export async function applicationReconciliations(sources: Sources, health: Readi
   if (!health.ok || health.value.allocation_mode === "per_application") {
     return [await sources.engine.reconciliation({ applicationId: sources.applicationId })];
   }
-  const keys = await sources.engine.keys();
-  if (!keys.ok) return [keys];
-  const actors = [
-    ...new Set(keys.value.filter((key) => key.kind !== "admin" && key.application_id === sources.applicationId).map((key) => key.actor_id)),
-  ];
+  // The engine's own actor list (builder-core #69), not its keys: under LPB_AUTH=jwt there are no keys,
+  // and only a provisioned actor has an allocation to reconcile.
+  const known = await sources.engine.actors();
+  if (!known.ok) return [known];
+  const actors = known.value.filter((actor) => actor.provisioned && actor.application_id === sources.applicationId).map((actor) => actor.actor_id);
   return mapLimited(actors, 4, (actorId) => sources.engine.reconciliation({ applicationId: sources.applicationId, actorId }));
 }
 
@@ -281,7 +282,7 @@ export async function stackHealth(sources: Sources): Promise<StackHealth> {
     sources.batteries.ready(),
     sources.signer.readiness(),
     sources.signer.metrics(),
-    sources.signer.discovery(),
+    sources.discovery.inventory(),
     sources.batteries.usage(),
     sources.batteries.sessions(),
   ]);

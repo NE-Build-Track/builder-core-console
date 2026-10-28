@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { KnownActor } from "@/domain/engine";
 import { PINS, shortCommit } from "@/domain/pins";
 
 import { broken, engineHealth, fakeSources, healthyMetrics, read, reconciliation } from "../../tests/support/fixtures";
@@ -84,6 +85,24 @@ describe("stack health", () => {
       summary: expect.stringContaining("actor customer-42 has 0.0012 USD"),
     });
     expect(calls).toEqual(["customer-42"]);
+  });
+
+  it("in per_actor mode, finds the actors from the engine's actor list, so it works with engine keys off", async () => {
+    const calls: (string | undefined)[] = [];
+    const known = (actor_id: string, application_id: string, provisioned: boolean) =>
+      ({ actor_id, application_id, label: actor_id, name: actor_id, provisioned, allocation: provisioned ? { status: "active" } : null }) as KnownActor;
+    const sources = fakeSources({
+      engine: {
+        keys: async () => broken("engine", { kind: "http", status: 404, detail: "Not Found" }), // LPB_AUTH=jwt: no key routes
+        actors: async () => read("engine", [known("alice", "default", true), known("carol", "default", false), known("bob", "app-2", true)]),
+        reconciliation: async ({ actorId }) => {
+          calls.push(actorId);
+          return read("engine", reconciliation({ actor_id: actorId ?? null }));
+        },
+      },
+    });
+    expect(await stateOf(sources, "batteries.balanced")).toMatchObject({ state: "ok" });
+    expect(calls).toEqual(["alice"]); // provisioned, in the console's application
   });
 
   it("reads Batteries running ahead of the cost sync as catching up, not a problem", async () => {

@@ -13,6 +13,14 @@
 - **Console ↔ engine.** The pages read with the console's own **admin** key, which could do anything
   (gap G8): only GET leaves the read path, and `web/tests/structure/writes.test.ts` keeps writes in two
   adapters used only by the writing areas, which send them with the **signed-in** key, never the console's.
+- **Signing in through an identity provider (D21, `CONSOLE_AUTH=oidc`).** The console runs the
+  authorization-code flow with PKCE on the server; the state, nonce and verifier wait in a sealed,
+  `SameSite=Lax` cookie scoped to `/auth/callback` for 10 minutes. The access and refresh tokens are sealed
+  into the area's cookie like a key, never reach the browser, and are refreshed by `src/proxy.ts` before
+  they expire; a refused refresh ends the session. The provider decides who may enter which area by the
+  scopes it grants, and the engine checks every token itself (`LPB_AUTH=jwt`). The read path uses the
+  console's own client-credentials token, which the engine maps to a read-only auditor, so no admin
+  credential sits in the console at all.
 - **New keys.** An issued key is shown once, in the result of the action that made it, and is never
   stored, logged or shown in a request panel (keys there are replaced by `lpk_…(hidden)`).
 - **Console ↔ Batteries.** The `console-reader` credential has only `*.read` permissions, so

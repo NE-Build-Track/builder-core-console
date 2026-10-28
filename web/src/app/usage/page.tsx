@@ -20,11 +20,12 @@ type Props = { readonly searchParams: Promise<Record<string, string | string[] |
 
 const WINDOW_LABELS: Record<WindowName, string> = { "24h": "last 24 hours", "7d": "last 7 days", "30d": "last 30 days" };
 const CLASS_STYLE: Record<CostClass, string> = { delivered: "c-delivered", failed_after_payment: "c-failed", uncertain: "c-uncertain", pending: "c-pending" };
+// builder-core docs/contracts/payments.md#cost-classification (D52, D54)
 const CLASS_NOTES: Record<CostClass, string> = {
-  delivered: "Paid, and the runner returned a result.",
-  failed_after_payment: "Paid, then the runner failed.",
-  uncertain: "Paid; the outcome is unknown (a stream that ended early).",
-  pending: "Paid; the engine has not classified it yet.",
+  delivered: "Paid, and the runner returned a result. Only this is billable.",
+  failed_after_payment: "Paid, then refused or failed, including an attempt a job failed over from. Never billable.",
+  uncertain: "Paid, or the signer may have charged; the runner may have run (a lost connection, a 502 or 504, a stream that ended early).",
+  pending: "Paid, or perhaps paid; the engine has not matched its usage yet.",
 };
 
 export default function UsagePage({ searchParams }: Props) {

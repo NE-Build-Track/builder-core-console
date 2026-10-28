@@ -3,7 +3,7 @@
  * change for the review step, and describe what came back. Pure functions over readings; the runtime
  * sends the call.
  */
-import type { AccessKey, Allowance, EngineGrant } from "@/domain/engine";
+import type { AccessKey, Allowance, EngineGrant, KnownActor } from "@/domain/engine";
 import { hideSecrets } from "@/domain/exchange";
 import { ident, invalid, oneOf, operationRef, optionalLabel, parsed, text, usd, type Parsed } from "@/domain/forms";
 import {
@@ -78,6 +78,8 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
         kind: oneOf(form, "kind", ["actor", "admin"] as const, "key kind"),
         label: parsed(optionalLabel(form, "label")),
       });
+    case "rotateKey":
+      return all({ action: parsed("rotateKey" as const), keyId: ident(form, "key_id", "Key"), label: parsed(optionalLabel(form, "label")) });
     case "revokeKey":
       return all({ action: parsed("revokeKey" as const), keyId: ident(form, "key_id", "Key") });
   }
@@ -87,7 +89,8 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
 export type ReviewContext = {
   readonly grants: Reading<readonly EngineGrant[]>;
   readonly allowance: Reading<Allowance> | null;
-  readonly keys: Reading<readonly AccessKey[]>;
+  /** The key a key action names, inspected just before review (GET /v1/admin/keys/{key_id}, ISS-08). */
+  readonly key: Reading<AccessKey> | null;
   /** Each grant's unallocated balance from the Batteries ledger, when the console can read it. */
   readonly unallocated: Readonly<Record<string, string>>;
 };
@@ -215,15 +218,28 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
         warnings: input.kind === "admin" ? [...warnings, "An admin key can move money. Issue actor keys to builders."] : warnings,
         button: "Issue the key",
       };
-    case "revokeKey": {
-      const key = context.keys.ok ? context.keys.value.find((item) => item.key_id === input.keyId) : undefined;
+    case "rotateKey": {
+      const key = context.key?.ok ? context.key.value : undefined;
       return {
         ...base,
         lines: [
-          { label: "Key", value: input.keyId, mono: true },
-          ...(key ? [{ label: "Belongs to", value: `${key.actor_id} in ${key.application_id} (${key.kind})`, mono: true }] : []),
-          { label: "Effect", value: "Calls with this key fail at once with 401." },
+          ...keyLines(input.keyId, key),
+          ...(key ? [{ label: "Permissions", value: key.permissions.join(", ") || "none" }, { label: "Label", before: key.label || "none", after: input.label || key.label || "none" }] : []),
+          { label: "Effect", value: "A new key with the same owner and permissions, shown once on the next screen. Calls with the old key fail at once with 401; there is no overlap." },
         ],
+        warnings: [
+          ...warnings,
+          ...(key?.revoked_at ? ["This key is already revoked, so the engine will refuse this (400)."] : []),
+          ...(key?.kind === "admin" ? ["This is an admin key. If it is the one you signed in with, sign in again with the new key after this."] : []),
+        ],
+        button: "Rotate the key",
+      };
+    }
+    case "revokeKey": {
+      const key = context.key?.ok ? context.key.value : undefined;
+      return {
+        ...base,
+        lines: [...keyLines(input.keyId, key), { label: "Effect", value: "Calls with this key fail at once with 401." }],
         warnings: [
           ...warnings,
           "This cannot be undone.",
@@ -234,6 +250,17 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
       };
     }
   }
+}
+
+/** The key as the engine shows it now: who owns it, and whether it still works. */
+function keyLines(keyId: string, key: AccessKey | undefined): ReviewLine[] {
+  if (!key) return [{ label: "Key", value: keyId, mono: true }];
+  return [
+    { label: "Key", value: keyId, mono: true },
+    { label: "Belongs to", value: `${key.actor_id} in ${key.application_id} (${key.kind})`, mono: true },
+    { label: "Created", value: key.created_at },
+    ...(key.revoked_at ? [{ label: "Revoked", value: key.revoked_at }] : []),
+  ];
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -253,6 +280,20 @@ export function resultOf(input: ActionInput, value: unknown): { readonly lines: 
       return {
         lines: [{ label: "Key id", value: keyId, mono: true }, { label: "For", value: `${String(key.actor_id ?? input.actorId)} in ${String(key.application_id ?? input.applicationId)}`, mono: true }],
         secret: token ? { token, keyId, actorId: String(key.actor_id ?? input.actorId), kind: String(key.kind ?? input.kind) } : null,
+      };
+    }
+    case "rotateKey": {
+      const key = record(body.key);
+      const token = typeof body.token === "string" ? body.token : null;
+      const keyId = String(key.key_id ?? "unknown");
+      const owner = String(key.actor_id ?? "unknown");
+      return {
+        lines: [
+          { label: "Key id", value: keyId, mono: true },
+          { label: "For", value: `${owner} in ${String(key.application_id ?? "unknown")}`, mono: true },
+          { label: "Replaces", value: `${input.keyId} (revoked)`, mono: true },
+        ],
+        secret: token ? { token, keyId, actorId: owner, kind: String(key.kind ?? "unknown") } : null,
       };
     }
     case "provision":
@@ -281,6 +322,13 @@ export const shownResponse = (value: unknown): unknown => hideSecrets(value);
 export type OperatorActor = {
   readonly applicationId: string;
   readonly actorId: string;
+  /** The operator's label, else the identity provider's name (builder-core D48); null when neither. */
+  readonly label: string | null;
+  /** The identity provider's latest name for this person; null when they never signed in by token. */
+  readonly name: string | null;
+  readonly status: string | null;
+  /** From the engine's list; null for an actor known only by a key. */
+  readonly provisioned: boolean | null;
   readonly activeKeys: number;
   readonly revokedKeys: number;
   /** Null until read; the admin key reads allocations in its own application only (gap G9). */
@@ -290,12 +338,41 @@ export type OperatorActor = {
 export type OperatorView = {
   readonly grants: Reading<readonly EngineGrant[]>;
   readonly unallocated: Readonly<Record<string, string>>;
-  readonly keys: Reading<readonly AccessKey[]>;
+  /** Null when engine keys are off (CONSOLE_AUTH=oidc, LPB_AUTH=jwt): the key actions are hidden. */
+  readonly keys: Reading<readonly AccessKey[]> | null;
+  readonly known: Reading<readonly KnownActor[]>;
   readonly actors: readonly OperatorActor[];
 };
 
-/** Actors as the keys show them (gap G2: the engine has no list of provisioned actors). Admin keys are not actors. */
-export function actorsFromKeys(keys: readonly AccessKey[]): readonly Omit<OperatorActor, "allowance">[] {
+/**
+ * Every actor the operator can act on: the engine's known actors (GET /v1/admin/actors: provisioned, or
+ * people an identity provider signed in, with their names) and, when engine keys are on, any actor that
+ * holds a key the engine does not list yet. Admin keys are not actors.
+ */
+export function actorsOf(known: Reading<readonly KnownActor[]>, keys: readonly AccessKey[] | null): readonly Omit<OperatorActor, "allowance">[] {
+  const rows = new Map<string, Omit<OperatorActor, "allowance">>();
+  for (const actor of known.ok ? known.value : []) {
+    rows.set(`${actor.application_id}\u0000${actor.actor_id}`, {
+      applicationId: actor.application_id,
+      actorId: actor.actor_id,
+      label: actor.label ? actor.label : null,
+      name: actor.name ?? null,
+      status: actor.allocation?.status ?? null,
+      provisioned: actor.provisioned,
+      activeKeys: 0,
+      revokedKeys: 0,
+    });
+  }
+  for (const holder of keys ? actorsFromKeys(keys) : []) {
+    const id = `${holder.applicationId}\u0000${holder.actorId}`;
+    const row = rows.get(id);
+    rows.set(id, row ? { ...row, activeKeys: holder.activeKeys, revokedKeys: holder.revokedKeys } : { ...holder, label: null, name: null, status: null, provisioned: null });
+  }
+  return [...rows.values()].sort((a, b) => a.applicationId.localeCompare(b.applicationId) || a.actorId.localeCompare(b.actorId));
+}
+
+/** Actors as the keys show them, added to the engine's actor list for key holders it does not list yet. Admin keys are not actors. */
+export function actorsFromKeys(keys: readonly AccessKey[]): readonly Omit<OperatorActor, "allowance" | "label" | "name" | "status" | "provisioned">[] {
   const byActor = new Map<string, { applicationId: string; actorId: string; activeKeys: number; revokedKeys: number }>();
   for (const key of keys) {
     if (key.kind === "admin") continue;

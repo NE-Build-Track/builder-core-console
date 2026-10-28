@@ -64,5 +64,5 @@ own allowance and wholesale cost, through the engine.
 
 - One machine, loopback only; not reachable by other people without a proxy (see [SECURITY.md](../SECURITY.md)).
 - Shares its payer with ChatLPT; one stack signs at a time.
-- Public orchestrators on a fixed list, with pinned certificates (builder-core T12).
+- Public orchestrators on a fixed list (`deploy/config/orchestrators.txt`), served by builder-core's discovery service; orchestrators with untrusted TLS are left out (builder-core D43, T12 resolved).
 - The second payment configuration (`per_application`) is M4 (ISS-31).

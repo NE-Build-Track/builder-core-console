@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { Job, JobCost, Offering } from "@/domain/engine";
-import { NOW, read } from "../../tests/support/fixtures";
+import type { Allowance, Job, JobCost, Offering } from "@/domain/engine";
+import type { Reading } from "@/domain/reading";
+import { broken, NOW, read } from "../../tests/support/fixtures";
 
-import { catalogEntry, jobState, parseRun, rateText, unitWords } from "./builder";
+import { allocationNotice, catalogEntry, jobState, parseRun, rateText, unitWords } from "./builder";
 
 const offering = (overrides: Partial<Offering>): Offering => ({
   app: "blueclaw/chat/qwen3.8-27b",
@@ -51,7 +52,8 @@ describe("run requests from the browser", () => {
 });
 
 describe("a job settling", () => {
-  const job = (state: string, paid: boolean) => ({ id: "j", state, attempts: [{ payment_sent: paid }] }) as unknown as Job;
+  const job = (state: string, paid: boolean, outcome = "succeeded", sessions: { payment_state: string }[] = []) =>
+    ({ id: "j", state, attempts: [{ payment_sent: paid, outcome, sessions }] }) as unknown as Job;
   const cost = (status: string) => ({ status }) as unknown as JobCost;
 
   it("waits for a paid job's cost, but not for one that paid nothing", () => {
@@ -59,5 +61,29 @@ describe("a job settling", () => {
     expect(jobState(read("engine", job("succeeded", true)), read("engine", cost("pending"))).settled).toBe(false);
     expect(jobState(read("engine", job("succeeded", true)), read("engine", cost("observed"))).settled).toBe(true);
     expect(jobState(read("engine", job("failed", false)), read("engine", cost("pending"))).settled).toBe(true);
+  });
+
+  it("keeps waiting when the signer never answered: it may have charged (builder-core D54)", () => {
+    const unknown = job("uncertain", false, "payment_unknown", [{ payment_state: "unknown" }]);
+    expect(jobState(read("engine", unknown), read("engine", cost("pending"))).settled).toBe(false);
+    expect(jobState(read("engine", unknown), read("engine", cost("observed"))).settled).toBe(true);
+    const refused = job("failed", false, "payment_refused", [{ payment_state: "unpaid" }]);
+    expect(jobState(read("engine", refused), read("engine", cost("pending"))).settled).toBe(true); // nothing paid
+  });
+});
+
+describe("a builder with no allocation", () => {
+  const none: Reading<Allowance> = broken("engine", { kind: "http", status: 404, detail: "no allocation pays for actor '3c446b40'" });
+  const forbidden: Reading<Allowance> = broken("engine", { kind: "http", status: 403, detail: "jobs.read required" });
+  const down: Reading<Allowance> = broken("engine");
+
+  it("says so before a run is refused, naming the actor id an operator must provision", () => {
+    expect(allocationNotice(none, "3c446b40")).toEqual({ actorId: "3c446b40", message: expect.stringContaining("no allocation yet") });
+  });
+
+  it("says nothing when the allocation exists or the read failed for another reason", () => {
+    expect(allocationNotice(read("engine", {} as Allowance), "3c446b40")).toBeNull();
+    expect(allocationNotice(forbidden, "3c446b40")).toBeNull();
+    expect(allocationNotice(down, "3c446b40")).toBeNull();
   });
 });

@@ -13,7 +13,8 @@ export function SessionBar({ session, signOut, children }: { readonly session: S
         Signed in
       </span>
       <span>
-        {session.kind === "admin" ? "Admin key" : "Actor key"} <Id value={session.prefix} />
+        {session.via === "oidc" ? (session.kind === "admin" ? "Operator" : "Builder") : session.kind === "admin" ? "Admin key" : "Actor key"}{" "}
+        <Id value={session.prefix} />
         {session.actorId ? (
           <>
             {" "}
@@ -23,6 +24,7 @@ export function SessionBar({ session, signOut, children }: { readonly session: S
       </span>
       <span className="muted">
         until <Instant iso={session.expiresAt} />
+        {session.via === "oidc" ? " · token renewed automatically" : null}
       </span>
       {children}
       <form action={signOut} className="session-out">

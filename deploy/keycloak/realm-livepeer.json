@@ -1,0 +1,414 @@
+{
+  "realm": "livepeer",
+  "displayName": "Livepeer builder (local test)",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "roles": {
+    "realm": [
+      {
+        "name": "builder",
+        "description": "Runs jobs and reads its own jobs and costs"
+      },
+      {
+        "name": "operator",
+        "description": "Engine admin: the livepeer:admin scope"
+      },
+      {
+        "name": "reader",
+        "description": "Read-only admin (auditor): the livepeer:read scope"
+      }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "basic",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "auth_time",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "AUTH_TIME",
+            "claim.name": "auth_time",
+            "jsonType.label": "long",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "profile",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "engine-audience",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "engine audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "https://engine.builder.local",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "discover",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    },
+    {
+      "name": "jobs.run",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    },
+    {
+      "name": "jobs.read",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    },
+    {
+      "name": "costs.read",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    },
+    {
+      "name": "events.read",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    },
+    {
+      "name": "livepeer:admin",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    },
+    {
+      "name": "livepeer:read",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    }
+  ],
+  "scopeMappings": [
+    {
+      "clientScope": "discover",
+      "roles": [
+        "builder"
+      ]
+    },
+    {
+      "clientScope": "jobs.run",
+      "roles": [
+        "builder"
+      ]
+    },
+    {
+      "clientScope": "jobs.read",
+      "roles": [
+        "builder"
+      ]
+    },
+    {
+      "clientScope": "costs.read",
+      "roles": [
+        "builder"
+      ]
+    },
+    {
+      "clientScope": "events.read",
+      "roles": [
+        "builder"
+      ]
+    },
+    {
+      "clientScope": "livepeer:admin",
+      "roles": [
+        "operator"
+      ]
+    },
+    {
+      "clientScope": "livepeer:read",
+      "roles": [
+        "reader"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "builder-console",
+      "name": "Builder console",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${BUILDER_CONSOLE_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false,
+      "consentRequired": false,
+      "redirectUris": [
+        "http://127.0.0.1:3061/auth/callback",
+        "http://localhost:3061/auth/callback"
+      ],
+      "webOrigins": [
+        "http://127.0.0.1:3061",
+        "http://localhost:3061"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.header.type.rfc9068": "true",
+        "post.logout.redirect.uris": "http://127.0.0.1:3061/*##http://localhost:3061/*"
+      },
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "engine-audience"
+      ],
+      "optionalClientScopes": [
+        "discover",
+        "jobs.run",
+        "jobs.read",
+        "costs.read",
+        "events.read",
+        "livepeer:admin"
+      ],
+      "protocolMappers": [
+        {
+          "name": "client_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "client_id",
+            "claim.value": "builder-console",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "console-reader",
+      "name": "Console background reads",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${CONSOLE_READER_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "attributes": {
+        "access.token.header.type.rfc9068": "true"
+      },
+      "defaultClientScopes": [
+        "basic",
+        "engine-audience",
+        "livepeer:read"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "client_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "client_id",
+            "claim.value": "console-reader",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "b715dc36-0112-4e10-9ce9-7e235669a3bf",
+      "username": "operator",
+      "enabled": true,
+      "firstName": "Olive",
+      "lastName": "Operator",
+      "email": "operator@builder.local",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "operator"
+      ]
+    },
+    {
+      "id": "3c446b40-7123-45f1-bbdd-482f8025d1d5",
+      "username": "alice",
+      "enabled": true,
+      "firstName": "Alice",
+      "lastName": "Builder",
+      "email": "alice@builder.local",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "builder"
+      ]
+    },
+    {
+      "id": "14a5c7ce-7de4-44a0-a1fd-b5855d63116f",
+      "username": "bob",
+      "enabled": true,
+      "firstName": "Bob",
+      "lastName": "Builder",
+      "email": "bob@builder.local",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "builder"
+      ]
+    },
+    {
+      "id": "5b1d7e90-3c2a-4f8e-9d61-0a7c4e2f8b13",
+      "username": "carol",
+      "enabled": true,
+      "firstName": "Carol",
+      "lastName": "Builder",
+      "email": "carol@builder.local",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "builder"
+      ]
+    },
+    {
+      "id": "11a7d615-b94a-4d66-b5d8-917b48d44806",
+      "username": "service-account-console-reader",
+      "enabled": true,
+      "serviceAccountClientId": "console-reader",
+      "realmRoles": [
+        "reader"
+      ]
+    }
+  ]
+}

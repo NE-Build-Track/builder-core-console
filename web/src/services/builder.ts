@@ -2,7 +2,7 @@
  * The Builder area's views (decisions D15, D19): the live catalog with each rate's unit, source and age;
  * one builder's jobs; and their allowance and wholesale network cost. Pure functions over readings.
  */
-import { COST_CLASSES, type Allowance, type CostClass, type CostSummary, type EngineHealth, type Fees, type Job, type JobCost, type NetworkRate, type Offering } from "@/domain/engine";
+import { COST_CLASSES, mayHavePaid, type Allowance, type CostClass, type CostSummary, type EngineHealth, type Fees, type Job, type JobCost, type NetworkRate, type Offering } from "@/domain/engine";
 import { isFinalState, type JobState, type RunInput } from "@/domain/builder";
 import { invalid, parsed, wholeNumber, type Parsed } from "@/domain/forms";
 import { mapReading, type Reading } from "@/domain/reading";
@@ -124,7 +124,7 @@ export function usage(allowance: Reading<Allowance>, summary: Reading<CostSummar
 export function jobState(job: Reading<Job>, cost: Reading<JobCost>): JobState {
   const final = job.ok && isFinalState(job.value.state);
   const costSettled = cost.ok && cost.value.status !== "pending";
-  const nothingPaid = job.ok && !job.value.attempts.some((attempt) => attempt.payment_sent);
+  const nothingPaid = job.ok && !mayHavePaid(job.value); // a signer that never answered may have charged
   return {
     job: job.ok ? job.value : null,
     cost: cost.ok ? cost.value : null,
@@ -161,4 +161,22 @@ export function parseRun(value: unknown): Parsed<RunInput> {
   const ref = field(body, "operationRef");
   if (typeof ref !== "string" || !/^[A-Za-z0-9._:-]{8,200}$/.test(ref)) return invalid("operationRef", "The run lost its operation reference; try again.");
   return parsed({ app, path, method, payload: payload as Record<string, unknown>, stream, timeoutS: timeout.value, maxAttempts: attempts.value, operationRef: ref });
+}
+
+/** Shown to a builder whose actor has no allocation: every paid run is refused (HTTP 402) until an operator provisions one. */
+export type AllocationNotice = { readonly actorId: string; readonly message: string };
+
+/**
+ * Whether the signed-in builder can pay for a run at all. The engine answers its own allowance read with
+ * 404 "no allocation pays for actor …" until an operator provisions that actor, so the page says so first,
+ * with the id the operator needs (under CONSOLE_AUTH=oidc, the person's `sub`, not their username).
+ */
+export function allocationNotice(allowance: Reading<Allowance>, actorId: string | null): AllocationNotice | null {
+  if (allowance.ok || actorId === null) return null;
+  const problem = allowance.problem;
+  if (problem.kind !== "http" || problem.status !== 404 || !problem.detail.startsWith("no allocation")) return null;
+  return {
+    actorId,
+    message: "You have no allocation yet, so the engine refuses every run (HTTP 402). Give an operator your actor id to provision one.",
+  };
 }

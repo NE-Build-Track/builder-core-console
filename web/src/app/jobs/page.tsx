@@ -7,7 +7,7 @@ import { Icon } from "@/components/console/icons";
 import { PageView, Streamed } from "@/components/console/page-view";
 import { Empty, GapChip, PageHead, ReadFrom, Section, Unreadable } from "@/components/console/primitives";
 import { Ago, Amount, Glyph, Id, Pill } from "@/components/console/values";
-import { COST_CLASS_LABELS, type CostClass, type Fees, type Job } from "@/domain/engine";
+import { attemptPayment, COST_CLASS_LABELS, costClasses, type CostClass, type Fees, type Job, type JobCost } from "@/domain/engine";
 import type { JobLookup, State } from "@/domain/views";
 import { loadJobs } from "@/runtime/console";
 
@@ -74,6 +74,27 @@ function FeesAmount({ fees }: { readonly fees: Fees }) {
   return <Amount value={fees.fee_usd ?? fees.fee_eth} currency={fees.fee_usd ? "USD" : "ETH"} head={6} />;
 }
 
+/** The fees, and the billable part when a failover makes them differ: only the delivered attempt (builder-core D52). */
+function CostFees({ cost }: { readonly cost: JobCost }) {
+  const billable = cost.billable;
+  const differs = billable != null && (billable.fee_usd ?? billable.fee_eth) !== (cost.fees.fee_usd ?? cost.fees.fee_eth);
+  return (
+    <>
+      <FeesAmount fees={cost.fees} />
+      {differs ? (
+        <span className="muted">
+          {" "}
+          · <FeesAmount fees={billable} /> billable
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+const PAYMENT_WORDS = { paid: "yes", unknown: "unknown", none: "no" } as const;
+/** A signed session's state (builder-core D54): stored before signing, then paid or refused. */
+const SESSION_WORDS = { paid: null, unknown: "the signer has not confirmed it", unpaid: "refused by the signer: never matched or billed" } as const;
+
 async function Jobs({ searchParams }: Props) {
   const id = pickId(await searchParams);
   await connection();
@@ -111,7 +132,7 @@ async function Jobs({ searchParams }: Props) {
               </thead>
               <tbody>
                 {view.projections.value.map((cost) => {
-                  const costClass = cost.attempts.at(-1)?.cost_class;
+                  const classes = costClasses(cost); // a job that failed over is several (builder-core D52)
                   return (
                     <tr key={cost.job_id}>
                       <th scope="row">
@@ -124,17 +145,17 @@ async function Jobs({ searchParams }: Props) {
                         <Pill state={cost.status === "pending" || cost.status === "none" ? "unknown" : "ok"}>{cost.status}</Pill>
                       </td>
                       <td>
-                        {costClass ? (
-                          <span className="chip-row">
-                            <span className={`swatch ${CLASS_STYLE[costClass]}`} />
-                            {COST_CLASS_LABELS[costClass]}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
+                        {classes.length > 0
+                          ? classes.map((costClass) => (
+                              <span className="chip-row" key={costClass}>
+                                <span className={`swatch ${CLASS_STYLE[costClass]}`} />
+                                {COST_CLASS_LABELS[costClass]}
+                              </span>
+                            ))
+                          : "—"}
                       </td>
                       <td className="r">
-                        <FeesAmount fees={cost.fees} />
+                        <CostFees cost={cost} />
                       </td>
                       <td className="r num">{cost.attempts.length}</td>
                       <td>
@@ -226,7 +247,7 @@ function LookupResult({ lookup }: { readonly lookup: JobLookup }) {
         <dd>
           {cost?.ok ? (
             <>
-              <FeesAmount fees={cost.value.fees} /> · {cost.value.status}
+              <CostFees cost={cost.value} /> · {cost.value.status}
             </>
           ) : cost ? (
             "unavailable"
@@ -238,7 +259,14 @@ function LookupResult({ lookup }: { readonly lookup: JobLookup }) {
       <ol className="attempts" role="list" aria-label="Attempts">
         {value.attempts.map((attempt) => {
           const attemptCost = cost?.ok ? cost.value.attempts.find((row) => row.attempt_number === attempt.number) : undefined;
-          const state: State = attempt.outcome === "succeeded" ? "ok" : attempt.outcome === "in_flight" ? "unknown" : attemptCost?.cost_class === "uncertain" ? "warn" : "bad";
+          const state: State =
+            attempt.outcome === "succeeded"
+              ? "ok"
+              : attempt.outcome === "in_flight"
+                ? "unknown"
+                : attempt.outcome === "payment_unknown" || attemptCost?.cost_class === "uncertain"
+                  ? "warn"
+                  : "bad";
           return (
             <li key={attempt.number} className="attempt" data-state={state}>
               <span className="num" aria-hidden="true">
@@ -255,7 +283,7 @@ function LookupResult({ lookup }: { readonly lookup: JobLookup }) {
                 </div>
                 <div className="attrs">
                   <span>
-                    Paid <b>{attempt.payment_sent ? "yes" : "no"}</b>
+                    Paid <b>{PAYMENT_WORDS[attemptPayment(attempt)]}</b>
                   </span>
                   <span>
                     Cost class <b>{attemptCost ? COST_CLASS_LABELS[attemptCost.cost_class] : "—"}</b>
@@ -268,16 +296,25 @@ function LookupResult({ lookup }: { readonly lookup: JobLookup }) {
                     {attempt.sessions.map((session) => {
                       const fee = feeFor(session.manifest_id);
                       const match = session.match ?? "unmatched";
+                      const refused = session.payment_state === "unpaid";
+                      const note = SESSION_WORDS[session.payment_state];
                       return (
                         <li
                           key={session.manifest_id}
-                          data-match={match}
+                          data-match={refused ? "refused" : match}
                           tabIndex={0}
-                          data-tip={fee ? `Batteries has a usage event for this manifest: ${fee} USD` : "No Batteries usage event carries this manifest id yet."}
+                          data-tip={
+                            refused
+                              ? "The signer refused this manifest, so it is never matched to usage and costs nothing."
+                              : fee
+                                ? `Batteries has a usage event for this manifest: ${fee} USD`
+                                : "No Batteries usage event carries this manifest id yet."
+                          }
                         >
-                          <Glyph state={match === "matched" ? "ok" : "warn"} />
+                          <Glyph state={refused ? "unknown" : match === "matched" ? "ok" : "warn"} />
                           <span className="mono">{session.manifest_id}</span>
-                          <span className="muted">{match}</span>
+                          <span className="muted">{refused ? "unpaid" : match}</span>
+                          {note ? <span className="muted">· {note}</span> : null}
                         </li>
                       );
                     })}
