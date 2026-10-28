@@ -25,7 +25,7 @@ export default function SourcesPage() {
             {count.routes}
           </Tile>
         ))}
-        <Tile label="Known gaps" sub={`G1–G${GAPS.length}`}>
+        <Tile label="Known gaps" sub="open">
           {GAPS.length}
         </Tile>
       </Grid>

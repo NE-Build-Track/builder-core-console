@@ -48,7 +48,7 @@ Beside it: the engine's grant list (a cross-check), Batteries' ledger balances, 
 
 ## Users
 
-Actors from the engine's key list (gap G2): application, active and revoked keys, allocation and
+Actors from the engine's actor list (`GET /v1/admin/actors`, builder-core #69), plus any key holder it does not list yet: application, active and revoked keys, allocation and
 status, available balance, 30-day spend across cost classes, and reconciliation. Money columns read
 only for `CONSOLE_APPLICATION_ID` (gap G9). Then the whole application's reconciliation and the admin
 keys.
@@ -79,7 +79,7 @@ known gap with its owner and fix.
 For the operator, signed in with an admin key. Three sections, each row carrying the actions that change
 it: **Grants** (create a grant; fund one), **Actors and allocations** (provision an actor from a grant;
 fund its allocation; set its status; rotate its payment key; revoke it) and **Access keys** (issue a key;
-revoke one). Actors are listed from their keys (gap G2).
+revoke one). Actors are listed from the engine's actor list, plus any key holder it does not list yet.
 
 Every action is a native dialog with three steps (D17): **fill in**; **review**, which reads the stack
 and shows what will change (money as before → after, including the grant's unallocated balance), any

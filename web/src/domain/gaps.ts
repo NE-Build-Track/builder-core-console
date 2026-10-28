@@ -19,19 +19,11 @@ export type Gap = {
 export const GAPS = [
   {
     id: "G1",
-    title: "No admin job list",
+    title: "The Jobs page lists projections, not jobs",
     impact:
-      "GET /v1/jobs returns only the caller's own jobs, even for an admin, so the console cannot list jobs across actors. It shows recent cost projections and looks jobs up by id instead.",
-    fix: "An admin-scoped job list with filters (actor, app, state, time) and paging.",
-    owner: "builder-core",
-  },
-  {
-    id: "G2",
-    title: "No list of provisioned actors",
-    impact:
-      "The engine has no route that lists actor allocations, so the console derives actors from access keys and reads each actor's allowance one by one.",
-    fix: "GET /v1/admin/actors returning ProvisionedActor rows.",
-    owner: "builder-core",
+      "builder-core lists every actor's jobs to an admin or auditor (GET /v1/jobs, its D44), but the Jobs page still shows the newest cost projections and looks jobs up by id. builder-core has no filters or paging for that list yet.",
+    fix: "List jobs from GET /v1/jobs with the reader's credential; ask builder-core for filters (actor, app, state, time) and paging.",
+    owner: "this repository",
   },
   {
     id: "G3",
@@ -74,11 +66,11 @@ export const GAPS = [
   },
   {
     id: "G8",
-    title: "No read-only engine credential",
+    title: "The keys-mode reader holds an admin key",
     impact:
-      "An engine admin key can do everything; DefaultPolicy ignores permissions for admins. The console stays read-only only because its code makes GET requests alone (tests/structure/read-only.test.ts).",
-    fix: "A read-only admin credential kind, or permissions that apply to admin keys.",
-    owner: "builder-core",
+      "builder-core has a read-only auditor credential (its #69), and the OIDC reader uses one, so the engine refuses its writes. With CONSOLE_AUTH=keys the reader still holds an engine admin key, which can do everything; the console stays read-only there only because its code makes GET requests alone (tests/structure/read-only.test.ts).",
+    fix: "Issue the keys-mode reader an auditor key (kind auditor) instead of an admin key; the Money page then shows the engine's grants as not available, as in OIDC mode.",
+    owner: "this repository",
   },
   {
     id: "G9",

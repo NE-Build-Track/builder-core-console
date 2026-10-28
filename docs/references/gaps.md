@@ -6,14 +6,13 @@ fails when the two disagree. The console works within these today; nothing here 
 
 | Gap | Owner | Unlocks |
 | --- | --- | --- |
-| [G1](#g1-no-admin-job-list) | builder-core | A real Jobs page: throughput, failures by kind, per-actor and per-app job history. |
-| [G2](#g2-no-list-of-provisioned-actors) | builder-core | One read for the Users page instead of one per actor; actors with allocations but no keys. |
+| [G1](#g1-the-jobs-page-lists-projections-not-jobs) | this repository | A real Jobs page: throughput, failures by kind, per-actor and per-app job history. |
 | [G3](#g3-cost-projections-capped-at-25) | builder-core | Job cost history beyond the newest 25; cost trends per app. |
 | [G4](#g4-no-engine-metrics-or-events) | builder-core | Job rates, latency and failure trends over time; live updates instead of polling. |
 | [G5](#g5-signer-metrics-are-loopback-only) | signer | Drop the relay container. |
 | [G6](#g6-usage-feed-has-no-time-filter) | batteries | Usage over a window without walking the whole history; no partial totals. |
 | [G7](#g7-payer-deposit-and-reserve-not-shown) | this repository | Payer runway: deposit and reserve against the burn rate. |
-| [G8](#g8-no-read-only-engine-credential) | builder-core | A console credential that cannot write even if the code tried. |
+| [G8](#g8-the-keys-mode-reader-holds-an-admin-key) | this repository | A console credential that cannot write even if the code tried, in both modes. |
 | [G9](#g9-admin-reads-are-scoped-to-one-application) | builder-core | Per-actor money across every application. |
 | [G10](#g10-no-application-wide-reconciliation-in-per_actor-mode) | builder-core | One reconciliation read for the Health page instead of one per actor. |
 | [G11](#g11-reconciliation-flags-normal-sync-lag-as-unbalanced) | builder-core | An engine flag that only goes false on real money gaps, so it can drive alerts. |
@@ -21,21 +20,13 @@ fails when the two disagree. The console works within these today; nothing here 
 | [G13](#g13-no-who-am-i-call) | builder-core | The Builder names its actor from the moment it signs in. |
 | [G14](#g14-rates-are-in-wei-only) | builder-core | Rates a builder can read in dollars before running a job. |
 
-## G1: No admin job list
+## G1: The Jobs page lists projections, not jobs
 
-**Impact.** GET /v1/jobs returns only the caller's own jobs, even for an admin, so the console cannot list jobs across actors. It shows recent cost projections and looks jobs up by id instead.
+**Impact.** builder-core lists every actor's jobs to an admin or auditor (GET /v1/jobs, its D44), but the Jobs page still shows the newest cost projections and looks jobs up by id. builder-core has no filters or paging for that list yet.
 
-**Fix.** An admin-scoped job list with filters (actor, app, state, time) and paging.
+**Fix.** List jobs from GET /v1/jobs with the reader's credential; ask builder-core for filters (actor, app, state, time) and paging.
 
-**Owner.** builder-core. **Unlocks:** A real Jobs page: throughput, failures by kind, per-actor and per-app job history.
-
-## G2: No list of provisioned actors
-
-**Impact.** The engine has no route that lists actor allocations, so the console derives actors from access keys and reads each actor's allowance one by one.
-
-**Fix.** GET /v1/admin/actors returning ProvisionedActor rows.
-
-**Owner.** builder-core. **Unlocks:** One read for the Users page instead of one per actor; actors with allocations but no keys.
+**Owner.** this repository. **Unlocks:** A real Jobs page: throughput, failures by kind, per-actor and per-app job history.
 
 ## G3: Cost projections capped at 25
 
@@ -77,13 +68,13 @@ fails when the two disagree. The console works within these today; nothing here 
 
 **Owner.** this repository. **Unlocks:** Payer runway: deposit and reserve against the burn rate.
 
-## G8: No read-only engine credential
+## G8: The keys-mode reader holds an admin key
 
-**Impact.** An engine admin key can do everything; DefaultPolicy ignores permissions for admins. The console stays read-only only because its code makes GET requests alone (tests/structure/read-only.test.ts).
+**Impact.** builder-core has a read-only auditor credential (its #69), and the OIDC reader uses one, so the engine refuses its writes. With CONSOLE_AUTH=keys the reader still holds an engine admin key, which can do everything; the console stays read-only there only because its code makes GET requests alone (tests/structure/read-only.test.ts).
 
-**Fix.** A read-only admin credential kind, or permissions that apply to admin keys.
+**Fix.** Issue the keys-mode reader an auditor key (kind auditor) instead of an admin key; the Money page then shows the engine's grants as not available, as in OIDC mode.
 
-**Owner.** builder-core. **Unlocks:** A console credential that cannot write even if the code tried.
+**Owner.** this repository. **Unlocks:** A console credential that cannot write even if the code tried, in both modes.
 
 ## G9: Admin reads are scoped to one application
 
@@ -141,3 +132,9 @@ and Batteries needs both for a funded grant; with no amount the engine refuses t
 20 October 2026. **Resolved for this stack 21 October:** `deploy/init-secrets.py` gives this stack's grant
 desk `grants.fund`, so Operator actions can create funded grants (D15). ChatLPT's Batteries keeps its own
 credentials and still uses the CLI.
+
+## Closed
+
+- **G2, no list of provisioned actors** (closed 28 October). builder-core #69 lists actors
+  (`GET /v1/admin/actors`), and the Users and Operator pages read it; access keys only add the actors
+  that hold a key the engine does not list yet.
