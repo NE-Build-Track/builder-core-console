@@ -79,7 +79,7 @@ describe("operator actions", () => {
     expect(actors).toEqual([{ applicationId: "default", actorId: "acme", activeKeys: 1, revokedKeys: 0 }]);
   });
 
-  it("lists every known actor with its label, provisioned or not (builder-core #53, D48)", () => {
+  it("lists every known actor with its label, provisioned or not (builder-core #69, D48)", () => {
     const alice = { actor_id: "3c446b40", application_id: "default", label: "alice", name: "alice", provisioned: false, allocation: null } as KnownActor;
     const bob = {
       actor_id: "14a5c7ce",

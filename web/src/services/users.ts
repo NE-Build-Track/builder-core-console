@@ -46,7 +46,7 @@ export async function users(sources: Sources): Promise<UsersView> {
     sources.engine.actors(),
     sources.engine.reconciliation({ applicationId: sources.applicationId }),
   ]);
-  // Under LPB_AUTH=jwt the engine has no key routes (404): its actor list (builder-core #53) is the only source.
+  // Under LPB_AUTH=jwt the engine has no key routes (404): its actor list (builder-core #69) is the only source.
   const keysOn = !(!keys.ok && keys.problem.kind === "http" && keys.problem.status === 404);
   if (!known.ok && !keys.ok) {
     return {

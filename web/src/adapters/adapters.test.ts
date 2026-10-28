@@ -135,6 +135,18 @@ describe("engine adapter", () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
+  it("never asks for the engine's grants with the read-only auditor token (builder-core #69)", async () => {
+    const fetch = vi.fn(async () => respond(200, []));
+    vi.stubGlobal("fetch", fetch);
+    const auditor = { token: async () => ({ ok: true as const, source: "identity" as const, value: "jwt-reader", readAt: NOW.toISOString() }) };
+    const reader = engineReader({ ok: true, value: { url: "http://e:8080", adminToken: null } }, { timeoutMs: 1000, now }, auditor);
+    // grants fund every application and carry none, so the engine refuses them to an auditor
+    expect(await reader.grants()).toMatchObject({ ok: false, problem: { kind: "not_permitted" } });
+    expect(fetch).not.toHaveBeenCalled();
+    await engineReader(settings, { timeoutMs: 1000, now }).grants(); // with an admin key they are read
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
   it("inspects one key with the signed-in key, and reads its refusal as a problem (ISS-08)", async () => {
     const key = { key_id: "key_a b", actor_id: "acme", application_id: "default", kind: "actor", label: "", permissions: [], created_at: "2026-10-26T10:00:00Z", revoked_at: null };
     const fetch = vi.fn(async (request: Request) => {

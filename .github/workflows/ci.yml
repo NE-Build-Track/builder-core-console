@@ -37,3 +37,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cp deploy/.env.example deploy/.env && docker compose -f deploy/compose.yaml config -q
+      - run: touch deploy/keycloak/.env && docker compose -f deploy/keycloak/compose.yaml config -q

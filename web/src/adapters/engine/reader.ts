@@ -78,7 +78,12 @@ export function engineReader(settings: SourceSettings<EngineSettings>, options: 
     },
     offerings: () => call((c) => c.GET("/v1/offerings", { signal: signal() })),
     runners: (app) => call((c) => c.GET("/v1/runners", { params: { query: { app } }, signal: signal() })),
-    grants: () => call((c) => c.GET("/v1/admin/grants", { signal: signal() })),
+    // Grants fund every application and carry none, so the engine refuses them to an auditor (builder-core #69):
+    // with only the read-only token, say so instead of asking for a 403.
+    grants: () =>
+      settings.ok && !settings.value.adminToken && tokens
+        ? Promise.resolve(failed("engine", { kind: "not_permitted", detail: "the read-only auditor never reads the operator's grants" }, at()))
+        : call((c) => c.GET("/v1/admin/grants", { signal: signal() })),
     keys: () => call((c) => c.GET("/v1/admin/keys", { signal: signal() })),
     actors: () => call((c) => c.GET("/v1/admin/actors", { params: { query: { limit: 1000 } }, signal: signal() })),
     allowance: (actorId) =>

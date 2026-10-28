@@ -25,7 +25,7 @@ export interface EngineReader {
   runners(app: string): Promise<Reading<readonly Runner[]>>;
   grants(): Promise<Reading<readonly EngineGrant[]>>;
   keys(): Promise<Reading<readonly AccessKey[]>>;
-  /** GET /v1/admin/actors: provisioned actors and people who signed in (builder-core #53, D48). */
+  /** GET /v1/admin/actors: provisioned actors and people who signed in (builder-core #69, D48). */
   actors(): Promise<Reading<readonly KnownActor[]>>;
   allowance(actorId: string): Promise<Reading<Allowance>>;
   costSummary(query: {

@@ -1,7 +1,7 @@
 # Keycloak test stack
 
 Sign in to the console through an identity provider (decision D21) against an engine that accepts only
-JWTs (builder-core PR #50, `LPB_AUTH=jwt`, and PR #53: the actor list and the read-only auditor). It is
+JWTs (builder-core PR #50, `LPB_AUTH=jwt`, and PR #69: the actor list and the read-only auditor). It is
 a separate compose project from `deploy/compose.yaml`, and it is paid. Batteries and the signer run
 exactly as there, with the same payer and credentials (`deploy/secrets`, and the tokens `first-run.sh`
 copies from `deploy/.env`), but on this stack's own ledger (`builder-console-keycloak_paid-state`): its
@@ -10,6 +10,12 @@ grants and actors start empty and never mix with the main stack's. Create a gran
 To start over, `down -v` removes this stack's ledger and engine database; Keycloak's users come back from
 the realm file.
 
+**Upgrading from engine `0dbfe6e`:** start over with `down -v`. That engine (builder-core #53) numbered its
+migrations `0006` (actor label) and `0007` (sightings). In builder-core `releases/m3`, and in #69, `0006` is
+the payment intent, and the actor migrations are `0007` and `0008`. An `engine-data` volume at #53's `0007`
+would skip `0006` and fail. Reset `paid-state` with it, so the ledger never names allocations the new
+engine has no record of.
+
 **One signer per payer.** Stop `deploy/compose.yaml`, ChatLPT and inference-gateway before
 `up`: they all sign for the same wallet.
 
@@ -17,7 +23,7 @@ the realm file.
 | --- | --- | --- |
 | `clearinghouse`, `signer`, `signer-metrics` | compose network only | Batteries `ca09e47` and the node signer `406b248`, as in `deploy/compose.yaml` |
 | `keycloak` | http://keycloak.localhost:8180 (admin console at `/admin`) | Keycloak 26.8.1, realm `livepeer` from `realm-livepeer.json` |
-| `engine` | http://127.0.0.1:8091 (Swagger at `/docs`) | builder-core `0dbfe6e`, `LPB_AUTH=jwt`, strict RFC 9068 tokens |
+| `engine` | http://127.0.0.1:8091 (Swagger at `/docs`) | builder-core `a2e61e4` (PR #69), `LPB_AUTH=jwt`, strict RFC 9068 tokens |
 | `discovery` | compose network only | `lpb discovery` over `../config/orchestrators.txt` |
 | `console` | **http://127.0.0.1:3061** | the console with `CONSOLE_AUTH=oidc` |
 

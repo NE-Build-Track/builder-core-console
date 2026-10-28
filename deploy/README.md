@@ -10,8 +10,8 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
 | `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:0dbfe6e` | `127.0.0.1:8090` (Swagger at `/docs`) |
-| `discovery` | `builder-console/engine:0dbfe6e` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
+| `engine` | `builder-console/engine:a2e61e4` | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `discovery` | `builder-console/engine:a2e61e4` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 Testing sign-in through an identity provider instead of keys: [keycloak/README.md](keycloak/README.md), a
@@ -50,6 +50,12 @@ make up        # stop ChatLPT's stack first: one signer per payer account
 make logs
 make down      # keeps volumes; `docker compose -f deploy/compose.yaml down -v` deletes all stack state
 ```
+
+**Upgrading from engine `0dbfe6e`:** start over with `down -v`. That engine (builder-core #53) numbered its
+migrations `0006` (actor label) and `0007` (sightings). In builder-core `releases/m3`, and in #69, `0006` is
+the payment intent, and the actor migrations are `0007` and `0008`. An `engine-data` volume at #53's `0007`
+would skip `0006` and fail. Reset `paid-state` with it, so the ledger never names allocations the new
+engine has no record of.
 
 The console's pages only read (D1); its Operator actions change the stack through the engine (D15), and
 the engine on 127.0.0.1:8090 takes the same calls by curl or Swagger. Run `python3 deploy/init-secrets.py`

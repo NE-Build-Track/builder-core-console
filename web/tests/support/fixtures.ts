@@ -190,7 +190,7 @@ export const job: Job = {
       runner_url: "https://orch-us-central.xodeapp.xyz:18935/apps/runner_ogm53upg/app",
       orchestrator_url: "https://orch-us-central.xodeapp.xyz:18935",
       allocation_id: "AaFWEnucfhuOCn95t02zMw",
-      sessions: [{ manifest_id: "e7621a15", match: "matched", payment_session_id: "AaFWE2x3eK-5vLFI1BMpdw" }],
+      sessions: [{ manifest_id: "e7621a15", match: "matched", payment_session_id: "AaFWE2x3eK-5vLFI1BMpdw", payment_state: "paid" }],
       payment_sent: true,
       outcome: "succeeded",
       status_code: 200,

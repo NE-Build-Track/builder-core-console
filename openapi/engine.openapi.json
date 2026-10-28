@@ -179,7 +179,8 @@
               "payment",
               "timeout",
               "http",
-              "abandoned"
+              "abandoned",
+              "payment_unknown"
             ],
             "title": "Outcome",
             "type": "string"
@@ -523,6 +524,7 @@
               "refused",
               "unreachable",
               "payment",
+              "payment_unknown",
               "timeout",
               "runner_rejected",
               "runner_error",
@@ -894,6 +896,7 @@
       },
       "JobCost": {
         "additionalProperties": false,
+        "description": "``fees`` is everything the job's attempts cost the allocation. ``billable`` is the part an\nenterprise bills its user for: the ``delivered`` attempts only, so a job that failed, or the\nattempts a job failed over from, are never billable (D52). Both are final once ``status`` is\n``observed`` or ``corrected``.",
         "properties": {
           "attempts": {
             "items": {
@@ -901,6 +904,9 @@
             },
             "title": "Attempts",
             "type": "array"
+          },
+          "billable": {
+            "$ref": "#/components/schemas/Fees"
           },
           "fees": {
             "$ref": "#/components/schemas/Fees"
@@ -975,12 +981,43 @@
             ],
             "title": "Capability"
           },
+          "content_type": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Type"
+          },
           "first_byte_timeout_s": {
             "default": 60.0,
             "exclusiveMinimum": 0.0,
             "maximum": 3600.0,
             "title": "First Byte Timeout S",
             "type": "number"
+          },
+          "headers": {
+            "default": [],
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Headers",
+            "type": "array"
           },
           "idle_timeout_s": {
             "anyOf": [
@@ -1063,6 +1100,25 @@
               }
             ],
             "title": "Payload"
+          },
+          "raw_body": {
+            "anyOf": [
+              {
+                "contentEncoding": "base64",
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 11184812,
+            "title": "Raw Body"
+          },
+          "return_http_errors": {
+            "default": false,
+            "title": "Return Http Errors",
+            "type": "boolean"
           },
           "timeout_s": {
             "default": 300.0,
@@ -1344,6 +1400,7 @@
           },
           "label": {
             "default": "",
+            "maxLength": 200,
             "title": "Label",
             "type": "string"
           }
@@ -1879,7 +1936,7 @@
       },
       "SignedSession": {
         "additionalProperties": false,
-        "description": "One session the signer signed for an attempt.\n\n``manifest_id`` is the orchestrator's label from the 402 challenge. Cost sync resolves it to\nthe Batteries ``payment_session_id`` on ``(allocation_id, manifest_id)``. ``match`` stays\n``unmatched`` until that resolution, becomes ``matched`` when exactly one Batteries session\nand one log entry share the key, and ``ambiguous`` when they do not.",
+        "description": "One manifest an attempt asked the signer to sign, stored before the signer is asked (D54).\n\n``manifest_id`` is the orchestrator's label from the 402 challenge. Cost sync resolves it to\nthe Batteries ``payment_session_id`` on ``(allocation_id, manifest_id)``. ``match`` stays\n``unmatched`` until that resolution, becomes ``matched`` when exactly one Batteries session\nand one log entry share the key, and ``ambiguous`` when they do not.\n\n``payment_state`` is ``unknown`` until the signer answers: it may have charged. A validated\nreply makes it ``paid`` and a refusal ``unpaid``; unique usage also confirms an ``unknown`` one\nas ``paid``. ``paid`` is final, and an ``unpaid`` manifest is never matched to usage.",
         "properties": {
           "manifest_id": {
             "title": "Manifest Id",
@@ -1905,6 +1962,16 @@
               }
             ],
             "title": "Payment Session Id"
+          },
+          "payment_state": {
+            "default": "paid",
+            "enum": [
+              "unknown",
+              "paid",
+              "unpaid"
+            ],
+            "title": "Payment State",
+            "type": "string"
           }
         },
         "required": [
@@ -3522,11 +3589,6 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Offerings"
       }
     },

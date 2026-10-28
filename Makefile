@@ -16,6 +16,7 @@ test:
 
 compose-config:
 	$(COMPOSE) config -q
+	touch deploy/keycloak/.env && docker compose -f deploy/keycloak/compose.yaml config -q
 
 check: typecheck lint test compose-config
 

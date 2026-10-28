@@ -537,7 +537,7 @@ export interface components {
              * Outcome
              * @enum {string}
              */
-            outcome: "in_flight" | "succeeded" | "refused" | "unreachable" | "payment_refused" | "payment" | "timeout" | "http" | "abandoned";
+            outcome: "in_flight" | "succeeded" | "refused" | "unreachable" | "payment_refused" | "payment" | "timeout" | "http" | "abandoned" | "payment_unknown";
             /** Payment Sent */
             payment_sent: boolean;
             /** Runner Url */
@@ -657,7 +657,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "no_offering" | "no_capacity" | "not_provisioned" | "refused" | "unreachable" | "payment" | "timeout" | "runner_rejected" | "runner_error" | "interrupted" | "abandoned";
+            kind: "no_offering" | "no_capacity" | "not_provisioned" | "refused" | "unreachable" | "payment" | "payment_unknown" | "timeout" | "runner_rejected" | "runner_error" | "interrupted" | "abandoned";
             /** Message */
             message: string;
             /**
@@ -795,10 +795,17 @@ export interface components {
             state: "queued" | "running" | "succeeded" | "failed" | "uncertain";
             usage: components["schemas"]["MeasuredUsage"] | null;
         };
-        /** JobCost */
+        /**
+         * JobCost
+         * @description ``fees`` is everything the job's attempts cost the allocation. ``billable`` is the part an
+         *     enterprise bills its user for: the ``delivered`` attempts only, so a job that failed, or the
+         *     attempts a job failed over from, are never billable (D52). Both are final once ``status`` is
+         *     ``observed`` or ``corrected``.
+         */
         JobCost: {
             /** Attempts */
             attempts: components["schemas"]["AttemptCost"][];
+            billable?: components["schemas"]["Fees"];
             fees: components["schemas"]["Fees"];
             /** First Observed At */
             first_observed_at: string | null;
@@ -821,11 +828,21 @@ export interface components {
             app: string;
             /** Capability */
             capability?: string | null;
+            /** Content Type */
+            content_type?: string | null;
             /**
              * First Byte Timeout S
              * @default 60
              */
             first_byte_timeout_s: number;
+            /**
+             * Headers
+             * @default []
+             */
+            headers: [
+                string,
+                string
+            ][];
             /**
              * Idle Timeout S
              * @default 60
@@ -861,6 +878,13 @@ export interface components {
             payload?: {
                 [key: string]: unknown;
             } | null;
+            /** Raw Body */
+            raw_body?: string | null;
+            /**
+             * Return Http Errors
+             * @default false
+             */
+            return_http_errors: boolean;
             /**
              * Timeout S
              * @default 300
@@ -1164,12 +1188,16 @@ export interface components {
         };
         /**
          * SignedSession
-         * @description One session the signer signed for an attempt.
+         * @description One manifest an attempt asked the signer to sign, stored before the signer is asked (D54).
          *
          *     ``manifest_id`` is the orchestrator's label from the 402 challenge. Cost sync resolves it to
          *     the Batteries ``payment_session_id`` on ``(allocation_id, manifest_id)``. ``match`` stays
          *     ``unmatched`` until that resolution, becomes ``matched`` when exactly one Batteries session
          *     and one log entry share the key, and ``ambiguous`` when they do not.
+         *
+         *     ``payment_state`` is ``unknown`` until the signer answers: it may have charged. A validated
+         *     reply makes it ``paid`` and a refusal ``unpaid``; unique usage also confirms an ``unknown`` one
+         *     as ``paid``. ``paid`` is final, and an ``unpaid`` manifest is never matched to usage.
          */
         SignedSession: {
             /** Manifest Id */
@@ -1182,6 +1210,12 @@ export interface components {
             match: "unmatched" | "matched" | "ambiguous";
             /** Payment Session Id */
             payment_session_id?: string | null;
+            /**
+             * Payment State
+             * @default paid
+             * @enum {string}
+             */
+            payment_state: "unknown" | "paid" | "unpaid";
         };
         /** StatusBody */
         StatusBody: {

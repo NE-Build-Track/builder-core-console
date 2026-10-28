@@ -193,7 +193,7 @@ export async function applicationReconciliations(sources: Sources, health: Readi
   if (!health.ok || health.value.allocation_mode === "per_application") {
     return [await sources.engine.reconciliation({ applicationId: sources.applicationId })];
   }
-  // The engine's own actor list (builder-core #53), not its keys: under LPB_AUTH=jwt there are no keys,
+  // The engine's own actor list (builder-core #69), not its keys: under LPB_AUTH=jwt there are no keys,
   // and only a provisioned actor has an allocation to reconcile.
   const known = await sources.engine.actors();
   if (!known.ok) return [known];
