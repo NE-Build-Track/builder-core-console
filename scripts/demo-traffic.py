@@ -114,7 +114,8 @@ def ensure_grants(engine: Engine) -> dict[str, str]:
 def ensure_actor(engine: Engine, grants: dict[str, str], keys: dict, app_id: str, actor: str, grant: str, amount: str) -> str:
     path = f"/v1/admin/applications/{app_id}/actors/{actor}/allocation"
     # Every admin command takes an operation_ref (builder-core D57): a new one per command, the same one to
-    # repeat it safely. An actor already provisioned comes back as it is, so a re-run needs no lookup.
+    # repeat it safely. An actor already provisioned answers 409 already_provisioned and keeps its allocation,
+    # so a re-run needs no lookup.
     status, body = engine.admin_json("POST", path, {"amount": {"amount": amount, "currency": "USD"}, "label": actor, "grant_id": grants[grant], "operation_ref": f"demo-provision-{uuid.uuid4()}"})
     if status == 201:
         print(f"actor  {app_id}/{actor}: ${amount} from {grant} (allocation {body['allocation_id']})")
