@@ -23,7 +23,7 @@ engine has no record of.
 | --- | --- | --- |
 | `clearinghouse`, `signer`, `signer-metrics` | compose network only | Batteries `ca09e47` and the node signer `406b248`, as in `deploy/compose.yaml` |
 | `keycloak` | http://keycloak.localhost:8180 (admin console at `/admin`) | Keycloak 26.8.1, realm `livepeer` from `realm-livepeer.json` |
-| `engine` | http://127.0.0.1:8091 (Swagger at `/docs`) | builder-core `d3df806` (`releases/m3`, with PR #69), `LPB_AUTH=jwt`, strict RFC 9068 tokens |
+| `engine` | http://127.0.0.1:8091 (Swagger at `/docs`) | builder-core `bebc2f6` (PR #76 on `releases/m3` after #69: repeat-safe admin commands, D57), `LPB_AUTH=jwt`, strict RFC 9068 tokens |
 | `discovery` | compose network only | `lpb discovery` over `../config/orchestrators.txt` |
 | `console` | **http://127.0.0.1:3061** | the console with `CONSOLE_AUTH=oidc` |
 

@@ -11,7 +11,13 @@ import type { PlannedCall } from "@/domain/operator";
 import type { Problem, Reading } from "@/domain/reading";
 
 export type Written =
-  | { readonly ok: true; readonly value: unknown; readonly exchange: Exchange }
+  | {
+      readonly ok: true;
+      readonly value: unknown;
+      /** The engine answered from its record of this operation reference (`Idempotent-Replayed: true`, D57): nothing was applied again. */
+      readonly replayed: boolean;
+      readonly exchange: Exchange;
+    }
   | { readonly ok: false; readonly problem: Problem; readonly exchange: Exchange };
 
 export interface EngineWriter {

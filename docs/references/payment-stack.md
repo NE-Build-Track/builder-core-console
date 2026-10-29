@@ -7,7 +7,7 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 | --- | --- | --- |
 | `clearinghouse` | `livepeer/clearinghouse-batteries`, `examples/compose/Dockerfile` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
 | `signer` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
-| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `d3df80657ef1b497d1b6dff90fb7e27d9e03bc58` (`releases/m3`: the merge of PR #69, #53 rebuilt, with JWT bearer, the actor collection and the auditor, after #71 built Batteries from upstream) |
+| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `bebc2f6b8457b073384aa8bced39f078621b0908` (`tasks/mz/iss-11-14-idempotency`, PR #76 on `releases/m3` after the merge of PR #69: admin commands require an `operation_ref` and are repeat-safe, D57; migrations `0009` and `0010` are additive. Re-pin to #76's merge) |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relay only (D10) |
 | `console` | this repository, `deploy/console/Dockerfile` | — |
 

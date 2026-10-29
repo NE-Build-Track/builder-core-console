@@ -66,6 +66,8 @@ A failure shows the engine's own words: its kind, its message, and whether payme
 - Results are kept inline only; the engine stores no result body, and the image is a temporary runner URL.
 - Rates are in wei; there is no USD rate before a run (gap G14). Costs afterwards are in USD.
 - The Builder learns the actor id from the key's first job (gap G13).
-- Provisioning, issuing a key and creating a grant take no operation reference yet: send each once
-  (ISS-11). Funding and payment-key rotation do take one.
+- Every admin command that moves money or creates a key carries an operation reference, made when its
+  dialog opens and kept through Back, Try again and a closed dialog, so a repeat is applied once
+  (builder-core D57). A repeated key issue or rotation cannot show the token again: rotate the key if
+  nobody copied it.
 - The stack runs on one machine, on loopback, sharing its payer with ChatLPT.

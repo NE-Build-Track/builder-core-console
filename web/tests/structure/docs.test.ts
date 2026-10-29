@@ -81,4 +81,24 @@ describe("docs", () => {
     });
     expect(wrong).toEqual([]);
   });
+
+  it("sends an operation reference in every documented call to a command that requires one (builder-core D57)", () => {
+    // provision, fund allocation, rotate payment key, fund grant, create grant, issue key, rotate key: 422 without one
+    const command = /\/v1\/admin\/(?:applications\/[^/\s"']+\/actors\/[^/\s"']+\/allocation(?:\/fund|\/rotate-key)?|grant\/fund|grants|keys(?:\/[^/\s"']+\/rotate)?)(?=["'\s]|$)/;
+    const examples = [...docs, path.join(REPO, "deploy", "README.md"), path.join(REPO, "deploy", "keycloak", "README.md")].flatMap((file) =>
+      read(file)
+        .replace(/\\\n\s*/g, " ")
+        .split("\n")
+        .filter((line) => /\bcurl\b/.test(line) && /\s-d\s/.test(line) && command.test(line))
+        .map((line) => ({ file, line })),
+    );
+    const script = path.join(REPO, "scripts", "demo-traffic.py");
+    const calls = read(script)
+      .split("\n")
+      .filter((line) => line.includes('admin_json("POST"'))
+      .map((line) => ({ file: script, line }));
+    const missing = [...examples, ...calls].filter(({ line }) => !line.includes("operation_ref")).map(({ file, line }) => `${path.relative(REPO, file)}: ${line.trim().slice(0, 120)}`);
+    expect(examples.length + calls.length).toBeGreaterThanOrEqual(4);
+    expect(missing, "add an operation_ref to the body: a new one per command, the same one to repeat it safely").toEqual([]);
+  });
 });

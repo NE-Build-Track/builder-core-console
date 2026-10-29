@@ -113,15 +113,23 @@ export function engineReader(settings: SourceSettings<EngineSettings>, options: 
 /** The read token could not be had, so the request was never sent. */
 class NoReadToken extends Error {}
 
-/** Engine errors are `{"error": "..."}`; FastAPI's validation errors are `{"detail": [...]}`. */
-export function httpProblem(status: number, error: unknown): Problem {
+/**
+ * Engine errors are `{"error": "...", "code"?: "..."}`; FastAPI's validation errors are `{"detail": [...]}`.
+ * The `code` is kept, so callers branch on it and never on the message, and so is `Retry-After` when it
+ * is a number of seconds (builder-core D57).
+ */
+export function httpProblem(status: number, error: unknown, headers?: Headers): Problem {
   let detail = "request failed";
+  let code: string | undefined;
   if (typeof error === "object" && error !== null) {
-    const body = error as { error?: unknown; detail?: unknown };
+    const body = error as { error?: unknown; detail?: unknown; code?: unknown };
     const value = body.error ?? body.detail;
     if (value !== undefined) detail = typeof value === "string" ? value : JSON.stringify(value).slice(0, 200);
+    if (typeof body.code === "string" && body.code) code = body.code;
   } else if (typeof error === "string" && error) {
     detail = error.slice(0, 200);
   }
-  return { kind: "http", status, detail };
+  const retryAfter = headers?.get("retry-after")?.trim() ?? "";
+  const retryAfterS = /^\d{1,6}$/.test(retryAfter) ? Number(retryAfter) : undefined;
+  return { kind: "http", status, detail, ...(code ? { code } : {}), ...(retryAfterS === undefined ? {} : { retryAfterS }) };
 }

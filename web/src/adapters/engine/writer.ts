@@ -38,8 +38,11 @@ export function engineWriter(baseUrl: string, token: string, options: Options): 
         const text = await response.text();
         const body = text ? parseJson(text) : { ok: true as const, value: null };
         const value: unknown = body.ok ? body.value : text;
-        if (response.ok) return { ok: true, value, exchange: exchange(response.status, value) };
-        return { ok: false, problem: httpProblem(response.status, value), exchange: exchange(response.status, value) };
+        if (response.ok) {
+          const replayed = response.headers.get("idempotent-replayed")?.trim().toLowerCase() === "true";
+          return { ok: true, value, replayed, exchange: exchange(response.status, value) };
+        }
+        return { ok: false, problem: httpProblem(response.status, value, response.headers), exchange: exchange(response.status, value) };
       } catch (error) {
         const detail = transportError(error);
         return { ok: false, problem: { kind: "unreachable", detail }, exchange: exchange(null, undefined, detail) };

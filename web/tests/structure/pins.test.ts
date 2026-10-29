@@ -43,4 +43,20 @@ describe("pins", () => {
     // the actor collection and the auditor (builder-core #69) are what the console reads in OIDC mode
     expect(Object.keys(spec.paths)).toContain("/v1/admin/actors");
   });
+
+  it("generates engine types from a spec that requires an operation reference on every repeat-safe command (D57)", () => {
+    type Spec = {
+      paths: Record<string, { post?: { requestBody?: { required?: boolean; content: Record<string, { schema: { $ref?: string } }> } } }>;
+      components: { schemas: Record<string, { required?: string[] }> };
+    };
+    const spec = JSON.parse(read(path.join(REPO, "openapi", "engine.openapi.json"))) as Spec;
+    const allocation = "/v1/admin/applications/{application_id}/actors/{actor_id}/allocation";
+    const commands = [allocation, `${allocation}/fund`, `${allocation}/rotate-key`, "/v1/admin/grant/fund", "/v1/admin/grants", "/v1/admin/keys", "/v1/admin/keys/{key_id}/rotate"];
+    const lacking = commands.filter((route) => {
+      const body = spec.paths[route]?.post?.requestBody;
+      const schema = body?.content["application/json"]?.schema.$ref?.split("/").pop() ?? "";
+      return !body?.required || !spec.components.schemas[schema]?.required?.includes("operation_ref");
+    });
+    expect(lacking, "copy the pinned engine's docs/generated/openapi.json to openapi/ and run make gen-api").toEqual([]);
+  });
 });

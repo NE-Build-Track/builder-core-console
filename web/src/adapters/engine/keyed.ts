@@ -69,7 +69,7 @@ export function keyedEngine(baseUrl: string, token: string, options: Options): K
       const text = await response.text();
       const parsedBody = parseJson(text);
       const value: unknown = parsedBody.ok ? parsedBody.value : text;
-      return { ok: false, status: response.status, response: value, problem: httpProblem(response.status, value), exchange: exchange(response.status, value) };
+      return { ok: false, status: response.status, response: value, problem: httpProblem(response.status, value, response.headers), exchange: exchange(response.status, value) };
     } catch (error) {
       const detail = transportError(error);
       return { ok: false, status: null, response: undefined, problem: { kind: "unreachable", detail }, exchange: exchange(null, undefined, detail) };

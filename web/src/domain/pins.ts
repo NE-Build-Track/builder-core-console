@@ -6,8 +6,8 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "d3df80657ef1b497d1b6dff90fb7e27d9e03bc58",
-    note: "releases/m3, the merge of PR #69: JWT bearer, actors (registered on first sign-in, D48) and the auditor",
+    commit: "bebc2f6b8457b073384aa8bced39f078621b0908",
+    note: "tasks/mz/iss-11-14-idempotency (PR #76, on releases/m3 after #69): admin commands require an operation reference and are repeat-safe (D57)",
   },
   batteries: {
     repository: "livepeer/clearinghouse-batteries",

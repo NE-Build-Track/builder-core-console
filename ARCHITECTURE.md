@@ -16,7 +16,7 @@ flowchart LR
         AD["adapters/: engine, Batteries, signer, discovery (GET only)"]
     end
     subgraph Stack["builder stack (deploy/compose.yaml)"]
-        Engine["engine: stock lpb serve (builder-core d3df806)"]
+        Engine["engine: stock lpb serve (builder-core bebc2f6)"]
         Bat["clearinghouse: Batteries (ca09e47)"]
         Signer["signer: node remote signer (406b248)"]
         Relay["signer-metrics: socat relay"]
@@ -92,7 +92,7 @@ fixtures copied from a live stack (`web/tests/support/fixtures.ts`).
 | Usage | `services/usage.ts` | [console.md#usage](docs/product-specs/console.md#usage) |
 | Jobs | `services/jobs.ts` | [console.md#jobs](docs/product-specs/console.md#jobs) |
 | Sources and gaps | `domain/catalog.ts`, `domain/gaps.ts` | [data-sources.md](docs/references/data-sources.md), [gaps.md](docs/references/gaps.md) |
-| Operator actions | `services/operator.ts`, `runtime/operator.ts` | [console.md#operator-actions](docs/product-specs/console.md#operator-actions) |
+| Operator actions | `services/operator.ts`, `services/operator-actors.ts`, `runtime/operator.ts` | [console.md#operator-actions](docs/product-specs/console.md#operator-actions) |
 | Builder | `services/builder.ts`, `runtime/builder.ts` | [console.md#builder](docs/product-specs/console.md#builder) |
 
 ## Writing areas (D15–D20)

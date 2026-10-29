@@ -68,6 +68,11 @@ Each item names the M3 task it evidences.
   - **Sessions:** each shows its payment state, and a refused (`unpaid`) one is never shown as waiting for usage.
   - **Cost classes:** a job that failed over shows every cost class its attempts fell into, and `billable` sits beside the fees when they differ. The Usage page's cost-class notes are current.
   - **Gaps:** G2 is closed (both pages read `GET /v1/admin/actors`). G1 and G8 are now this repository's: the Jobs page does not use builder-core's job list yet, and the keys-mode reader still holds an admin key.
+- [x] 2026-10-29 Pinned to builder-core `bebc2f6` (PR #76, `tasks/mz/iss-11-14-idempotency`, ISS-11 and ISS-14, D57) on branch `tasks/mz/iss-11-operation-refs`: admin commands now **require** an operation reference and are repeat-safe. Re-pin to #76's merge.
+  - **References:** create grant, provision, issue key and rotate key now send the dialog's reference, like fund grant, fund allocation and rotate payment key already did; all seven are `reference` and the ISS-11 review warning is gone. The rotate-key body is now always sent (it carries the reference).
+  - **Answers:** the writer reads `Idempotent-Replayed`, and every engine problem keeps its `code` and `Retry-After`. A replay says nothing was applied twice; `operation_in_progress` says retry in N s (Try again, same reference); `operation_conflict` says the reference belongs to another request and offers Start over (new reference). Job 409s (`operation_exists`, in progress, conflict) read the same way in the Builder.
+  - **Keys:** a replayed issue or rotation (`token: null`) names the key, says its token cannot be shown again, and offers **Rotate this key**, where before the result silently had no key.
+  - **Docs and checks:** `deploy/README.md` and `scripts/demo-traffic.py` send references; `docs.test.ts` fails on a documented call without one, and `pins.test.ts` on a spec that does not require them. The spec and types are regenerated; migrations `0009` and `0010` are additive, so no volume reset. `services/operator-actors.ts` is split from `services/operator.ts` (400-line limit). `make check` and `make build` pass; not yet shown on the stack or in a browser.
 - [x] 2026-10-28 Re-pinned to `d3df806`, the merge of builder-core PR #69 on `releases/m3`. The spec is identical to `a2e61e4`, so the types are unchanged, and #7 leaves draft.
 - [x] 2026-10-28 Pinned to builder-core `a2e61e4`, the head of PR #69 (#53 rebuilt on `releases/m3` `2134e29`), on #7's branch after merging `main`. Both stacks now build the signer from `livepeer/node` and Batteries from `livepeer/clearinghouse-batteries` (the same commits). `pins.test.ts` checks both compose files and refuses NE-Build-Track forks, and CI and `make compose-config` check the Keycloak stack too. The spec adds `payment_state`, `billable`, `payment_unknown` and the native HTTP fields, and the types are regenerated. `GET /v1/admin/grants` is refused to the auditor (#69), so the reader no longer asks with that token (`not_permitted`, shown as a note). Volumes from `0dbfe6e` are reset (`down -v`), because #69 renumbers the actor migrations. Re-pin to #69's merge.
 - [x] 2026-10-26 Pinned to builder-core `985f23d` (`tasks/mz/discovery-service`, #45): a discovery service in the stack (`lpb discovery`, static list `deploy/config/orchestrators.txt`); the engine and the Network page read its `GET /discovery` (`CONSOLE_DISCOVERY_URL`); the signer has no orchestrator list or pinned certificates. Re-pin to the merge on `releases/m3`.
@@ -92,14 +97,14 @@ Each item names the M3 task it evidences.
 - **Writes.** Operator forms are native `<form method="post">` bound to server actions (Next's origin check applies); step one returns the review, step two commits. The job run is a `POST` route handler that streams the engine's response to the browser; it checks `Origin` and the session itself.
 - **Sessions.** The cookie holds the key sealed with AES-256-GCM under `CONSOLE_SESSION_SECRET` (new, written by `first-run.sh`), plus its kind, actor and application, and expires after 8 hours. Nothing is stored server-side (D6).
 - **Layers.** New ports `EngineWriter` (admin) and `BuilderEngine` (actor-scoped reads and the job run) in `ports/`; adapters in `adapters/engine/`; services stay pure and fixture-tested. `layers.test.ts` gains the two areas; `read-only.test.ts` becomes `writes.test.ts`.
-- **Operation references.** Generated when the form renders and kept through review and retry. Fund grant, fund allocation and rotate payment key accept one today; provision, issue key, create grant and status do not yet (ISS-11, John). Until they do, their review step says a repeat could apply twice.
+- **Operation references.** Generated when the form renders and kept through review and retry. Since builder-core `bebc2f6` (D57) the engine requires one on the seven commands that move money or create a key (create grant, fund grant, provision, fund allocation, rotate payment key, issue key, rotate key) and answers a repeat from its record; set status and the two revokes take none, because a repeat ends in the same state.
 
 ### Depends on John (engine)
 
 | Need | Task | Without it |
 | --- | --- | --- |
 | Access-key inspect and rotate | ISS-08 | Operator actions offer revoke and issue instead |
-| Operation references on every admin write | ISS-11 | The review step warns that a repeat could apply twice |
+| ~~Operation references on every admin write~~ | ISS-11 | Done in builder-core `bebc2f6` (PR #76, D57); the console sends them (29 October) |
 | Capability input descriptions | builder-core #18 | Chat and image presets; other offerings start from `{}` |
 | Rate source and age on offerings | ISS-10 | The console shows what the engine gives and marks the rest unknown |
 | PR #28 merged into `releases/m3` | streaming | The final run cannot use streamed chat |
@@ -112,6 +117,8 @@ Each item names the M3 task it evidences.
 - **Next.js 16.** Server actions and streaming route handlers are checked against `web/node_modules/next/dist/docs/` before use.
 
 ## Decision log
+
+- 2026-10-29 builder-core D57: admin commands require `operation_ref`. The console keeps one reference per dialog until a new intent (Do another, or Start over after `operation_conflict`), so a double submit, a closed and reopened dialog, or a retry after a lost answer is the same command. It branches on the problem's `code`, never its text. A replayed key command has no token, so the result offers a rotation rather than pretending a key was shown.
 
 - 2026-10-21 D15–D20 accepted by Mike: the console becomes the M3 reference app with Operator actions and a Builder area; key sign-in held server-side; fill in → review → result; the REST call shown on every action; one generic job form with chat and image presets; output views by content type.
 - 2026-10-21 Operator actions are a page of their own, not buttons on the Money and Users pages: it keeps D1 checkable (no read-only page imports a write path) and puts the operator's whole job in one place.

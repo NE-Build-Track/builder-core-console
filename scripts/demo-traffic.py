@@ -27,6 +27,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -112,15 +113,17 @@ def ensure_grants(engine: Engine) -> dict[str, str]:
 
 def ensure_actor(engine: Engine, grants: dict[str, str], keys: dict, app_id: str, actor: str, grant: str, amount: str) -> str:
     path = f"/v1/admin/applications/{app_id}/actors/{actor}/allocation"
-    status, body = engine.admin_json("POST", path, {"amount": {"amount": amount, "currency": "USD"}, "label": actor, "grant_id": grants[grant]})
+    # Every admin command takes an operation_ref (builder-core D57): a new one per command, the same one to
+    # repeat it safely. An actor already provisioned comes back as it is, so a re-run needs no lookup.
+    status, body = engine.admin_json("POST", path, {"amount": {"amount": amount, "currency": "USD"}, "label": actor, "grant_id": grants[grant], "operation_ref": f"demo-provision-{uuid.uuid4()}"})
     if status == 201:
         print(f"actor  {app_id}/{actor}: ${amount} from {grant} (allocation {body['allocation_id']})")
     elif status != 409:
         print(f"actor  {app_id}/{actor}: provisioning answered HTTP {status} {body}; continuing if it already exists")
     slot = f"{app_id}/{actor}"
     if slot not in keys:
-        status, issued = engine.admin_json("POST", "/v1/admin/keys", {"actor_id": actor, "application_id": app_id, "label": f"demo {actor}"})
-        if status != 201:
+        status, issued = engine.admin_json("POST", "/v1/admin/keys", {"actor_id": actor, "application_id": app_id, "label": f"demo {actor}", "operation_ref": f"demo-key-{uuid.uuid4()}"})
+        if status != 201 or not issued.get("token"):  # a replay has token null: the engine never shows it twice
             sys.exit(f"cannot issue a key for {slot}: HTTP {status} {issued}")
         keys[slot] = issued["token"]
         KEYS_FILE.parent.mkdir(exist_ok=True)
