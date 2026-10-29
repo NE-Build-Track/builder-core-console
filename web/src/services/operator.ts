@@ -321,8 +321,9 @@ export function outcomeOf(input: ActionInput, values: Readonly<Record<string, st
   const spec = ACTIONS[input.action];
   const exchange = hideSecrets(written.exchange);
   if (!written.ok) {
-    const conflict = written.problem.kind === "http" && written.problem.code === "operation_conflict";
-    const retry = conflict ? "new-reference" : "same-reference";
+    // the same reference would be refused again: it names another request, or an actor that exists
+    const refusedForGood = written.problem.kind === "http" && ["operation_conflict", "already_provisioned"].includes(written.problem.code ?? "");
+    const retry = refusedForGood ? "new-reference" : "same-reference";
     return { step: "done", ok: false, values, title: `${spec.label}: not done`, message: describeProblem(written.problem), retry, exchange };
   }
   const note = written.replayed

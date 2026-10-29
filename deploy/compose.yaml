@@ -53,9 +53,9 @@ services:
     restart: unless-stopped
 
   engine:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:bebc2f6
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:f58a2b1
     build:
-      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#bebc2f6b8457b073384aa8bced39f078621b0908
+      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#f58a2b1ab47e9265eb2c9708bf02b47b3b2110fa
       dockerfile: deploy/dev-stack/engine/Dockerfile
       args:
         BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"  # hatch-vcs derives the engine version from .git
@@ -81,7 +81,7 @@ services:
   # builder-core's discovery service (`lpb discovery`): the engine image, the static directory in
   # config/orchestrators.txt. The engine and the console's Network page both read its GET /discovery.
   discovery:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:bebc2f6
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:f58a2b1
     command: [lpb, discovery]
     environment:
       LPD_ORCHESTRATORS: /etc/lpd/orchestrators.txt

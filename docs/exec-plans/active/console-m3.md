@@ -69,6 +69,7 @@ Each item names the M3 task it evidences.
   - **Cost classes:** a job that failed over shows every cost class its attempts fell into, and `billable` sits beside the fees when they differ. The Usage page's cost-class notes are current.
   - **Gaps:** G2 is closed (both pages read `GET /v1/admin/actors`). G1 and G8 are now this repository's: the Jobs page does not use builder-core's job list yet, and the keys-mode reader still holds an admin key.
 - [x] 2026-10-29 Pinned to builder-core `bebc2f6` (PR #76, `tasks/mz/iss-11-14-idempotency`, ISS-11 and ISS-14, D57) on branch `tasks/mz/iss-11-operation-refs`: admin commands now **require** an operation reference and are repeat-safe. Re-pin to #76's merge.
+- [x] 2026-10-29 Re-pinned to builder-core `f58a2b1` (PR #76): provisioning an actor already provisioned under a new reference is 409 `already_provisioned` (nothing applied, the amount included), worded as such with a new reference offered; an admin command still running sends `Retry-After` as the seconds until it can be resumed. The engine OpenAPI is unchanged.
   - **References:** create grant, provision, issue key and rotate key now send the dialog's reference, like fund grant, fund allocation and rotate payment key already did; all seven are `reference` and the ISS-11 review warning is gone. The rotate-key body is now always sent (it carries the reference).
   - **Answers:** the writer reads `Idempotent-Replayed`, and every engine problem keeps its `code` and `Retry-After`. A replay says nothing was applied twice; `operation_in_progress` says retry in N s (Try again, same reference); `operation_conflict` says the reference belongs to another request and offers Start over (new reference). Job 409s (`operation_exists`, in progress, conflict) read the same way in the Builder.
   - **Keys:** a replayed issue or rotation (`token: null`) names the key, says its token cannot be shown again, and offers **Rotate this key**, where before the result silently had no key.
@@ -97,14 +98,14 @@ Each item names the M3 task it evidences.
 - **Writes.** Operator forms are native `<form method="post">` bound to server actions (Next's origin check applies); step one returns the review, step two commits. The job run is a `POST` route handler that streams the engine's response to the browser; it checks `Origin` and the session itself.
 - **Sessions.** The cookie holds the key sealed with AES-256-GCM under `CONSOLE_SESSION_SECRET` (new, written by `first-run.sh`), plus its kind, actor and application, and expires after 8 hours. Nothing is stored server-side (D6).
 - **Layers.** New ports `EngineWriter` (admin) and `BuilderEngine` (actor-scoped reads and the job run) in `ports/`; adapters in `adapters/engine/`; services stay pure and fixture-tested. `layers.test.ts` gains the two areas; `read-only.test.ts` becomes `writes.test.ts`.
-- **Operation references.** Generated when the form renders and kept through review and retry. Since builder-core `bebc2f6` (D57) the engine requires one on the seven commands that move money or create a key (create grant, fund grant, provision, fund allocation, rotate payment key, issue key, rotate key) and answers a repeat from its record; set status and the two revokes take none, because a repeat ends in the same state.
+- **Operation references.** Generated when the form renders and kept through review and retry. Since builder-core `bebc2f6`, now `f58a2b1` (D57) the engine requires one on the seven commands that move money or create a key (create grant, fund grant, provision, fund allocation, rotate payment key, issue key, rotate key) and answers a repeat from its record; set status and the two revokes take none, because a repeat ends in the same state.
 
 ### Depends on John (engine)
 
 | Need | Task | Without it |
 | --- | --- | --- |
 | Access-key inspect and rotate | ISS-08 | Operator actions offer revoke and issue instead |
-| ~~Operation references on every admin write~~ | ISS-11 | Done in builder-core `bebc2f6` (PR #76, D57); the console sends them (29 October) |
+| ~~Operation references on every admin write~~ | ISS-11 | Done in builder-core `f58a2b1` (PR #76, D57); the console sends them (29 October) |
 | Capability input descriptions | builder-core #18 | Chat and image presets; other offerings start from `{}` |
 | Rate source and age on offerings | ISS-10 | The console shows what the engine gives and marks the rest unknown |
 | PR #28 merged into `releases/m3` | streaming | The final run cannot use streamed chat |

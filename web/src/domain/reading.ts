@@ -22,7 +22,7 @@ export type Problem =
   | { readonly kind: "unreachable"; readonly detail: string }
   /**
    * The source answered with an HTTP error. `code` is the engine's machine-readable reason when the body
-   * has one (`operation_conflict`, `operation_in_progress`, `operation_exists`: builder-core D57), and
+   * has one (`operation_conflict`, `operation_in_progress`, `operation_exists`, `already_provisioned`: builder-core D57), and
    * `retryAfterS` its `Retry-After` in seconds.
    */
   | { readonly kind: "http"; readonly status: number; readonly detail: string; readonly code?: string; readonly retryAfterS?: number }
@@ -63,6 +63,8 @@ function operationProblem(problem: Extract<Problem, { kind: "http" }>): string |
       return "this operation reference was already used for a different request, so the engine did not apply this one. Send it under a new reference.";
     case "operation_exists":
       return `a job already ran under this operation reference, so it was not run again (${problem.detail}).`;
+    case "already_provisioned":
+      return "this actor is already provisioned, so nothing was applied, the amount included. Fund its allocation instead.";
     default:
       return null;
   }

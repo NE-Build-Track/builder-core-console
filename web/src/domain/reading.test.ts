@@ -20,6 +20,13 @@ describe("describing a problem", () => {
     expect(describeProblem(problem)).toBe("HTTP 409: a job already ran under this operation reference, so it was not run again (operation_ref 'r1' already used by job j1).");
   });
 
+  it("says an actor already provisioned was not provisioned again, and that funding is the way to add to it (D57)", () => {
+    const problem = { kind: "http" as const, status: 409, detail: "actor 'alice' is already provisioned (allocation a1); fund it instead", code: "already_provisioned" };
+    expect(describeProblem(problem)).toBe(
+      "HTTP 409: this actor is already provisioned, so nothing was applied, the amount included. Fund its allocation instead.",
+    );
+  });
+
   it("keeps the engine's own words for any other refusal", () => {
     expect(describeProblem({ kind: "http", status: 409, detail: "grant g1 has too little unallocated", code: "something_new" })).toBe("HTTP 409: grant g1 has too little unallocated");
   });

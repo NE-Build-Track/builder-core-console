@@ -217,5 +217,7 @@ describe("the result of a command", () => {
     const refused = (code: string) => ({ ok: false as const, problem: { kind: "http" as const, status: 409, detail: "refused", code, retryAfterS: 1 }, exchange: { ...exchange, status: 409 } });
     expect(outcomeOf(fund, values, refused("operation_conflict"))).toMatchObject({ step: "done", ok: false, retry: "new-reference" });
     expect(outcomeOf(fund, values, refused("operation_in_progress"))).toMatchObject({ step: "done", ok: false, retry: "same-reference", message: expect.stringContaining("retry in 1 s") });
+    // the same reference would be refused again: the actor exists, and nothing was applied
+    expect(outcomeOf(fund, values, refused("already_provisioned"))).toMatchObject({ step: "done", ok: false, retry: "new-reference" });
   });
 });
