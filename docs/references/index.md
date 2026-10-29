@@ -13,3 +13,4 @@
 | Run | What it shows |
 | --- | --- |
 | [2026-10-20 demo traffic](evidence/2026-10-20-demo-traffic.md) | Five actors, two grants, 58 paid jobs; Batteries and the engine agree to the last digit |
+| [2026-10-29 repeat-safe commands](evidence/2026-10-29-d57-live-check.md) | builder-core D57 (#76) live: 37 engine checks and 14 Operator checks in a browser, all passing |

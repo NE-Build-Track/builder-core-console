@@ -98,6 +98,15 @@ one deliberately rejected request. **It spends real money** through the signer (
 batch). Re-running reuses the grants, allocations and keys (kept in `.local/demo-keys.json`) and adds a batch.
 See [the 20 October run](../docs/references/evidence/2026-10-20-demo-traffic.md).
 
+### Live check of repeat-safe commands
+
+`scripts/live-check-d57.py --yes` checks builder-core's repeat-safe commands (D57) through the engine: the
+required references, replays that apply once (read back from Batteries), conflicts, `already_provisioned`,
+key replays without their token, and the job repeat rules. It runs about six short paid jobs. Then
+`uv run --no-project --with playwright python scripts/live-check-d57-ui.py --actor <actor> --grant <grant>`,
+with the actor and grant it prints, drives the same through the Operator page in headless Chrome. See
+[the 29 October run](../docs/references/evidence/2026-10-29-d57-live-check.md).
+
 To run Batteries, the engine and the console without the signer (safe while ChatLPT runs; discovery
 and the signer checks read as down):
 
