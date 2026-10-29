@@ -8,7 +8,7 @@ import type { ActionState, FieldSpec, OperatorAction } from "@/domain/operator";
 import { toast } from "../toast";
 import { ExchangePanel } from "./exchange-panel";
 import { Fields, ReviewLines } from "./fields";
-import { ShownOnce } from "./shown-once";
+import { NotShownAgain, ShownOnce } from "./shown-once";
 
 type Props = {
   readonly action: OperatorAction;
@@ -28,8 +28,10 @@ function newRef(action: OperatorAction): string {
 /**
  * One Operator action in a native modal dialog (decision D17): fill in → review → result. Nothing is
  * sent before the review is confirmed; the review shows the exact call (D18). The operation reference is
- * made once per attempt and kept through Back and retries, so a repeat cannot apply twice where the
- * engine takes one.
+ * made when the dialog first renders and kept through Back, a closed and reopened dialog, and Try again,
+ * so a double submit or a retry after a lost answer is the same command, which the engine applies once
+ * (builder-core D57). Only a new intent makes a new one: Do another, or Start over after the engine
+ * said the reference belongs to a different request.
  */
 export function ActionDialog({ action, label, fields, operate, signInWithKey, quiet = false, danger = false }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -143,7 +145,26 @@ export function ActionDialog({ action, label, fields, operate, signInWithKey, qu
                   {state.title}
                 </p>
                 <ReviewLines lines={state.lines} />
-                {state.secret ? <ShownOnce secret={state.secret} signInWithKey={signInWithKey} /> : null}
+                {state.note ? (
+                  <p className="note" role="note">
+                    {state.note}
+                  </p>
+                ) : null}
+                {state.secret?.token ? <ShownOnce secret={{ ...state.secret, token: state.secret.token }} signInWithKey={signInWithKey} /> : null}
+                {state.secret && !state.secret.token ? (
+                  <NotShownAgain
+                    secret={state.secret}
+                    rotate={
+                      <ActionDialog
+                        action="rotateKey"
+                        label="Rotate this key"
+                        fields={[{ type: "hidden", name: "key_id", value: state.secret.keyId }]}
+                        operate={operate}
+                        signInWithKey={signInWithKey}
+                      />
+                    }
+                  />
+                ) : null}
               </>
             ) : (
               <div className="problem" role="alert">
@@ -159,6 +180,10 @@ export function ActionDialog({ action, label, fields, operate, signInWithKey, qu
               {state.ok ? (
                 <button type="submit" name="intent" value="again" className="btn" onClick={() => setRef(newRef(action))}>
                   Do another
+                </button>
+              ) : state.retry === "new-reference" ? (
+                <button type="submit" name="intent" value="again" className="btn" onClick={() => setRef(newRef(action))}>
+                  Start over (new reference)
                 </button>
               ) : (
                 <button type="submit" name="intent" value="back" className="btn">

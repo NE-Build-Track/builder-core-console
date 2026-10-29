@@ -22,7 +22,9 @@
   console's own client-credentials token, which the engine maps to a read-only auditor, so no admin
   credential sits in the console at all.
 - **New keys.** An issued key is shown once, in the result of the action that made it, and is never
-  stored, logged or shown in a request panel (keys there are replaced by `lpk_…(hidden)`).
+  stored, logged or shown in a request panel (keys there are replaced by `lpk_…(hidden)`). A repeat of
+  the same operation reference never brings it back: the engine answers it with `token: null` (D57), and
+  the console offers to rotate the key instead.
 - **Console ↔ Batteries.** The `console-reader` credential has only `*.read` permissions, so
   Batteries itself refuses any write.
 - **Console ↔ signer.** Discovery and the metrics listener need no credential. The relay that exposes

@@ -24,11 +24,11 @@ export type OperatorAction =
 export type ActionKind = "money" | "irreversible" | "secret" | "everyday";
 
 /**
- * Whether sending the same form twice is safe: `reference` when the engine takes an operation reference
- * and applies it once; `same-result` when a repeat ends in the same state; `no` when a repeat would apply
- * twice (the engine does not take a reference on that call yet: ISS-11).
+ * Why sending the same form twice is safe: `reference` when the engine requires an operation reference
+ * and answers a repeat from its record of the first (builder-core D57, ISS-11); `same-result` when the
+ * call takes none because a repeat ends in the same state (set status, revoke).
  */
-export type RepeatSafety = "reference" | "same-result" | "no";
+export type RepeatSafety = "reference" | "same-result";
 
 export type ActionSpec = {
   readonly label: string;
@@ -40,13 +40,13 @@ export type ActionSpec = {
 };
 
 export const ACTIONS: Record<OperatorAction, ActionSpec> = {
-  createGrant: { label: "Create a grant", kind: "money", route: "POST /v1/admin/grants", repeat: "no", done: "Grant created" },
+  createGrant: { label: "Create a grant", kind: "money", route: "POST /v1/admin/grants", repeat: "reference", done: "Grant created" },
   fundGrant: { label: "Fund a grant", kind: "money", route: "POST /v1/admin/grant/fund", repeat: "reference", done: "Grant funded" },
   provision: {
     label: "Provision an actor",
     kind: "money",
     route: "POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation",
-    repeat: "no",
+    repeat: "reference",
     done: "Actor provisioned",
   },
   fundAllocation: {
@@ -77,8 +77,8 @@ export const ACTIONS: Record<OperatorAction, ActionSpec> = {
     repeat: "same-result",
     done: "Allocation revoked",
   },
-  issueKey: { label: "Issue an access key", kind: "secret", route: "POST /v1/admin/keys", repeat: "no", done: "Key issued" },
-  rotateKey: { label: "Rotate an access key", kind: "secret", route: "POST /v1/admin/keys/{key_id}/rotate", repeat: "same-result", done: "Key rotated" },
+  issueKey: { label: "Issue an access key", kind: "secret", route: "POST /v1/admin/keys", repeat: "reference", done: "Key issued" },
+  rotateKey: { label: "Rotate an access key", kind: "secret", route: "POST /v1/admin/keys/{key_id}/rotate", repeat: "reference", done: "Key rotated" },
   revokeKey: { label: "Revoke an access key", kind: "irreversible", route: "POST /v1/admin/keys/{key_id}/revoke", repeat: "same-result", done: "Key revoked" },
 };
 
@@ -86,7 +86,7 @@ export const ALLOCATION_STATUSES = ["active", "paused", "exhausted", "revoked"] 
 export type AllocationStatus = (typeof ALLOCATION_STATUSES)[number];
 
 export type ActionInput =
-  | { readonly action: "createGrant"; readonly name: string; readonly amount: string }
+  | { readonly action: "createGrant"; readonly name: string; readonly amount: string; readonly operationRef: string }
   | { readonly action: "fundGrant"; readonly grantId: string; readonly amount: string; readonly operationRef: string }
   | {
       readonly action: "provision";
@@ -95,6 +95,7 @@ export type ActionInput =
       readonly grantId: string;
       readonly amount: string;
       readonly label: string;
+      readonly operationRef: string;
     }
   | {
       readonly action: "fundAllocation";
@@ -107,8 +108,15 @@ export type ActionInput =
   | { readonly action: "setStatus"; readonly applicationId: string; readonly actorId: string; readonly status: AllocationStatus }
   | { readonly action: "rotatePaymentKey"; readonly applicationId: string; readonly actorId: string; readonly operationRef: string }
   | { readonly action: "revokeAllocation"; readonly applicationId: string; readonly actorId: string }
-  | { readonly action: "issueKey"; readonly actorId: string; readonly applicationId: string; readonly kind: "actor" | "admin"; readonly label: string }
-  | { readonly action: "rotateKey"; readonly keyId: string; readonly label: string }
+  | {
+      readonly action: "issueKey";
+      readonly actorId: string;
+      readonly applicationId: string;
+      readonly kind: "actor" | "admin";
+      readonly label: string;
+      readonly operationRef: string;
+    }
+  | { readonly action: "rotateKey"; readonly keyId: string; readonly label: string; readonly operationRef: string }
   | { readonly action: "revokeKey"; readonly keyId: string };
 
 /** One planned engine call: the route template, its filled path, and the body. */
@@ -129,7 +137,7 @@ function plan(input: ActionInput, params: Readonly<Record<string, string>>, body
 export function callOf(input: ActionInput): PlannedCall {
   switch (input.action) {
     case "createGrant": {
-      const body: Schemas["GrantBody"] = { name: input.name, amount: usdAmount(input.amount) };
+      const body: Schemas["GrantBody"] = { name: input.name, amount: usdAmount(input.amount), operation_ref: input.operationRef };
       return plan(input, {}, body);
     }
     case "fundGrant": {
@@ -137,7 +145,7 @@ export function callOf(input: ActionInput): PlannedCall {
       return plan(input, {}, body);
     }
     case "provision": {
-      const body: Schemas["ProvisionBody"] = { amount: usdAmount(input.amount), grant_id: input.grantId, label: input.label };
+      const body: Schemas["ProvisionBody"] = { amount: usdAmount(input.amount), grant_id: input.grantId, label: input.label, operation_ref: input.operationRef };
       return plan(input, { application_id: input.applicationId, actor_id: input.actorId }, body);
     }
     case "fundAllocation": {
@@ -155,12 +163,18 @@ export function callOf(input: ActionInput): PlannedCall {
     case "revokeAllocation":
       return plan(input, { application_id: input.applicationId, actor_id: input.actorId });
     case "issueKey": {
-      const body: Schemas["IssueKeyBody"] = { actor_id: input.actorId, application_id: input.applicationId, kind: input.kind, label: input.label };
+      const body: Schemas["IssueKeyBody"] = {
+        actor_id: input.actorId,
+        application_id: input.applicationId,
+        kind: input.kind,
+        label: input.label,
+        operation_ref: input.operationRef,
+      };
       return plan(input, {}, body);
     }
     case "rotateKey": {
-      // No label: the engine keeps the key's own (D44), so send no body rather than an empty one.
-      const body: Schemas["RotateKeyBody"] | undefined = input.label ? { label: input.label } : undefined;
+      // No label: the engine keeps the key's own (D44), so the body carries only the reference (D57).
+      const body: Schemas["RotateKeyBody"] = { ...(input.label ? { label: input.label } : {}), operation_ref: input.operationRef };
       return plan(input, { key_id: input.keyId }, body);
     }
     case "revokeKey":
@@ -209,8 +223,12 @@ export type Review = {
   readonly button: string;
 };
 
-/** A new key, shown once on the result and never again (D17). */
-export type ShownOnce = { readonly token: string; readonly keyId: string; readonly actorId: string; readonly kind: string };
+/**
+ * A new key, shown once on the result and never again (D17). `token` is null when the engine answered a
+ * repeat of the operation reference from its record (builder-core D57): the key was issued by the first
+ * request, and the engine keeps only its hash, so the token cannot be shown. Rotating the key replaces it.
+ */
+export type ShownOnce = { readonly token: string | null; readonly keyId: string; readonly actorId: string; readonly kind: string };
 
 export type ActionState =
   | { readonly step: "fill"; readonly values?: Readonly<Record<string, string>>; readonly error?: { readonly field?: string; readonly message: string } }
@@ -222,6 +240,8 @@ export type ActionState =
       readonly title: string;
       readonly lines: readonly ReviewLine[];
       readonly secret: ShownOnce | null;
+      /** Said beside the result: that the engine answered a repeat from its record (D57), or nothing. */
+      readonly note: string | null;
       readonly exchange: Exchange;
     }
   | {
@@ -230,11 +250,10 @@ export type ActionState =
       readonly values: Readonly<Record<string, string>>;
       readonly title: string;
       readonly message: string;
+      /**
+       * How to try again: under the same reference (a lost answer, a command still running, a refusal the
+       * engine forgot), or under a new one, because this reference already belongs to another request (D57).
+       */
+      readonly retry: "same-reference" | "new-reference";
       readonly exchange: Exchange;
     };
-
-export const REPEAT_WARNINGS: Record<RepeatSafety, string | null> = {
-  reference: null,
-  "same-result": null,
-  no: "The engine does not take an operation reference on this call yet (ISS-11), so sending this twice would apply it twice. Send it once.",
-};

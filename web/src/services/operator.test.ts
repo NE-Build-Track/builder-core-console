@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { AccessKey, KnownActor } from "@/domain/engine";
-import { callOf } from "@/domain/operator";
+import { ACTIONS, callOf } from "@/domain/operator";
 import { read } from "../../tests/support/fixtures";
 
-import { actorsFromKeys, actorsOf, parseAction, resultOf, reviewOf, type ReviewContext } from "./operator";
+import { actorsFromKeys, actorsOf, outcomeOf, parseAction, resultOf, reviewOf, type ReviewContext } from "./operator";
 
 function form(values: Record<string, string>): FormData {
   const data = new FormData();
@@ -43,6 +43,35 @@ describe("operator actions", () => {
     expect(callOf({ action: "revokeKey", keyId: "k1" })).toEqual({ method: "POST", template: "/v1/admin/keys/{key_id}/revoke", path: "/v1/admin/keys/k1/revoke" });
   });
 
+  it("sends the form's operation reference with a provision (ISS-11, D57)", () => {
+    const parsedForm = parseAction(form({ action: "provision", application_id: "default", actor_id: "acme", grant_id: "g1", amount: "1", label: "", operation_ref: REF }));
+    expect(parsedForm.ok && callOf(parsedForm.value).body).toEqual({ amount: { amount: "1", currency: "USD" }, grant_id: "g1", label: "", operation_ref: REF });
+  });
+
+  it("sends the form's operation reference when it creates a grant (ISS-11, D57)", () => {
+    const parsedForm = parseAction(form({ action: "createGrant", name: "Pilot", amount: "5", operation_ref: REF }));
+    expect(parsedForm.ok && callOf(parsedForm.value).body).toEqual({ name: "Pilot", amount: { amount: "5", currency: "USD" }, operation_ref: REF });
+  });
+
+  it("sends the form's operation reference when it issues a key (ISS-11, D57)", () => {
+    const parsedForm = parseAction(form({ action: "issueKey", actor_id: "acme", application_id: "default", kind: "actor", label: "ci", operation_ref: REF }));
+    expect(parsedForm.ok && callOf(parsedForm.value).body).toEqual({ actor_id: "acme", application_id: "default", kind: "actor", label: "ci", operation_ref: REF });
+  });
+
+  it("refuses a form that lost its operation reference on each of the seven commands the engine requires one for (D57)", () => {
+    const actor = { application_id: "default", actor_id: "acme" };
+    const forms: Record<string, string>[] = [
+      { action: "createGrant", name: "Pilot", amount: "5" },
+      { action: "fundGrant", grant_id: "g1", amount: "1" },
+      { action: "provision", ...actor, grant_id: "g1", amount: "1" },
+      { action: "fundAllocation", ...actor, amount: "1" },
+      { action: "rotatePaymentKey", ...actor },
+      { action: "issueKey", ...actor, kind: "actor" },
+      { action: "rotateKey", key_id: "k1" },
+    ];
+    for (const values of forms) expect(parseAction(form(values)), values.action).toMatchObject({ ok: false, field: "operation_ref" });
+  });
+
   it("shows money moves as before → after", () => {
     const fund = reviewOf({ action: "fundGrant", grantId: "g1", amount: "0.5", operationRef: REF }, context);
     expect(fund.lines).toContainEqual({ label: "Total", before: "$1.50", after: "$2.00" });
@@ -52,9 +81,11 @@ describe("operator actions", () => {
     expect(allocation.lines).toContainEqual({ label: "Available", before: "$0.20", after: "$0.45" });
   });
 
-  it("warns when a repeat would apply twice", () => {
-    const review = reviewOf({ action: "createGrant", name: "Pilot", amount: "5" }, context);
-    expect(review.warnings.join(" ")).toContain("would apply it twice");
+  it("no longer warns that a repeat could apply twice: the engine applies each reference once (ISS-11, D57)", () => {
+    const seven = ["createGrant", "fundGrant", "provision", "fundAllocation", "rotatePaymentKey", "issueKey", "rotateKey"] as const;
+    expect(seven.map((action) => [action, ACTIONS[action].repeat])).toEqual(seven.map((action) => [action, "reference"]));
+    const review = reviewOf({ action: "createGrant", name: "Pilot", amount: "5", operationRef: REF }, context);
+    expect(review.warnings).toEqual([]);
   });
 
   it("asks for a typed confirmation before anything that cannot be undone", () => {
@@ -65,10 +96,26 @@ describe("operator actions", () => {
 
   it("returns a new key once, apart from the response", () => {
     const issued = resultOf(
-      { action: "issueKey", actorId: "acme", applicationId: "default", kind: "actor", label: "" },
+      { action: "issueKey", actorId: "acme", applicationId: "default", kind: "actor", label: "", operationRef: REF },
       { key: { key_id: "k2", actor_id: "acme", application_id: "default", kind: "actor" }, token: "lpk_AbCdEfGhIjKlMnOpQrSt" },
     );
     expect(issued.secret).toEqual({ token: "lpk_AbCdEfGhIjKlMnOpQrSt", keyId: "k2", actorId: "acme", kind: "actor" });
+  });
+
+  it("keeps a replayed key issue's key, with no token to show: the engine never shows one twice (D57)", () => {
+    const replayed = resultOf(
+      { action: "issueKey", actorId: "acme", applicationId: "default", kind: "actor", label: "", operationRef: REF },
+      { key: { key_id: "k2", actor_id: "acme", application_id: "default", kind: "actor" }, token: null, replayed: true },
+    );
+    expect(replayed.secret).toEqual({ token: null, keyId: "k2", actorId: "acme", kind: "actor" });
+  });
+
+  it("keeps a replayed rotation's new key, with no token to show (D57)", () => {
+    const replayed = resultOf(
+      { action: "rotateKey", keyId: "k1abcdefgh", label: "", operationRef: REF },
+      { key: { key_id: "k2", actor_id: "acme", application_id: "default", kind: "actor" }, token: null, replayed: true },
+    );
+    expect(replayed.secret).toEqual({ token: null, keyId: "k2", actorId: "acme", kind: "actor" });
   });
 
   it("lists actors from their keys, never admin keys", () => {
@@ -104,21 +151,27 @@ describe("operator actions", () => {
     ]);
   });
 
-  it("sends a label only when one is given, so the key keeps its own", () => {
+  it("sends a label only when one is given, so the key keeps its own, and always the operation reference (D57)", () => {
     const template = "/v1/admin/keys/{key_id}/rotate";
-    expect(callOf({ action: "rotateKey", keyId: "k1", label: "" })).toEqual({ method: "POST", template, path: "/v1/admin/keys/k1/rotate" });
-    expect(callOf({ action: "rotateKey", keyId: "k1", label: "ci-2" })).toEqual({ method: "POST", template, path: "/v1/admin/keys/k1/rotate", body: { label: "ci-2" } });
+    expect(callOf({ action: "rotateKey", keyId: "k1", label: "", operationRef: REF })).toEqual({ method: "POST", template, path: "/v1/admin/keys/k1/rotate", body: { operation_ref: REF } });
+    expect(callOf({ action: "rotateKey", keyId: "k1", label: "ci-2", operationRef: REF })).toEqual({
+      method: "POST",
+      template,
+      path: "/v1/admin/keys/k1/rotate",
+      body: { label: "ci-2", operation_ref: REF },
+    });
+    expect(parseAction(form({ action: "rotateKey", key_id: "k1", label: "", operation_ref: REF }))).toEqual({ ok: true, value: { action: "rotateKey", keyId: "k1", label: "", operationRef: REF } });
   });
 
   it("reviews the key as the engine shows it now, and says the old one stops at once", () => {
-    const review = reviewOf({ action: "rotateKey", keyId: "k1abcdefgh", label: "" }, context);
+    const review = reviewOf({ action: "rotateKey", keyId: "k1abcdefgh", label: "", operationRef: REF }, context);
     expect(review.kind).toBe("secret");
     expect(review.lines).toContainEqual({ label: "Belongs to", value: "acme in default (actor)", mono: true });
     expect(review.lines).toContainEqual({ label: "Permissions", value: "jobs.run" });
     expect(review.lines).toContainEqual({ label: "Label", before: "ci", after: "ci" });
     expect(review.lines.map((line) => line.value ?? "").join(" ")).toContain("fail at once with 401");
     expect(review.button).toBe("Rotate the key");
-    const revoked = reviewOf({ action: "rotateKey", keyId: "k1abcdefgh", label: "" }, { ...context, key: read("engine", { ...ACME_KEY, revoked_at: "2026-10-22T10:00:00Z" }) });
+    const revoked = reviewOf({ action: "rotateKey", keyId: "k1abcdefgh", label: "", operationRef: REF }, { ...context, key: read("engine", { ...ACME_KEY, revoked_at: "2026-10-22T10:00:00Z" }) });
     expect(revoked.warnings.join(" ")).toContain("already revoked");
   });
 
@@ -129,7 +182,7 @@ describe("operator actions", () => {
 
   it("returns the new key once, naming the key it replaced", () => {
     const rotated = resultOf(
-      { action: "rotateKey", keyId: "k1abcdefgh", label: "" },
+      { action: "rotateKey", keyId: "k1abcdefgh", label: "", operationRef: REF },
       { key: { key_id: "k2", actor_id: "acme", application_id: "default", kind: "actor" }, token: "lpk_NewNewNewNewNewNewNew" },
     );
     expect(rotated.secret).toEqual({ token: "lpk_NewNewNewNewNewNewNew", keyId: "k2", actorId: "acme", kind: "actor" });
@@ -139,10 +192,32 @@ describe("operator actions", () => {
 
 describe("drawing on a grant", () => {
   it("shows the grant's unallocated balance and warns before the engine would refuse", () => {
-    const fits = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.25", label: "" }, context);
+    const fits = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.25", label: "", operationRef: REF }, context);
     expect(fits.lines).toContainEqual({ label: "Grant unallocated", before: "$0.30", after: "$0.05" });
     expect(fits.warnings.join(" ")).not.toContain("refuse");
-    const short = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.5", label: "" }, context);
+    const short = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.5", label: "", operationRef: REF }, context);
     expect(short.warnings.join(" ")).toContain("will refuse this (409)");
+  });
+});
+
+describe("the result of a command", () => {
+  const fund = { action: "fundGrant" as const, grantId: "g1", amount: "0.5", operationRef: REF };
+  const values = { action: "fundGrant", grant_id: "g1", amount: "0.5", operation_ref: REF };
+  const exchange = { method: "POST" as const, path: "/v1/admin/grant/fund", status: 204, at: "2026-10-29T10:00:00Z", ms: 12 };
+
+  it("says when the engine answered a repeat from its record, so the operator knows nothing was applied twice (D57)", () => {
+    const replayed = outcomeOf(fund, values, { ok: true, value: null, replayed: true, exchange });
+    expect(replayed).toMatchObject({ step: "done", ok: true, title: "Grant funded" });
+    expect(replayed.step === "done" && replayed.ok ? replayed.note : null).toContain("already applied under this operation reference");
+    const first = outcomeOf(fund, values, { ok: true, value: null, replayed: false, exchange });
+    expect(first).toMatchObject({ step: "done", ok: true, note: null });
+  });
+
+  it("offers a new reference after a conflict, and the same one when the command is still running (D57)", () => {
+    const refused = (code: string) => ({ ok: false as const, problem: { kind: "http" as const, status: 409, detail: "refused", code, retryAfterS: 1 }, exchange: { ...exchange, status: 409 } });
+    expect(outcomeOf(fund, values, refused("operation_conflict"))).toMatchObject({ step: "done", ok: false, retry: "new-reference" });
+    expect(outcomeOf(fund, values, refused("operation_in_progress"))).toMatchObject({ step: "done", ok: false, retry: "same-reference", message: expect.stringContaining("retry in 1 s") });
+    // the same reference would be refused again: the actor exists, and nothing was applied
+    expect(outcomeOf(fund, values, refused("already_provisioned"))).toMatchObject({ step: "done", ok: false, retry: "new-reference" });
   });
 });

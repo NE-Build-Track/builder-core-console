@@ -35,17 +35,17 @@ and `GET /v1/jobs/{job_id}` (and `/cost`) with its actor key; the Operator page 
 | --- | --- | --- |
 | `GET /v1/jobs` | Builder, sign-in | The key's own jobs. At sign-in it shows the key works; the newest job names the actor (gap G13). |
 | `POST /v1/jobs` | Builder | Runs a job. `?stream=true` for chat; the response streams through the console unchanged, with `Livepeer-Job-Id`. |
-| `POST /v1/admin/grants` | Operator | Create a grant with an amount. Needs the grant desk to hold `grants.fund` (deploy/init-secrets.py). Returns only the id (gap G12). |
-| `POST /v1/admin/grant/fund` | Operator | Add to a grant. Takes an operation reference; a repeat applies once. |
-| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation` | Operator | Provision an actor with an allocation drawn from a grant. No operation reference yet (ISS-11). |
-| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/fund` | Operator | Add to an allocation. Takes an operation reference. |
+| `POST /v1/admin/grants` | Operator | Create a grant with an amount. Needs the grant desk to hold `grants.fund` (deploy/init-secrets.py). Returns only the id (gap G12). Requires an operation reference; a repeat answers from the engine's record. |
+| `POST /v1/admin/grant/fund` | Operator | Add to a grant. Requires an operation reference; a repeat applies once. |
+| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation` | Operator | Provision an actor with an allocation drawn from a grant. Requires an operation reference; a repeat answers from the engine's record, and an actor already provisioned comes back as it is. |
+| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/fund` | Operator | Add to an allocation. Requires an operation reference. |
 | `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/status` | Operator | `active`, `paused` or `exhausted`. |
-| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/rotate-key` | Operator | Replace the allocation's gateway key; the engine keeps the new one. Takes an operation reference. |
+| `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/rotate-key` | Operator | Replace the allocation's gateway key; the engine keeps the new one. Requires an operation reference. |
 | `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/revoke` | Operator | Stop the allocation for good. |
-| `POST /v1/admin/keys` | Operator | Issue an access key. The token comes back once and is shown once. No operation reference yet (ISS-11). |
+| `POST /v1/admin/keys` | Operator | Issue an access key. Requires an operation reference. The token comes back once and is shown once; a repeat of the reference answers `201` with `token: null` and `replayed: true`, which the result says, offering a rotation. |
 | `GET /v1/admin/actors` | Operator | The provisioned actors, with label, status and allocation (builder-core #69, D46). Under `CONSOLE_AUTH=oidc` it is also the operator's sign-in check, and the background reads call it with the read-only `console-reader` token (an auditor). |
 | `GET /v1/admin/keys/{key_id}` | Operator | Inspect one key just before the review of a rotation or revocation: owner, kind, permissions, label, created and revoked times. Never the token or its hash (builder-core ISS-08, D44). |
-| `POST /v1/admin/keys/{key_id}/rotate` | Operator | Rotate an access key: a new key with the same owner, kind and permissions, shown once; the old one answers 401 at once. An optional body `{"label": ...}` renames it. A repeat finds the old key revoked and answers 400, so it never applies twice. |
+| `POST /v1/admin/keys/{key_id}/rotate` | Operator | Rotate an access key: a new key with the same owner, kind and permissions, shown once; the old one answers 401 at once. The body carries the required operation reference and an optional `label` that renames it. A repeat of the reference answers `201` with the new key and `token: null` (the result offers to rotate that key). |
 | `POST /v1/admin/keys/{key_id}/revoke` | Operator | Revoke an access key. |
 
 ## Batteries

@@ -2,11 +2,9 @@ import "server-only";
 
 import { engineWriter } from "@/adapters/engine/writer";
 import { readConfig } from "@/config/config";
-import { hideSecrets } from "@/domain/exchange";
-import { ACTIONS, callOf, type ActionInput, type ActionState } from "@/domain/operator";
-import { describeProblem } from "@/domain/reading";
+import { callOf, type ActionInput, type ActionState } from "@/domain/operator";
 import type { Session } from "@/domain/session";
-import { actorsOf, parseAction, resultOf, reviewOf, type OperatorView, type ReviewContext } from "@/services/operator";
+import { actorsOf, outcomeOf, parseAction, reviewOf, type OperatorView, type ReviewContext } from "@/services/operator";
 
 import { forgetReads, loadMoney } from "./console";
 import { engineUrl, keyed } from "./session";
@@ -73,10 +71,7 @@ export async function commitAction(session: Session, form: FormData): Promise<Ac
   const writer = engineWriter(url, session.token, { timeoutMs: readConfig().timeoutMs, now: () => new Date() });
   const written = await writer.send(callOf(input.value));
   forgetReads();
-  const spec = ACTIONS[input.value.action];
-  const exchange = hideSecrets(written.exchange);
-  if (!written.ok) return { step: "done", ok: false, values, title: `${spec.label}: not done`, message: describeProblem(written.problem), exchange };
-  return { step: "done", ok: true, values, title: spec.done, ...resultOf(input.value, written.value), exchange };
+  return outcomeOf(input.value, values, written);
 }
 
 /** The Operator page's data, read with the operator's own key (uncached: it changes with every action). */

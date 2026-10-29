@@ -6,6 +6,7 @@ import { batteriesReader } from "./batteries/reader";
 import { keyedEngine } from "./engine/keyed";
 import { discoveryReader } from "./discovery/reader";
 import { engineReader, httpProblem } from "./engine/reader";
+import { engineWriter } from "./engine/writer";
 import { parseSignerMetrics, signerReader } from "./signer/reader";
 
 const now = () => NOW;
@@ -166,5 +167,44 @@ describe("engine adapter", () => {
   it("turns engine error bodies into a status line", () => {
     expect(httpProblem(404, { error: "no allocation pays for actor 'x'" })).toEqual({ kind: "http", status: 404, detail: "no allocation pays for actor 'x'" });
     expect(httpProblem(422, { detail: [{ msg: "bad" }] })).toMatchObject({ status: 422, detail: '[{"msg":"bad"}]' });
+  });
+
+  it("keeps the engine's problem code, so a 409 is told apart by code and not by its text (D57)", () => {
+    const body = { error: "operation_ref 'r1' was used for another request", code: "operation_conflict", operation: { command: "fund", operation_ref: "r1", state: "done" } };
+    expect(httpProblem(409, body)).toEqual({ kind: "http", status: 409, detail: body.error, code: "operation_conflict" });
+  });
+});
+
+describe("engine writer", () => {
+  const call = { method: "POST" as const, template: "/v1/admin/grant/fund", path: "/v1/admin/grant/fund", body: { grant_id: "g1", amount: { amount: "1", currency: "USD" }, operation_ref: "console-fundGrant-1234abcd" } };
+  const writer = () => engineWriter("http://e:8080", "lpk_operator", { timeoutMs: 1000, now });
+
+  it("reads a command still running under its reference as a problem with the engine's Retry-After (D57)", async () => {
+    const body = { error: "operation 'console-fundGrant-1234abcd' is still running", code: "operation_in_progress", operation: { command: "fund_grant", operation_ref: "console-fundGrant-1234abcd", state: "started" } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(body), { status: 409, headers: { "content-type": "application/json", "retry-after": "1" } })));
+    expect(await writer().send(call)).toMatchObject({ ok: false, problem: { kind: "http", status: 409, code: "operation_in_progress", retryAfterS: 1 } });
+  });
+});
+
+describe("engine writer: replays", () => {
+  const call = { method: "POST" as const, template: "/v1/admin/keys", path: "/v1/admin/keys", body: { actor_id: "acme", operation_ref: "console-issueKey-1234abcd" } };
+
+  it("says when the engine answered from its record of the reference, and when it did not (D57)", async () => {
+    const issued = { key: { key_id: "k2", actor_id: "acme", application_id: "default", kind: "actor" }, token: null, replayed: true };
+    const answer = (replayed: boolean) => new Response(JSON.stringify(issued), { status: 201, headers: { "content-type": "application/json", ...(replayed ? { "idempotent-replayed": "true" } : {}) } });
+    vi.stubGlobal("fetch", vi.fn(async () => answer(true)));
+    expect(await engineWriter("http://e:8080", "lpk_operator", { timeoutMs: 1000, now }).send(call)).toMatchObject({ ok: true, replayed: true, exchange: { status: 201 } });
+    vi.stubGlobal("fetch", vi.fn(async () => answer(false)));
+    expect(await engineWriter("http://e:8080", "lpk_operator", { timeoutMs: 1000, now }).send(call)).toMatchObject({ ok: true, replayed: false });
+  });
+});
+
+describe("keyed engine run", () => {
+  it("reads a job still running under its reference with its code and Retry-After (D57)", async () => {
+    const body = { error: "a job is still running under this operation_ref", code: "operation_in_progress", job: { id: "j1" } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(body), { status: 409, headers: { "content-type": "application/json", "retry-after": "1", "livepeer-job-id": "j1" } })));
+    const input = { app: "a/b", path: "/v1/chat/completions", method: "POST" as const, payload: {}, stream: false, timeoutS: 60, maxAttempts: 1, operationRef: "console-run-1234abcd" };
+    const started = await keyedEngine("http://e:8080", "lpk_actor", { timeoutMs: 1000, now }).run(input, new AbortController().signal);
+    expect(started).toMatchObject({ ok: false, status: 409, problem: { code: "operation_in_progress", retryAfterS: 1 } });
   });
 });

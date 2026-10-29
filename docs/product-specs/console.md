@@ -83,10 +83,26 @@ revoke one). Actors are listed from the engine's actor list, plus any key holder
 
 Every action is a native dialog with three steps (D17): **fill in**; **review**, which reads the stack
 and shows what will change (money as before → after, including the grant's unallocated balance), any
-warning (a repeat that would apply twice, a grant that is short, an admin key), a typed confirmation for
+warning (a grant that is short, an admin key, a key already revoked), a typed confirmation for
 what cannot be undone, and the exact request that will be sent (D18); and **result**, with the request
 and response. A new key is shown once, with a button that takes an actor key straight to the Builder.
-Calls that take an operation reference reuse the same one through Back and Try again.
+Every call that moves money or creates a key carries an operation reference (builder-core D57): seven
+of them, from provision to rotate key. The dialog makes it when it first renders and keeps it through
+Back, closing and reopening, and Try again, so a double submit or a retry after a lost answer is the same
+command, which the engine applies once; only a new intent makes a new one (**Do another**, or **Start
+over** after a conflict). The result says what the
+engine answered:
+
+- **A replay** (`Idempotent-Replayed: true`): the first request's result, with a note that nothing was
+  applied twice. A replayed key issue or rotation has no token (the engine keeps only its hash), so the
+  result names the key, says its token cannot be shown again, and offers **Rotate this key**.
+- **Still running** (`409 operation_in_progress`): retry in the `Retry-After` seconds, with **Try again
+  (same reference)**.
+- **Reference used for a different request** (`409 operation_conflict`): nothing was applied; **Start
+  over (new reference)**. The earlier request under that reference may have been applied, so check the
+  page first.
+
+The console branches on the problem's `code`, never on its text.
 
 ## Builder
 

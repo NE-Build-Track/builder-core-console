@@ -10,8 +10,8 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
 | `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:d3df806` | `127.0.0.1:8090` (Swagger at `/docs`) |
-| `discovery` | `builder-console/engine:d3df806` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
+| `engine` | `builder-console/engine:a6ed9b5` | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `discovery` | `builder-console/engine:a6ed9b5` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 Testing sign-in through an identity provider instead of keys: [keycloak/README.md](keycloak/README.md), a
@@ -71,12 +71,21 @@ Then provision an actor from that grant and issue its key through the engine:
 
 ```sh
 TOKEN=$(grep ^CONSOLE_ENGINE_ADMIN_TOKEN= deploy/.env | cut -d= -f2)
+PROVISION_REF=$(uuidgen); KEY_REF=$(uuidgen)  # one per command; send the same one again to repeat it safely
 curl -s -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-  -d '{"amount":{"amount":"1","currency":"USD"},"label":"customer 42","grant_id":"<grant id>"}' \
+  -d '{"amount":{"amount":"1","currency":"USD"},"label":"customer 42","grant_id":"<grant id>","operation_ref":"'"$PROVISION_REF"'"}' \
   http://127.0.0.1:8090/v1/admin/applications/default/actors/customer-42/allocation
 curl -s -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-  -d '{"actor_id":"customer-42","application_id":"default","label":"customer 42"}' http://127.0.0.1:8090/v1/admin/keys
+  -d '{"actor_id":"customer-42","application_id":"default","label":"customer 42","operation_ref":"'"$KEY_REF"'"}' http://127.0.0.1:8090/v1/admin/keys
 ```
+
+Every admin command that moves money or creates a key (provision, fund an allocation or a grant, create a
+grant, rotate a payment key, issue or rotate an access key) requires an `operation_ref`, and answers 422
+without one (builder-core D57). Sending the same reference with the same body again applies nothing twice:
+the engine answers from its record with `Idempotent-Replayed: true`. A repeated key issue or rotation answers
+`201` with `"token": null`, because the engine keeps only the token's hash; if nobody copied the token, rotate
+the key under a new reference. The same reference with a different body is `409` `operation_conflict`; one
+whose first request is still running is `409` `operation_in_progress` with `Retry-After`.
 
 Swagger at <http://127.0.0.1:8090/docs> does the same interactively: **Authorize** takes the token
 (`lpk_…`) and sends it as `Authorization: Bearer`. The engine declares the scheme when its API keys are on, as on this stack.

@@ -3,21 +3,22 @@
  * change for the review step, and describe what came back. Pure functions over readings; the runtime
  * sends the call.
  */
-import type { AccessKey, Allowance, EngineGrant, KnownActor } from "@/domain/engine";
+import type { AccessKey, Allowance, EngineGrant } from "@/domain/engine";
 import { hideSecrets } from "@/domain/exchange";
 import { ident, invalid, oneOf, operationRef, optionalLabel, parsed, text, usd, type Parsed } from "@/domain/forms";
 import {
   ACTIONS,
   ALLOCATION_STATUSES,
   callOf,
-  REPEAT_WARNINGS,
   type ActionInput,
+  type ActionState,
   type OperatorAction,
   type Review,
   type ReviewLine,
   type ShownOnce,
 } from "@/domain/operator";
-import type { Reading } from "@/domain/reading";
+import { describeProblem, type Reading } from "@/domain/reading";
+import type { Written } from "@/ports/keyed";
 import { fromUnits, toUnits } from "@/utils/decimal";
 
 const ACTION_NAMES = Object.keys(ACTIONS) as OperatorAction[];
@@ -42,7 +43,7 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
     case "createGrant": {
       const name = text(form, "name");
       if (!name) return invalid("name", "Give the grant a name.");
-      return all({ action: parsed("createGrant" as const), name: parsed(name.slice(0, 120)), amount: usd(form, "amount") });
+      return all({ action: parsed("createGrant" as const), name: parsed(name.slice(0, 120)), amount: usd(form, "amount"), operationRef: operationRef(form) });
     }
     case "fundGrant":
       return all({ action: parsed("fundGrant" as const), grantId: ident(form, "grant_id", "Grant"), amount: usd(form, "amount"), operationRef: operationRef(form) });
@@ -54,6 +55,7 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
         grantId: ident(form, "grant_id", "Grant"),
         amount: usd(form, "amount", "Allocation"),
         label: parsed(optionalLabel(form, "label")),
+        operationRef: operationRef(form),
       });
     case "fundAllocation":
       return all({
@@ -77,9 +79,10 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
         applicationId: application(),
         kind: oneOf(form, "kind", ["actor", "admin"] as const, "key kind"),
         label: parsed(optionalLabel(form, "label")),
+        operationRef: operationRef(form),
       });
     case "rotateKey":
-      return all({ action: parsed("rotateKey" as const), keyId: ident(form, "key_id", "Key"), label: parsed(optionalLabel(form, "label")) });
+      return all({ action: parsed("rotateKey" as const), keyId: ident(form, "key_id", "Key"), label: parsed(optionalLabel(form, "label")), operationRef: operationRef(form) });
     case "revokeKey":
       return all({ action: parsed("revokeKey" as const), keyId: ident(form, "key_id", "Key") });
   }
@@ -135,8 +138,7 @@ function grantName(context: ReviewContext, id: string): string {
 
 export function reviewOf(input: ActionInput, context: ReviewContext): Review {
   const spec = ACTIONS[input.action];
-  const warnings = [REPEAT_WARNINGS[spec.repeat]].filter((item): item is string => item !== null);
-  const base = { title: spec.label, kind: spec.kind, call: callOf(input), warnings, confirm: null };
+  const base = { title: spec.label, kind: spec.kind, call: callOf(input), warnings: [], confirm: null };
   switch (input.action) {
     case "createGrant":
       return { ...base, lines: [{ label: "Name", value: input.name }, { label: "Amount", value: dollars(input.amount) }], button: `Create a ${dollars(input.amount)} grant` };
@@ -160,7 +162,7 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
           { label: "Allocation", before: "$0", after: dollars(input.amount) },
           ...(input.label ? [{ label: "Label", value: input.label }] : []),
         ],
-        warnings: [...warnings, ...grant.warnings],
+        warnings: grant.warnings,
         button: `Provision with ${dollars(input.amount)}`,
       };
     }
@@ -178,14 +180,14 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
       }
       const grant = fromGrant(context, input.grantId, input.amount);
       if (input.grantId) lines.push({ label: "From grant", value: grantName(context, input.grantId), mono: true }, ...grant.lines);
-      return { ...base, lines, warnings: [...warnings, ...grant.warnings], button: `Fund ${dollars(input.amount)}` };
+      return { ...base, lines, warnings: grant.warnings, button: `Fund ${dollars(input.amount)}` };
     }
     case "setStatus": {
       const current = context.allowance?.ok ? context.allowance.value.status : "unknown";
       return {
         ...base,
         lines: [{ label: "Actor", value: `${input.actorId} in ${input.applicationId}`, mono: true }, { label: "Status", before: current, after: input.status }],
-        warnings: input.status === "active" ? warnings : [...warnings, "While the allocation is not active, the actor's jobs are refused before anything is paid."],
+        warnings: input.status === "active" ? [] : ["While the allocation is not active, the actor's jobs are refused before anything is paid."],
         button: `Set ${input.status}`,
       };
     }
@@ -202,7 +204,7 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
       return {
         ...base,
         lines: [{ label: "Actor", value: `${input.actorId} in ${input.applicationId}`, mono: true }, { label: "Effect", value: "Spending stops for good; the balance stays in the ledger." }],
-        warnings: [...warnings, "This cannot be undone."],
+        warnings: ["This cannot be undone."],
         confirm: { expect: input.actorId, prompt: `Type the actor id, ${input.actorId}, to confirm` },
         button: "Revoke the allocation",
       };
@@ -215,7 +217,7 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
           ...(input.label ? [{ label: "Label", value: input.label }] : []),
           { label: "The key", value: "Shown once on the next screen. Copy it then; the engine keeps only a hash." },
         ],
-        warnings: input.kind === "admin" ? [...warnings, "An admin key can move money. Issue actor keys to builders."] : warnings,
+        warnings: input.kind === "admin" ? ["An admin key can move money. Issue actor keys to builders."] : [],
         button: "Issue the key",
       };
     case "rotateKey": {
@@ -228,7 +230,6 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
           { label: "Effect", value: "A new key with the same owner and permissions, shown once on the next screen. Calls with the old key fail at once with 401; there is no overlap." },
         ],
         warnings: [
-          ...warnings,
           ...(key?.revoked_at ? ["This key is already revoked, so the engine will refuse this (400)."] : []),
           ...(key?.kind === "admin" ? ["This is an admin key. If it is the one you signed in with, sign in again with the new key after this."] : []),
         ],
@@ -241,7 +242,6 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
         ...base,
         lines: [...keyLines(input.keyId, key), { label: "Effect", value: "Calls with this key fail at once with 401." }],
         warnings: [
-          ...warnings,
           "This cannot be undone.",
           ...(key?.kind === "admin" ? ["This is an admin key. If it is the one you signed in with, your next action will fail and you will need another admin key."] : []),
         ],
@@ -279,7 +279,7 @@ export function resultOf(input: ActionInput, value: unknown): { readonly lines: 
       const keyId = String(key.key_id ?? "unknown");
       return {
         lines: [{ label: "Key id", value: keyId, mono: true }, { label: "For", value: `${String(key.actor_id ?? input.actorId)} in ${String(key.application_id ?? input.applicationId)}`, mono: true }],
-        secret: token ? { token, keyId, actorId: String(key.actor_id ?? input.actorId), kind: String(key.kind ?? input.kind) } : null,
+        secret: key.key_id === undefined ? null : { token, keyId, actorId: String(key.actor_id ?? input.actorId), kind: String(key.kind ?? input.kind) },
       };
     }
     case "rotateKey": {
@@ -293,7 +293,7 @@ export function resultOf(input: ActionInput, value: unknown): { readonly lines: 
           { label: "For", value: `${owner} in ${String(key.application_id ?? "unknown")}`, mono: true },
           { label: "Replaces", value: `${input.keyId} (revoked)`, mono: true },
         ],
-        secret: token ? { token, keyId, actorId: owner, kind: String(key.kind ?? "unknown") } : null,
+        secret: key.key_id === undefined ? null : { token, keyId, actorId: owner, kind: String(key.kind ?? "unknown") },
       };
     }
     case "provision":
@@ -316,71 +316,23 @@ export function resultOf(input: ActionInput, value: unknown): { readonly lines: 
   }
 }
 
+/** The result step for what the writer got back: what changed, or why nothing did. Keys are hidden from the exchange. */
+export function outcomeOf(input: ActionInput, values: Readonly<Record<string, string>>, written: Written): ActionState {
+  const spec = ACTIONS[input.action];
+  const exchange = hideSecrets(written.exchange);
+  if (!written.ok) {
+    // the same reference would be refused again: it names another request, or an actor that exists
+    const refusedForGood = written.problem.kind === "http" && ["operation_conflict", "already_provisioned"].includes(written.problem.code ?? "");
+    const retry = refusedForGood ? "new-reference" : "same-reference";
+    return { step: "done", ok: false, values, title: `${spec.label}: not done`, message: describeProblem(written.problem), retry, exchange };
+  }
+  const note = written.replayed
+    ? "This was already applied under this operation reference. The engine answered from its record (Idempotent-Replayed: true), so nothing was applied twice; the result is the first request's."
+    : null;
+  return { step: "done", ok: true, values, title: spec.done, ...resultOf(input, written.value), note, exchange };
+}
+
 /** The response as the result panel shows it: a new key's token replaced, everything else as sent. */
 export const shownResponse = (value: unknown): unknown => hideSecrets(value);
 
-export type OperatorActor = {
-  readonly applicationId: string;
-  readonly actorId: string;
-  /** The operator's label, else the identity provider's name (builder-core D48); null when neither. */
-  readonly label: string | null;
-  /** The identity provider's latest name for this person; null when they never signed in by token. */
-  readonly name: string | null;
-  readonly status: string | null;
-  /** From the engine's list; null for an actor known only by a key. */
-  readonly provisioned: boolean | null;
-  readonly activeKeys: number;
-  readonly revokedKeys: number;
-  /** Null until read; the admin key reads allocations in its own application only (gap G9). */
-  readonly allowance: Reading<Allowance> | null;
-};
-
-export type OperatorView = {
-  readonly grants: Reading<readonly EngineGrant[]>;
-  readonly unallocated: Readonly<Record<string, string>>;
-  /** Null when engine keys are off (CONSOLE_AUTH=oidc, LPB_AUTH=jwt): the key actions are hidden. */
-  readonly keys: Reading<readonly AccessKey[]> | null;
-  readonly known: Reading<readonly KnownActor[]>;
-  readonly actors: readonly OperatorActor[];
-};
-
-/**
- * Every actor the operator can act on: the engine's known actors (GET /v1/admin/actors: provisioned, or
- * people an identity provider signed in, with their names) and, when engine keys are on, any actor that
- * holds a key the engine does not list yet. Admin keys are not actors.
- */
-export function actorsOf(known: Reading<readonly KnownActor[]>, keys: readonly AccessKey[] | null): readonly Omit<OperatorActor, "allowance">[] {
-  const rows = new Map<string, Omit<OperatorActor, "allowance">>();
-  for (const actor of known.ok ? known.value : []) {
-    rows.set(`${actor.application_id}\u0000${actor.actor_id}`, {
-      applicationId: actor.application_id,
-      actorId: actor.actor_id,
-      label: actor.label ? actor.label : null,
-      name: actor.name ?? null,
-      status: actor.allocation?.status ?? null,
-      provisioned: actor.provisioned,
-      activeKeys: 0,
-      revokedKeys: 0,
-    });
-  }
-  for (const holder of keys ? actorsFromKeys(keys) : []) {
-    const id = `${holder.applicationId}\u0000${holder.actorId}`;
-    const row = rows.get(id);
-    rows.set(id, row ? { ...row, activeKeys: holder.activeKeys, revokedKeys: holder.revokedKeys } : { ...holder, label: null, name: null, status: null, provisioned: null });
-  }
-  return [...rows.values()].sort((a, b) => a.applicationId.localeCompare(b.applicationId) || a.actorId.localeCompare(b.actorId));
-}
-
-/** Actors as the keys show them, added to the engine's actor list for key holders it does not list yet. Admin keys are not actors. */
-export function actorsFromKeys(keys: readonly AccessKey[]): readonly Omit<OperatorActor, "allowance" | "label" | "name" | "status" | "provisioned">[] {
-  const byActor = new Map<string, { applicationId: string; actorId: string; activeKeys: number; revokedKeys: number }>();
-  for (const key of keys) {
-    if (key.kind === "admin") continue;
-    const id = `${key.application_id}\u0000${key.actor_id}`;
-    const row = byActor.get(id) ?? { applicationId: key.application_id, actorId: key.actor_id, activeKeys: 0, revokedKeys: 0 };
-    if (key.revoked_at) row.revokedKeys += 1;
-    else row.activeKeys += 1;
-    byActor.set(id, row);
-  }
-  return [...byActor.values()].sort((a, b) => a.applicationId.localeCompare(b.applicationId) || a.actorId.localeCompare(b.actorId));
-}
+export { actorsFromKeys, actorsOf, type OperatorActor, type OperatorView } from "./operator-actors";

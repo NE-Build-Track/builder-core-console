@@ -702,6 +702,8 @@ export interface components {
             amount: components["schemas"]["Money-Input"];
             /** Name */
             name: string;
+            /** Operation Ref */
+            operation_ref: string;
         };
         /**
          * GrantRecord
@@ -712,6 +714,10 @@ export interface components {
             currency: string;
             /** Id */
             id: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: string;
+            };
             /** Name */
             name: string;
             /** Status */
@@ -744,14 +750,21 @@ export interface components {
              * @default
              */
             label: string;
+            /** Operation Ref */
+            operation_ref: string;
             /** Permissions */
             permissions?: string[] | null;
         };
         /** IssuedKey */
         IssuedKey: {
             key: components["schemas"]["AccessKey"];
+            /**
+             * Replayed
+             * @default false
+             */
+            replayed: boolean;
             /** Token */
-            token: string;
+            token: string | null;
         };
         /** Job */
         Job: {
@@ -1004,6 +1017,8 @@ export interface components {
              * @default
              */
             label: string;
+            /** Operation Ref */
+            operation_ref: string;
         };
         /** ProvisionedActor */
         ProvisionedActor: {
@@ -1092,6 +1107,8 @@ export interface components {
         RotateKeyBody: {
             /** Label */
             label?: string | null;
+            /** Operation Ref */
+            operation_ref: string;
         };
         /** Runner */
         Runner: {
@@ -1767,9 +1784,9 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": components["schemas"]["RotateKeyBody"] | null;
+                "application/json": components["schemas"]["RotateKeyBody"];
             };
         };
         responses: {
