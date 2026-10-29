@@ -4,7 +4,7 @@
  * only the bearer security scheme. d057935 (ISS-08) adds GET /v1/admin/keys/{key_id} and
  * POST /v1/admin/keys/{key_id}/rotate, with RotateKeyBody. d3df806 (releases/m3, the merge of builder-core #69; the spec is identical at its head a2e61e4) adds
  * the actor collection and the auditor, `payment_state` on each session, `JobCost.billable`, the `payment_unknown`
- * outcome and the native HTTP request fields. f58a2b1 (builder-core PR #76, D57) makes `operation_ref` required on
+ * outcome and the native HTTP request fields. a6ed9b5 (builder-core PR #76, D57) makes `operation_ref` required on
  * provision, both funds, create grant, both rotations and issue key, and adds `IssuedKey.replayed` with a nullable token.
  * Regenerate with `pnpm gen:api`; never edit engine-schema.d.ts by hand.
  */

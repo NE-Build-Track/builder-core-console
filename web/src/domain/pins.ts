@@ -6,7 +6,7 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "f58a2b1ab47e9265eb2c9708bf02b47b3b2110fa",
+    commit: "a6ed9b552a8666f925d86fd8d9fe1d40bfc6aa98",
     note: "tasks/mz/iss-11-14-idempotency (PR #76, on releases/m3 after #69): admin commands require an operation reference and are repeat-safe (D57)",
   },
   batteries: {
