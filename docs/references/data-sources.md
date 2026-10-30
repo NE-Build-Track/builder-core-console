@@ -21,7 +21,7 @@ with `CONSOLE_ENGINE_ADMIN_TOKEN`, an `lpk_` admin key from `lpb bootstrap-admin
 | `GET /v1/costs/summary` | Users, Usage | Spend by cost class over a window, optionally per actor (gap G9). |
 | `GET /v1/costs/projections` | Jobs | The 25 newest job costs (gap G3). |
 | `GET /v1/admin/reconciliation` | Health, Users | Batteries spend against engine attribution, per application or actor: `balanced`, `unattributed`. Per application answers 404 in per_actor mode (gap G10). |
-| `GET /v1/jobs/{job_id}` | Jobs | Any job by id, with attempts and signed sessions. There is no admin job list (gap G1). |
+| `GET /v1/jobs/{job_id}` | Jobs | Any job by id, with attempts and signed sessions. The Jobs page does not use the engine's job list (`GET /v1/jobs`, paged with `before`) yet (gap G1). |
 | `GET /v1/jobs/{job_id}/cost` | Jobs | The job's cost by attempt and cost class. |
 
 ### With a signed-in key (Operator actions and Builder, D15–D18)
@@ -35,7 +35,7 @@ and `GET /v1/jobs/{job_id}` (and `/cost`) with its actor key; the Operator page 
 | --- | --- | --- |
 | `GET /v1/jobs` | Builder, sign-in | The key's own jobs. At sign-in it shows the key works; the newest job names the actor (gap G13). |
 | `POST /v1/jobs` | Builder | Runs a job. `?stream=true` for chat; the response streams through the console unchanged, with `Livepeer-Job-Id`. An error answer is read by its body: the job's `failure.kind` and `reason` (402, 403, 503: builder-core D58), `code: request_too_large` with `limit_bytes` (413, D59), or a 409 `operation_*` code (D57); `Retry-After` is passed to the browser. |
-| `POST /v1/admin/grants` | Operator | Create a grant with an amount. Needs the grant desk to hold `grants.fund` (deploy/init-secrets.py). Returns only the id (gap G12). Requires an operation reference; a repeat answers from the engine's record. |
+| `POST /v1/admin/grants` | Operator | Create a grant with an amount. Needs the grant desk to hold `grants.fund` (deploy/init-secrets.py). Answers with the grant's id, name, status and total (G12, closed 30 October). Requires an operation reference; a repeat answers from the engine's record. |
 | `POST /v1/admin/grant/fund` | Operator | Add to a grant. Requires an operation reference; a repeat applies once. |
 | `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation` | Operator | Provision an actor with an allocation drawn from a grant. Requires an operation reference; a repeat answers from the engine's record, and an actor already provisioned comes back as it is. |
 | `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/fund` | Operator | Add to an allocation. Requires an operation reference. |

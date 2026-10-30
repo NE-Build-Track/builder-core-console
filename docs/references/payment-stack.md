@@ -38,7 +38,7 @@ The same files ChatLPT uses: `keystore.json`, `keystore-password` (payer account
 `init-secrets.py` either creates all of them in an empty folder, or, when the folder already holds a
 `clearinghouse.toml` (copied from ChatLPT to use the same values), appends only the reader and adds
 `grants.fund` to this stack's grant desk, so a grant can be created with an amount through the engine
-(gap G12's neighbour in [gaps.md](gaps.md); ChatLPT's own Batteries is unchanged).
+(see "Not a console gap: funded grants through the engine" in [gaps.md](gaps.md); ChatLPT's own Batteries is unchanged).
 
 ## Engine settings
 

@@ -9,7 +9,10 @@
 - **Sessions.** The pasted key is checked against the engine, then sealed (AES-256-GCM under
   `CONSOLE_SESSION_SECRET`) into an httpOnly, `SameSite=Strict` cookie for 8 hours; the browser cannot
   read it and the server stores nothing. Server actions are origin-checked by Next.js; the Builder's
-  run endpoint checks `Origin` itself. Sign-out deletes the cookie; a revoked key fails on its next call.
+  run endpoint checks `Origin` itself. Sign-out deletes the cookie. Before a page of either area renders, `src/proxy.ts` asks the engine once with
+  the session's key (`GET /v1/admin/actors?limit=1` or `GET /v1/jobs?limit=1`); a 401 (the key was revoked or
+  expired) clears the cookie and the page shows the sign-in form saying why. A 403, a 5xx or no answer leaves
+  the session alone. A Builder run answered 401 ends the session the same way.
 - **Console ↔ engine.** The pages read with the console's own **admin** key, which could do anything
   (gap G8): only GET leaves the read path, and `web/tests/structure/writes.test.ts` keeps writes in two
   adapters used only by the writing areas, which send them with the **signed-in** key, never the console's.

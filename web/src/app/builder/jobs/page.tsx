@@ -10,7 +10,7 @@ import { Ago, Id, Pill } from "@/components/console/values";
 import type { State } from "@/domain/views";
 import { loadJobState, loadMyJobs } from "@/runtime/builder";
 
-import { sessionFor } from "../../session-cookies";
+import { endedMessage, sessionFor } from "../../session-cookies";
 import { BuilderBar, BuilderSignIn } from "../gate";
 
 export const metadata: Metadata = { title: "My jobs" };
@@ -38,7 +38,7 @@ async function MyJobs({ searchParams }: { readonly searchParams: Search }) {
   await connection();
   const search = await searchParams;
   const session = await sessionFor("builder");
-  if (!session) return <BuilderSignIn message={null} />;
+  if (!session) return <BuilderSignIn message={await endedMessage("builder")} />;
   const raw = search.id;
   const id = typeof raw === "string" && JOB_ID.test(raw) ? raw : null;
   const [mine, detail] = await Promise.all([loadMyJobs(session), id ? loadJobState(session, id) : Promise.resolve(null)]);

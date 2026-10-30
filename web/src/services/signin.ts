@@ -5,7 +5,7 @@
  */
 import type { AccessKey, Job } from "@/domain/engine";
 import { describeProblem, type Reading } from "@/domain/reading";
-import type { Area, KeyKind } from "@/domain/session";
+import { ENDED_MESSAGES, isExpired, type Area, type EndReason, type KeyKind, type Session } from "@/domain/session";
 
 export type Identity = { readonly kind: KeyKind; readonly actorId: string | null; readonly applicationId: string | null };
 
@@ -32,6 +32,22 @@ export function classifyKey(area: Area, adminKeys: Reading<readonly AccessKey[]>
   if (!jobs.ok) return { ok: false, message: `The key cannot list its jobs: ${describeProblem(jobs.problem)}. It needs the jobs.read permission.` };
   const newest = jobs.value[0];
   return { ok: true, identity: { kind: "actor", actorId: newest?.actor_id ?? null, applicationId: newest?.application_id ?? null } };
+}
+
+export type Standing = { readonly ended: false } | { readonly ended: true; readonly reason: EndReason; readonly message: string };
+
+/**
+ * Whether a pasted-key session still stands (D16, ISS-21). `probe` is one small call made with the
+ * session's key (or null when none was made). Only a 401 ends it: the engine no longer knows the key.
+ * A 403 is a key that works but lacks a permission, and a 5xx, an unreadable answer or no answer at all
+ * says nothing about the key, so the session stays and the page shows what it could not read.
+ */
+export function standing(session: Pick<Session, "expiresAt">, probe: Reading<unknown> | null, now: Date): Standing {
+  if (isExpired(session, now)) return { ended: true, reason: "expired", message: ENDED_MESSAGES.expired };
+  if (probe && !probe.ok && probe.problem.kind === "http" && probe.problem.status === 401) {
+    return { ended: true, reason: "refused", message: ENDED_MESSAGES.refused };
+  }
+  return { ended: false };
 }
 
 /** The scopes each area asks the identity provider for (CONSOLE_OIDC_*_SCOPE[S]). */

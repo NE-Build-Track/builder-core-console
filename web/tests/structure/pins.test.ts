@@ -35,6 +35,11 @@ describe("pins", () => {
     for (const pin of Object.values(PINS)) expect(reference).toContain(pin.commit);
   });
 
+  it("records the same pins in the M3 jobs document (ISS-19)", () => {
+    const journey = read(path.join(REPO, "docs", "product-specs", "m3-journey.md"));
+    for (const [name, pin] of Object.entries(PINS)) expect(journey, `${name}: put ${pin.commit} in m3-journey.md's pinned versions`).toContain(pin.commit);
+  });
+
   it("generates engine types from the spec of the pinned engine", () => {
     const spec = JSON.parse(read(path.join(REPO, "openapi", "engine.openapi.json"))) as { paths: Record<string, unknown> };
     // a89216d is the first commit with `?stream=` on POST /v1/jobs; an older spec would lack it.

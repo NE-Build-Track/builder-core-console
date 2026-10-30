@@ -83,7 +83,7 @@ limit (D59).
   succeeded and its cost stands, and the console says the provider no longer serves the image.
 - My jobs shows the 50 newest; the engine pages with `before` (D59), which the console does not use yet.
 - The events feed is held for M3 (`GET /v1/events` is 501, `milestone: "held"`, D60).
-- Rates are in wei; there is no USD rate before a run (gap G14). Costs afterwards are in USD.
+- Rates are in wei; there is no USD rate before a run (gap G14: builder-core PR #77 adds `price_usd`, but the orchestrators send none yet). Costs afterwards are in USD.
 - The Builder learns the actor id from the key's first job (gap G13).
 - Every admin command that moves money or creates a key carries an operation reference, made when its
   dialog opens and kept through Back, Try again and a closed dialog, so a repeat is applied once

@@ -9,7 +9,7 @@ import { Ago, Pill } from "@/components/console/values";
 import { loadAllocationNotice, loadCatalog, loadMyJobs } from "@/runtime/builder";
 import type { CatalogEntry, RateView } from "@/services/builder";
 
-import { sessionFor } from "../session-cookies";
+import { endedMessage, sessionFor } from "../session-cookies";
 import { BuilderBar, BuilderSignIn } from "./gate";
 
 export const metadata: Metadata = { title: "Builder" };
@@ -46,7 +46,7 @@ async function Builder({ searchParams }: { readonly searchParams: Search }) {
   await connection();
   const search = await searchParams;
   const session = await sessionFor("builder");
-  if (!session) return <BuilderSignIn message={first(search.signin)} />;
+  if (!session) return <BuilderSignIn message={first(search.signin) ?? (await endedMessage("builder"))} />;
   const [view, jobs] = await Promise.all([loadCatalog(session), loadMyJobs(session)]);
   const notice = await loadAllocationNotice(session, jobs.actorId);
   const entries = view.entries.ok ? view.entries.value : [];

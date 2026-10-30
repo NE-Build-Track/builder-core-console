@@ -66,6 +66,22 @@ export function isExpired(session: Pick<Session, "expiresAt">, now: Date): boole
   return Date.parse(session.expiresAt) <= now.getTime();
 }
 
+/**
+ * Why a session ended without a sign-out (ISS-21): its 8 hours ran out, or the engine stopped accepting
+ * its key (401: revoked, or expired at the engine). The reason rides in a short-lived cookie so the page
+ * that follows can say it; only these words are ever shown, whatever the cookie holds.
+ */
+export type EndReason = "expired" | "refused";
+
+export const ENDED_MESSAGES: Record<EndReason, string> = {
+  expired: `This sign-in lasted its ${SESSION_HOURS} hours and has ended. Sign in again.`,
+  refused: "The engine no longer accepts this key: it was revoked or it expired. Sign in again with a valid key.",
+};
+
+export function isEndReason(value: unknown): value is EndReason {
+  return value === "expired" || value === "refused";
+}
+
 /** Keys the engine issues start `lpk_`; anything else is not worth a round trip. */
 export function looksLikeKey(text: string): boolean {
   return /^lpk_[A-Za-z0-9_-]{16,}$/.test(text);

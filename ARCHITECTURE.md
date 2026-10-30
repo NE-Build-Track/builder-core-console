@@ -122,7 +122,9 @@ flowchart LR
   preview and parsed again on the server (`services/builder.ts`, `parseRun`) before it is sent.
 - **The signed-in key, never the console's.** `runtime/session.ts` seals the pasted key into the area's
   cookie and builds a keyed engine from it per request; the console's own admin key stays on the read
-  path. Writes clear the shared read cache so the pages show the change.
+  path. Writes clear the shared read cache so the pages show the change. A key the engine stops
+  accepting ends its session: `src/proxy.ts` checks it once before an area's page renders, and a 401
+  clears the cookie (`services/signin.ts`, `standing`; ISS-21).
 - **Results stay on screen.** An Operator dialog refreshes the page only when it closes, so an action
   that changes a row's buttons cannot unmount the result it is showing.
 - **Enforced** by `web/tests/structure/writes.test.ts`: write methods only in the two adapters, built

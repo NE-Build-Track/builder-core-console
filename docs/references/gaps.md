@@ -16,15 +16,14 @@ fails when the two disagree. The console works within these today; nothing here 
 | [G9](#g9-admin-reads-are-scoped-to-one-application) | builder-core | Per-actor money across every application. |
 | [G10](#g10-no-application-wide-reconciliation-in-per_actor-mode) | builder-core | One reconciliation read for the Health page instead of one per actor. |
 | [G11](#g11-reconciliation-flags-normal-sync-lag-as-unbalanced) | builder-core | An engine flag that only goes false on real money gaps, so it can drive alerts. |
-| [G12](#g12-creating-a-grant-returns-an-incomplete-record) | builder-core | The created grant shown from one call. |
 | [G13](#g13-no-who-am-i-call) | builder-core | The Builder names its actor from the moment it signs in. |
 | [G14](#g14-rates-are-in-wei-only) | builder-core | Rates a builder can read in dollars before running a job. |
 
 ## G1: The Jobs page lists projections, not jobs
 
-**Impact.** builder-core lists every actor's jobs to an admin or auditor (GET /v1/jobs, its D44), but the Jobs page still shows the newest cost projections and looks jobs up by id. builder-core has no filters or paging for that list yet.
+**Impact.** builder-core lists every actor's jobs to an admin or auditor (GET /v1/jobs, its D44) and pages that list with `before` (its D59, PR #81, in review), but the Jobs page still shows the newest cost projections and looks jobs up by id. The list has no filters (actor, app, state, time) yet.
 
-**Fix.** List jobs from GET /v1/jobs with the reader's credential; ask builder-core for filters (actor, app, state, time) and paging.
+**Fix.** List jobs from GET /v1/jobs with the reader's credential, paging with `before`; ask builder-core for filters (actor, app, state, time).
 
 **Owner.** this repository. **Unlocks:** A real Jobs page: throughput, failures by kind, per-actor and per-app job history.
 
@@ -70,7 +69,7 @@ fails when the two disagree. The console works within these today; nothing here 
 
 ## G8: The keys-mode reader holds an admin key
 
-**Impact.** builder-core has a read-only auditor credential (its #69), and the OIDC reader uses one, so the engine refuses its writes. With CONSOLE_AUTH=keys the reader still holds an engine admin key, which can do everything; the console stays read-only there only because its code makes GET requests alone (tests/structure/read-only.test.ts).
+**Impact.** builder-core has a read-only auditor credential (its #69), and the OIDC reader uses one, so the engine refuses its writes. With CONSOLE_AUTH=keys the reader still holds an engine admin key, which can do everything; the console stays read-only there only because its code makes GET requests alone (tests/structure/writes.test.ts).
 
 **Fix.** Issue the keys-mode reader an auditor key (kind auditor) instead of an admin key; the Money page then shows the engine's grants as not available, as in OIDC mode.
 
@@ -100,14 +99,6 @@ fails when the two disagree. The console works within these today; nothing here 
 
 **Owner.** builder-core. **Unlocks:** An engine flag that only goes false on real money gaps, so it can drive alerts.
 
-## G12: Creating a grant returns an incomplete record
-
-**Impact.** POST /v1/admin/grants answers 201 with the new grant's id but an empty name, status and total, so the console reads the grant list again after creating one instead of showing the response.
-
-**Fix.** Map Batteries' create response fully in the engine (the grant list already maps the same fields).
-
-**Owner.** builder-core. **Unlocks:** The created grant shown from one call.
-
 ## G13: No who-am-I call
 
 **Impact.** Nothing tells a key which actor and application it belongs to, so the Builder learns its actor id from its newest job and shows none until the key has run one.
@@ -118,9 +109,9 @@ fails when the two disagree. The console works within these today; nothing here 
 
 ## G14: Rates are in wei only
 
-**Impact.** Offerings carry the orchestrators' rates in wei per their own unit, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries.
+**Impact.** Offerings carry the orchestrators' rates in wei per their own unit, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries. builder-core PR #77 (its D62, in review) adds `price_usd` to each rate, but it is the runner's own figure, passed on unconverted, and the live orchestrators send none (checked 30 October), so the gap stays open in practice.
 
-**Fix.** Add a USD rate beside the advertised one, with the ETH price, its source and its time (ISS-10).
+**Fix.** A USD rate beside the advertised one, with the ETH price, its source and its time (ISS-10): orchestrators that advertise `price_usd`, or a conversion in the engine.
 
 **Owner.** builder-core. **Unlocks:** Rates a builder can read in dollars before running a job.
 
@@ -135,6 +126,11 @@ credentials and still uses the CLI.
 
 ## Closed
 
+- **G12, creating a grant returned an incomplete record** (closed 30 October). builder-core's
+  `POST /v1/admin/grants` now answers with the grant's name, status and total (seen live on the stack:
+  `{"name": …, "status": "active", "total": "0.01"}`; `scripts/live-check-d57.py` A5, "created grant
+  read back in full"). The Operator result step still shows only the new grant's id and the amount
+  sent; showing the response's name, status and total is a small follow-up, not a gap.
 - **G2, no list of provisioned actors** (closed 28 October). builder-core #69 lists actors
   (`GET /v1/admin/actors`), and the Users and Operator pages read it; access keys only add the actors
   that hold a key the engine does not list yet.

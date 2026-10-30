@@ -10,7 +10,7 @@ import { COST_CLASS_LABELS, COST_CLASSES, type Fees } from "@/domain/engine";
 import { loadMyJobs, loadMyUsage } from "@/runtime/builder";
 import { isWindowName, WINDOWS, type WindowName } from "@/utils/time";
 
-import { sessionFor } from "../../session-cookies";
+import { endedMessage, sessionFor } from "../../session-cookies";
 import { BuilderBar, BuilderSignIn } from "../gate";
 
 export const metadata: Metadata = { title: "Usage and cost" };
@@ -38,7 +38,7 @@ async function MyUsage({ searchParams }: { readonly searchParams: Search }) {
   const search = await searchParams;
   const window: WindowName = isWindowName(search.window) ? search.window : "7d";
   const session = await sessionFor("builder");
-  if (!session) return <BuilderSignIn message={null} />;
+  if (!session) return <BuilderSignIn message={await endedMessage("builder")} />;
   const [view, mine] = await Promise.all([loadMyUsage(session, window), loadMyJobs(session)]);
   const allowance = view.allowance.ok ? view.allowance.value : null;
   const pending = view.summary.ok ? view.summary.value.jobs_pending : null;

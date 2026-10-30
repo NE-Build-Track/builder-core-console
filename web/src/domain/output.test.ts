@@ -50,6 +50,11 @@ describe("images in a JSON answer (builder-core D59)", () => {
     expect(imageUrls(inline)).toEqual([jpeg]);
   });
 
+  it("finds it where the live runner puts it: output.images[0].url, under the fal endpoint id", () => {
+    const live = { endpoint_id: "fal-ai/flux/schnell", output: { images: [{ url: jpeg, width: 1024, height: 768 }] } };
+    expect(imageUrls(live)).toEqual([jpeg]);
+  });
+
   it("shortens data URIs in the JSON view, saying how large each is, and leaves everything else as it was", () => {
     const shown = shortenDataUris(JSON.stringify(inline, null, 2));
     expect(shown).not.toContain(jpeg);

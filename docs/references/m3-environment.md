@@ -16,6 +16,11 @@ machine. Recorded 21 October 2026; refreshed 30 October for the engine at `9e447
 | Signer | `http://clearinghouse:8937`, compose network only | The engine (payment and discovery) |
 | Orchestrators | public, on the engine's list | The engine, paid per job |
 
+The engine's host port is 8090 unless `ENGINE_PORT` in `deploy/.env` moves it, for when 8090 is taken on the
+host; compose publishes it there, and the scripts (`scripts/demo-traffic.py`, the live checks) read it from
+the same file. Restarting `clearinghouse` needs the signer recreated with it (`make restart-payments`; see
+[deploy/README.md](../../deploy/README.md#operating)).
+
 ## Credentials and who holds them
 
 | Credential | Scope | Holder |
