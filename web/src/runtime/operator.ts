@@ -1,5 +1,6 @@
 import "server-only";
 
+import { ensureBuilderUser } from "@/adapters/auth0/directory";
 import { engineWriter } from "@/adapters/engine/writer";
 import { readConfig } from "@/config/config";
 import { callOf, type ActionInput, type ActionState } from "@/domain/operator";
@@ -68,10 +69,28 @@ export async function commitAction(session: Session, form: FormData): Promise<Ac
   }
   const url = engineUrl();
   if (!url) return { step: "fill", values, error: { message: "The console has no engine URL (CONSOLE_ENGINE_URL)." } };
+  let action = input.value;
+  let password: string | null = null;
+  if (action.action === "provision" && action.subject && action.email) {
+    const directory = readConfig().directory;
+    if (!directory.ok) return { step: "fill", values, error: { message: `Auth0 user provisioning is not configured: ${directory.missing}.` } };
+    try {
+      const created = await ensureBuilderUser(directory.value, { subject: action.subject, email: action.email, name: action.label || action.subject });
+      action = { ...action, actorId: created.userId };
+      password = created.password;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Auth0 did not create the user.";
+      return { step: "fill", values, error: { message } };
+    }
+  }
   const writer = engineWriter(url, session.token, { timeoutMs: readConfig().timeoutMs, now: () => new Date() });
-  const written = await writer.send(callOf(input.value));
+  const written = await writer.send(callOf(action));
   forgetReads();
-  return outcomeOf(input.value, values, written);
+  const outcome = outcomeOf(action, values, written);
+  if (outcome.step === "done" && outcome.ok && password) {
+    return { ...outcome, lines: [...outcome.lines, { label: "Sign-in password (shown once)", value: password }] };
+  }
+  return outcome;
 }
 
 /** The Operator page's data, read with the operator's own key (uncached: it changes with every action). */

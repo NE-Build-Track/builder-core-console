@@ -193,13 +193,24 @@ export function ActorsSection({ view, applicationId }: { readonly view: Operator
           {...common}
           action="provision"
           label="Provision an actor"
-          fields={[
-            { type: "text", name: "application_id", label: "Application", value: applicationId },
-            { type: "text", name: "actor_id", label: "Actor id", placeholder: view.keys ? "acme-studio" : "3c446b40-7123-…", hint: actorHint },
-            { type: "select", name: "grant_id", label: "From grant", options: grantOptions(view, null) },
-            { type: "usd", name: "amount", label: "Allocation", placeholder: "0.25" },
-            { type: "text", name: "label", label: "Label (optional)" },
-          ]}
+          fields={
+            view.keys
+              ? [
+                  { type: "text", name: "application_id", label: "Application", value: applicationId },
+                  { type: "text", name: "actor_id", label: "Actor id", placeholder: "acme-studio", hint: actorHint },
+                  { type: "select", name: "grant_id", label: "From grant", options: grantOptions(view, null) },
+                  { type: "usd", name: "amount", label: "Allocation", placeholder: "0.25" },
+                  { type: "text", name: "label", label: "Label (optional)" },
+                ]
+              : [
+                  { type: "text", name: "application_id", label: "Application", value: applicationId },
+                  { type: "text", name: "subject", label: "Subject name", placeholder: "carol", hint: "Creates the Auth0 user first. The actor id is auth0/<name>, which is the token's sub." },
+                  { type: "text", name: "email", label: "Email", placeholder: "carol@example.com" },
+                  { type: "select", name: "grant_id", label: "From grant", options: grantOptions(view, null) },
+                  { type: "usd", name: "amount", label: "Allocation", placeholder: "0.25" },
+                  { type: "text", name: "label", label: "Label (optional)" },
+                ]
+          }
         />
       }
     >

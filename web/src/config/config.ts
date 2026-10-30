@@ -23,6 +23,17 @@ export type OidcSettings = {
   readonly builderScopes: readonly string[];
   /** Local development only: an http issuer, such as a Keycloak in deploy/keycloak. */
   readonly allowHttp: boolean;
+  /**
+   * Ask for `offline_access` so the provider returns a refresh token. Auth0 does; the local Keycloak
+   * issues refresh tokens without it, so this stays off there.
+   */
+  readonly offlineAccess: boolean;
+  /**
+   * Auth0's API identifier. Sent as `audience` on authorize, refresh, and client credentials.
+   * Without it Auth0 issues a token for its default API. Null for a provider that puts the
+   * audience on the token itself, such as the local Keycloak.
+   */
+  readonly audience: string | null;
 };
 
 /** The console's own read-only identity: a client-credentials token for the background reads. */
@@ -35,6 +46,15 @@ export type BatteriesSettings = { readonly url: string; readonly token: string }
 export type SignerSettings = { readonly url: string; readonly metricsUrl: string };
 export type DiscoverySettings = { readonly url: string };
 
+/** A management client that creates builder users before the engine provisions them. */
+export type DirectorySettings = {
+  readonly domain: string;
+  readonly clientId: string;
+  readonly clientSecret: string;
+  readonly connection: string;
+  readonly builderRoleId: string;
+};
+
 export type ConsoleConfig = {
   /** How people sign in to the writing areas: pasted engine keys (default), or the identity provider. */
   readonly auth: AuthSettings;
@@ -42,6 +62,8 @@ export type ConsoleConfig = {
   readonly batteries: SourceSettings<BatteriesSettings>;
   readonly signer: SourceSettings<SignerSettings>;
   readonly discovery: SourceSettings<DiscoverySettings>;
+  /** Present when provisioning should create the Auth0 user first. Missing leaves the actor id as typed. */
+  readonly directory: SourceSettings<DirectorySettings>;
   readonly applicationId: string;
   readonly cacheTtlMs: number;
   /** Per-request timeout for every upstream read. */
@@ -60,6 +82,13 @@ type Env = Readonly<Record<string, string | undefined>>;
 function text(env: Env, name: string): string | null {
   const value = env[name]?.trim();
   return value ? value : null;
+}
+
+/** An Auth0 tenant host, with no scheme: the management API is always https. */
+function host(env: Env, name: string): string | null {
+  const value = text(env, name);
+  if (!value || value.includes("/") || value.includes(":")) return null;
+  return value;
 }
 
 function url(env: Env, name: string): string | null {
@@ -133,6 +162,8 @@ function auth(env: Env): AuthSettings {
         operatorScope: text(env, "CONSOLE_OIDC_OPERATOR_SCOPE") ?? "livepeer:admin",
         builderScopes: words(env, "CONSOLE_OIDC_BUILDER_SCOPES", BUILDER_SCOPES),
         allowHttp,
+        offlineAccess: text(env, "CONSOLE_OIDC_OFFLINE_ACCESS") === "true",
+        audience: url(env, "CONSOLE_OIDC_AUDIENCE"),
       }),
     ),
     reader: settings(
@@ -168,6 +199,21 @@ export function readConfig(env: Env = process.env): ConsoleConfig {
     discovery: settings({ CONSOLE_DISCOVERY_URL: url(env, "CONSOLE_DISCOVERY_URL") }, (v) => ({
       url: v.CONSOLE_DISCOVERY_URL as string,
     })),
+    directory: settings(
+      {
+        CONSOLE_AUTH0_DOMAIN: host(env, "CONSOLE_AUTH0_DOMAIN"),
+        CONSOLE_AUTH0_MGMT_CLIENT_ID: text(env, "CONSOLE_AUTH0_MGMT_CLIENT_ID"),
+        CONSOLE_AUTH0_MGMT_CLIENT_SECRET: text(env, "CONSOLE_AUTH0_MGMT_CLIENT_SECRET"),
+        CONSOLE_AUTH0_BUILDER_ROLE_ID: text(env, "CONSOLE_AUTH0_BUILDER_ROLE_ID"),
+      },
+      (v) => ({
+        domain: v.CONSOLE_AUTH0_DOMAIN as string,
+        clientId: v.CONSOLE_AUTH0_MGMT_CLIENT_ID as string,
+        clientSecret: v.CONSOLE_AUTH0_MGMT_CLIENT_SECRET as string,
+        connection: text(env, "CONSOLE_AUTH0_CONNECTION") ?? "Username-Password-Authentication",
+        builderRoleId: v.CONSOLE_AUTH0_BUILDER_ROLE_ID as string,
+      }),
+    ),
     applicationId: text(env, "CONSOLE_APPLICATION_ID") ?? "default",
     cacheTtlMs: number(env, "CONSOLE_CACHE_TTL_S", 15, 0, 300) * 1000,
     timeoutMs: number(env, "CONSOLE_TIMEOUT_S", 8, 1, 60) * 1000,

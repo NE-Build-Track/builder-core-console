@@ -1,0 +1,62 @@
+{
+  "comment": "Template for an Auth0 tenant that signs this console in. Not a dump of a live tenant: no client secret, user id, or password. Copy the values into the tenant. A person who signs in (for example with Google) has no role until an assignment below names them. Without operator, Operator sign-in is refused because the token has no livepeer:admin. Without builder, Builder sign-in is refused because the token has no jobs.run. Assigning the role is the fix. The console asks only for the area's scopes; the engine reads the permissions claim (RFC 9068 access tokens, typ at+jwt).",
+  "api": {
+    "name": "Builder preview engine",
+    "identifier": "https://engine.example",
+    "signing_alg": "RS256",
+    "token_dialect": "rfc9068_profile_authz",
+    "token_lifetime_seconds": 900,
+    "enforce_policies": true,
+    "allow_offline_access": true,
+    "permissions": [
+      "livepeer:admin",
+      "livepeer:read",
+      "discover",
+      "jobs.run",
+      "jobs.read",
+      "costs.read",
+      "events.read"
+    ]
+  },
+  "roles": [
+    {
+      "name": "operator",
+      "permissions": ["livepeer:admin"]
+    },
+    {
+      "name": "builder",
+      "permissions": ["discover", "jobs.run", "jobs.read", "costs.read", "events.read"]
+    }
+  ],
+  "assignments": [
+    {
+      "user_id": "google-oauth2|<subject>",
+      "roles": ["operator"]
+    }
+  ],
+  "application": {
+    "name": "builder-console",
+    "type": "regular_web",
+    "grant_types": ["authorization_code", "refresh_token", "client_credentials"],
+    "callback": "https://console.example/auth/callback",
+    "logout_urls": ["https://console.example/operator", "https://console.example/builder"],
+    "grants": [
+      {
+        "subject_type": "user",
+        "scope": [
+          "livepeer:admin",
+          "livepeer:read",
+          "discover",
+          "jobs.run",
+          "jobs.read",
+          "costs.read",
+          "events.read"
+        ]
+      },
+      {
+        "subject_type": "client",
+        "scope": ["livepeer:read"]
+      }
+    ]
+  }
+}

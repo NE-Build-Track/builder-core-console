@@ -30,6 +30,10 @@ describe("operator actions", () => {
     expect(parseAction(form({ action: "fundGrant", grant_id: "g1", amount: "0", operation_ref: REF }))).toMatchObject({ ok: false, field: "amount" });
     expect(parseAction(form({ action: "fundGrant", grant_id: "g1", amount: "1", operation_ref: "" }))).toMatchObject({ ok: false, field: "operation_ref" });
     expect(parseAction(form({ action: "provision", application_id: "default", actor_id: "a/b", grant_id: "g1", amount: "1" }))).toMatchObject({ ok: false, field: "actor_id" });
+    expect(parseAction(form({ action: "provision", application_id: "default", subject: "carol", email: "carol@example.com", grant_id: "g1", amount: "1", label: "Carol", operation_ref: REF }))).toMatchObject({
+      ok: true,
+      value: { action: "provision", actorId: "auth0|carol", subject: "carol", email: "carol@example.com" },
+    });
     expect(parseAction(form({ action: "deleteEverything" }))).toMatchObject({ ok: false, field: "action" });
   });
 
@@ -192,10 +196,10 @@ describe("operator actions", () => {
 
 describe("drawing on a grant", () => {
   it("shows the grant's unallocated balance and warns before the engine would refuse", () => {
-    const fits = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.25", label: "", operationRef: REF }, context);
+    const fits = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", subject: null, email: null, grantId: "g1", amount: "0.25", label: "", operationRef: REF }, context);
     expect(fits.lines).toContainEqual({ label: "Grant unallocated", before: "$0.30", after: "$0.05" });
     expect(fits.warnings.join(" ")).not.toContain("refuse");
-    const short = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.5", label: "", operationRef: REF }, context);
+    const short = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", subject: null, email: null, grantId: "g1", amount: "0.5", label: "", operationRef: REF }, context);
     expect(short.warnings.join(" ")).toContain("will refuse this (409)");
   });
 });

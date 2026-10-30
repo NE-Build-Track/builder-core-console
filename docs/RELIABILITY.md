@@ -24,6 +24,12 @@ The console reads `CONSOLE_*` variables (compose sets the URLs; `deploy/.env` ho
 | `CONSOLE_OIDC_REDIRECT_URL` | — | oidc: `/auth/callback` as the browser reaches the console, registered with the provider |
 | `CONSOLE_OIDC_OPERATOR_SCOPE`, `CONSOLE_OIDC_BUILDER_SCOPES` | `livepeer:admin`; `discover jobs.run jobs.read costs.read events.read` | oidc: what each area asks for; the engine maps them (builder-core `LPB_JWT_*`) |
 | `CONSOLE_OIDC_ALLOW_HTTP` | `false` | oidc: local development only, an http issuer (deploy/keycloak) |
+| `CONSOLE_OIDC_OFFLINE_ACCESS` | `false` | oidc: also request `offline_access`, so a provider such as Auth0 returns a refresh token. Leave unset for the local Keycloak, which issues one without being asked |
+| `CONSOLE_OIDC_AUDIENCE` | — | oidc: sent as Auth0's `audience` parameter so access tokens name the engine API. Leave unset for the local Keycloak, which stamps the audience itself |
+| `CONSOLE_AUTH0_DOMAIN` | — | Provision: the Auth0 tenant host, no scheme. When set with the management client, Provision an actor creates the user before the engine allocation |
+| `CONSOLE_AUTH0_MGMT_CLIENT_ID`, `CONSOLE_AUTH0_MGMT_CLIENT_SECRET` | — | Provision: a machine client allowed to create users and assign the builder role. Server only |
+| `CONSOLE_AUTH0_CONNECTION` | `Username-Password-Authentication` | Provision: the database connection the new user is created in |
+| `CONSOLE_AUTH0_BUILDER_ROLE_ID` | — | Provision: the role id whose permissions are the builder scopes |
 | `CONSOLE_READER_CLIENT_ID`, `CONSOLE_READER_CLIENT_SECRET`, `CONSOLE_READER_SCOPE` | —, —, `livepeer:read` | oidc: the console's own read-only identity (client credentials) for the background reads |
 
 A missing variable does not stop the console: that source reads "not configured: NAME" on every page.

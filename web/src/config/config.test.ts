@@ -61,10 +61,26 @@ describe("config", () => {
             operatorScope: "livepeer:admin",
             builderScopes: ["discover", "jobs.run", "jobs.read", "costs.read", "events.read"],
             allowHttp: true,
+            offlineAccess: false,
+            audience: null,
           },
         },
         reader: { ok: true, value: { clientId: "console-reader", clientSecret: "s2", scope: "livepeer:read" } },
       });
+    });
+
+    it("sends an audience only when one is configured", () => {
+      const off = readConfig(oidc);
+      expect(off.auth.mode === "oidc" && off.auth.oidc.ok && off.auth.oidc.value.audience).toBeNull();
+      const on = readConfig({ ...oidc, CONSOLE_OIDC_AUDIENCE: "https://engine-preview.up.railway.app" });
+      expect(on.auth.mode === "oidc" && on.auth.oidc.ok && on.auth.oidc.value.audience).toBe("https://engine-preview.up.railway.app");
+    });
+
+    it("asks for a refresh token only when Auth0 is told to, and never otherwise", () => {
+      const off = readConfig(oidc);
+      expect(off.auth.mode === "oidc" && off.auth.oidc.ok && off.auth.oidc.value.offlineAccess).toBe(false);
+      const on = readConfig({ ...oidc, CONSOLE_OIDC_OFFLINE_ACCESS: "true" });
+      expect(on.auth.mode === "oidc" && on.auth.oidc.ok && on.auth.oidc.value.offlineAccess).toBe(true);
     });
 
     it("keeps the issuer exactly as given: it must match the token's iss", () => {

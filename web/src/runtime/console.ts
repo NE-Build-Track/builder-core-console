@@ -33,7 +33,9 @@ function build(): Sources {
   // client-credentials token, which the engine maps to an auditor (builder-core D46).
   const auth = config.auth;
   const tokens =
-    auth.mode === "oidc" && auth.oidc.ok && auth.reader.ok ? readerTokens(auth.oidc.value.issuer, auth.reader.value, auth.oidc.value.allowHttp, options) : null;
+    auth.mode === "oidc" && auth.oidc.ok && auth.reader.ok
+      ? readerTokens(auth.oidc.value.issuer, auth.reader.value, auth.oidc.value.allowHttp, options, auth.oidc.value.audience)
+      : null;
   return {
     engine: cached("engine", engineReader(config.engine, options, tokens), cache),
     batteries: cached("batteries", batteriesReader(config.batteries, { ...options, maxRows: config.maxListRows }), cache),

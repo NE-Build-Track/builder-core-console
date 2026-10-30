@@ -22,7 +22,7 @@ const under = (file: string, prefixes: readonly string[]) =>
   });
 
 /** The only files that send a non-GET request to the engine. */
-const WRITE_ADAPTERS = ["adapters/engine/writer.ts", "adapters/engine/keyed.ts"];
+const WRITE_ADAPTERS = ["adapters/engine/writer.ts", "adapters/engine/keyed.ts", "adapters/auth0/directory.ts"];
 /** Where writes may be started from: the two areas, their components, and the one server-action file. */
 const WRITE_AREAS = ["app/operator/", "app/builder/", "app/actions.ts", "components/console/act/", "components/console/run/"];
 /** Plans and presets name a method without sending anything. */

@@ -92,6 +92,12 @@ export type ActionInput =
       readonly action: "provision";
       readonly applicationId: string;
       readonly actorId: string;
+      /**
+       * Set when the operator named a person rather than an actor id. The console creates that Auth0
+       * user first; `actorId` is `auth0|<subject>`, the id Auth0 will put in the token's sub.
+       */
+      readonly subject: string | null;
+      readonly email: string | null;
       readonly grantId: string;
       readonly amount: string;
       readonly label: string;
