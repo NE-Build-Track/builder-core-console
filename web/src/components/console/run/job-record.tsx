@@ -1,12 +1,13 @@
 /**
- * A job's record as it settles after a run: state, each attempt and whether it paid (or may have:
- * builder-core D54), the result reference, and the wholesale network cost followed from pending to its
+ * A job's record as it settles after a run: state, why it failed and what to do (builder-core D58), each
+ * attempt and whether it paid (or may have: D54), the result reference, and the wholesale network cost followed from pending to its
  * final status, with the billable part when a failover makes them differ (D52).
  */
 import Link from "next/link";
 
 import type { JobState } from "@/domain/builder";
 import { attemptPayment, mayHavePaid, type Job } from "@/domain/engine";
+import { failureAdvice } from "@/domain/failures";
 import type { State } from "@/domain/views";
 
 import { Amount, Id, Pill } from "../values";
@@ -44,14 +45,7 @@ export function JobRecord({ jobId, state }: { readonly jobId: string; readonly s
         </Pill>
         <Link href={`/builder/jobs?id=${jobId}`}>Open in My jobs</Link>
       </div>
-      {job?.failure ? (
-        <div className="problem" role="status">
-          <strong>
-            {job.failure.kind}: {job.failure.message}
-          </strong>
-          <span>{failureNote(job)}</span>
-        </div>
-      ) : null}
+      {job?.failure ? <FailureNote job={job} failure={job.failure} /> : null}
       {job && job.attempts.length > 0 ? (
         <ol className="attempt-list" aria-label="Attempts">
           {job.attempts.map((attempt) => (
@@ -89,6 +83,21 @@ export function JobRecord({ jobId, state }: { readonly jobId: string; readonly s
         ) : null}
       </div>
       {state?.problem ? <p className="form-error">Could not read the job: {state.problem}</p> : null}
+    </div>
+  );
+}
+
+function FailureNote({ job, failure }: { readonly job: Job; readonly failure: NonNullable<Job["failure"]> }) {
+  const advice = failureAdvice(failure);
+  return (
+    <div className="problem" role="status">
+      <strong>{advice.title}</strong>
+      <span>{advice.meaning}</span>
+      <span>What to do: {advice.todo}</span>
+      <span>{failureNote(job)}</span>
+      <span className="muted">
+        The engine said (<code>{advice.code}</code>): {advice.message}
+      </span>
     </div>
   );
 }

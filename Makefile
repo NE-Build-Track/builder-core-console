@@ -1,4 +1,4 @@
-.PHONY: install check typecheck lint test build dev gen-api images up down logs compose-config
+.PHONY: install check typecheck lint test build dev gen-api images up down logs compose-config restart-payments
 
 COMPOSE := docker compose -f deploy/compose.yaml
 
@@ -43,3 +43,8 @@ down:
 
 logs:
 	$(COMPOSE) logs -f --tail=100
+
+# The signer and its metrics relay share clearinghouse's network namespace: recreate them whenever it restarts (deploy/README.md#operating).
+restart-payments:
+	$(COMPOSE) restart clearinghouse
+	$(COMPOSE) up -d --no-build --pull never --force-recreate signer signer-metrics

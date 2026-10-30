@@ -1,10 +1,11 @@
 import { RUN_HEADERS } from "@/domain/builder";
 import { hideSecrets } from "@/domain/exchange";
-import { describeProblem } from "@/domain/reading";
+import { describeProblem, failed } from "@/domain/reading";
 import { startRun } from "@/runtime/builder";
 import { parseRun } from "@/services/builder";
+import { standing } from "@/services/signin";
 
-import { sessionFor } from "../../session-cookies";
+import { endedBy, sessionFor } from "../../session-cookies";
 
 /**
  * The Builder's job run (decisions D19, D20): the browser posts the form here, and the console runs the
@@ -40,8 +41,14 @@ export async function POST(request: Request): Promise<Response> {
       },
     });
   }
+  // a 401 to the session's own key ends it (ISS-21): the next page shows the sign-in form and says why
+  const now = new Date();
+  const ended = session.via === "key" ? standing(session, failed("engine", started.problem, now.toISOString()), now) : null;
+  if (ended?.ended) await endedBy("builder", ended.reason);
+  // Retry-After rides along: a refusal such as signer_unavailable (builder-core D58) says when to try again
+  const retryAfterS = started.problem.kind === "http" ? (started.problem.retryAfterS ?? null) : null;
   return Response.json(
-    { problem: describeProblem(started.problem), response: hideSecrets(started.response), exchange: hideSecrets(started.exchange) },
+    { problem: ended?.ended ? ended.message : describeProblem(started.problem), response: hideSecrets(started.response), exchange: hideSecrets(started.exchange), retryAfterS },
     { status: started.status ?? 502, headers: { "cache-control": "no-store", [RUN_HEADERS.status]: String(started.status ?? "") } },
   );
 }

@@ -101,6 +101,10 @@ engine answered:
 - **Reference used for a different request** (`409 operation_conflict`): nothing was applied; **Start
   over (new reference)**. The earlier request under that reference may have been applied, so check the
   page first.
+- **A revoke repeated** (builder-core D61): set status and the two revokes take no reference, because a
+  repeat answers as the first did: revoke allocation 200 with the revoked actor, revoke key 204. A retry
+  after a lost answer therefore reads as done, and the review of a key already revoked says nothing will
+  change. An actor or key that never existed is still 404 or 400.
 
 The console branches on the problem's `code`, never on its text.
 
@@ -109,11 +113,27 @@ The console branches on the problem's `code`, never on its text.
 For a builder, signed in with an actor key. Three tabs. **Catalog and run**: every offering with ready
 runners and its wholesale rate exactly as advertised (wei shown as ETH, unit in words, age; gap G14), and
 one job form for any offering (D19): offering, path, method, JSON input with Chat, Image and Empty
-examples, stream, timeout and attempts, with the request shown before it is sent. The output streams in
-and is shown by content type (D20): Rendered chat, JSON with its images, an image, or Raw. Below it the
-job's record: state, attempts and whether each paid, the result reference, and the network cost
-followed from pending to its final status. **My jobs**: the key's jobs, any one opened with its record.
-**Usage and cost**: the allowance and the wholesale cost by class over 24 h, 7 d or 30 d.
+examples, stream, timeout and attempts, with the request shown before it is sent. The Image example
+sends `sync_mode: true`, so FLUX schnell returns the picture inline as a data URI and it lasts as long
+as the builder's copy (builder-core D59). The output streams in and is shown by content type (D20):
+Rendered chat, JSON with its images (data URIs shortened in the JSON view; Raw keeps every byte), an
+image, or Raw. An image at a provider's URL that no longer loads says the provider no longer serves it,
+and that the job still succeeded and its cost stands. Below it the job's record: state, attempts and
+whether each paid, the result reference, and the network cost followed from pending to its final status.
+
+**Failures and refusals** are told in builder-core's failure table's words (`engine.md#failures`, D58):
+a plain title from the failure's `kind` and, for a payment, its `reason` (`not_authorized` 403,
+`allowance_exhausted` 402, `signer_unavailable` 503 with `Retry-After`, `signer_unknown` 503), what it
+means and what to do, with the engine's own message and code beside them. A refused submission
+(`POST /v1/jobs` 402, 403 or 503 with the job) reads as that refusal, not as a generic error; a 403
+without a job is the access policy; 413 `request_too_large` names the engine's limit (D59). The console's
+Run always sends a new operation reference.
+
+**My jobs**: the key's jobs with each failure's title and next step, any one opened with its record.
+**Usage and cost**: the allowance, the wholesale cost by class, and the cost per app and class
+(`CostSummary.by_app`, D60) over 24 h, 7 d or 30 d. Final classes and `pending` stay in their own
+columns and are never summed; the apps' row of totals is the summary's `by_class`, and a class whose apps
+do not add up to it is named.
 
 ## Out of scope
 

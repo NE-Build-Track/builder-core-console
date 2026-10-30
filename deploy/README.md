@@ -10,8 +10,8 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
 | `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:a6ed9b5` | `127.0.0.1:8090` (Swagger at `/docs`) |
-| `discovery` | `builder-console/engine:a6ed9b5` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
+| `engine` | `builder-console/engine:9e447ce` | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `discovery` | `builder-console/engine:9e447ce` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 Testing sign-in through an identity provider instead of keys: [keycloak/README.md](keycloak/README.md), a
@@ -51,6 +51,24 @@ make logs
 make down      # keeps volumes; `docker compose -f deploy/compose.yaml down -v` deletes all stack state
 ```
 
+**Restarting clearinghouse:** `signer` and `signer-metrics` run inside clearinghouse's network namespace
+(`network_mode: service:clearinghouse`). Restarting or recreating `clearinghouse` gives it a new namespace
+and leaves both attached to the old one, so every paid job then fails `signer_unavailable` (and Health
+reads the signer as down) until they are recreated. After any restart of clearinghouse, including the
+one `init-secrets.py` asks for below, recreate them:
+
+```sh
+docker compose -f deploy/compose.yaml restart clearinghouse
+docker compose -f deploy/compose.yaml up -d --no-build --pull never --force-recreate signer signer-metrics
+```
+
+`make restart-payments` runs both. `--no-build --pull never` reuse the images `make images` built at their
+pins: Compose neither rebuilds them from GitHub nor looks for them in a registry.
+
+The engine's host port is `ENGINE_PORT` in `deploy/.env` (8090 by default). When 8090 is taken on the host,
+set another; `make up` publishes it there, and `scripts/demo-traffic.py` and the live checks read it from
+`deploy/.env`. The curl examples below use 8090.
+
 **Upgrading from engine `0dbfe6e`:** start over with `down -v`. That engine (builder-core #53) numbered its
 migrations `0006` (actor label) and `0007` (sightings). In builder-core `releases/m3`, and in #69, `0006` is
 the payment intent, and the actor migrations are `0007` and `0008`. An `engine-data` volume at #53's `0007`
@@ -59,8 +77,8 @@ engine has no record of.
 
 The console's pages only read (D1); its Operator actions change the stack through the engine (D15), and
 the engine on 127.0.0.1:8090 takes the same calls by curl or Swagger. Run `python3 deploy/init-secrets.py`
-once on secrets copied from ChatLPT so the grant desk can fund the grants it creates (then restart
-clearinghouse). A funded grant can also be created with the CLI, as ChatLPT's `first-run.sh` does:
+once on secrets copied from ChatLPT so the grant desk can fund the grants it creates (then
+`make restart-payments`, which restarts clearinghouse and recreates the signer with it). A funded grant can also be created with the CLI, as ChatLPT's `first-run.sh` does:
 
 ```sh
 docker compose -f deploy/compose.yaml exec -T clearinghouse \

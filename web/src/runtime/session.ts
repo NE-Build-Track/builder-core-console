@@ -4,10 +4,10 @@ import { keyedEngine } from "@/adapters/engine/keyed";
 import { identityProvider } from "@/adapters/oidc/provider";
 import { seal, unseal } from "@/adapters/seal";
 import { readConfig, type OidcSettings } from "@/config/config";
-import { describeProblem } from "@/domain/reading";
-import { isExpired, keyPrefix, looksLikeKey, needsRefresh, SESSION_HOURS, type Area, type Session } from "@/domain/session";
+import { describeProblem, type Reading } from "@/domain/reading";
+import { isExpired, keyPrefix, looksLikeKey, needsRefresh, SESSION_HOURS, type Area, type EndReason, type Session } from "@/domain/session";
 import type { IdentityProvider, PendingSignIn } from "@/ports/identity";
-import { classifyKey, classifyPerson } from "@/services/signin";
+import { classifyKey, classifyPerson, standing } from "@/services/signin";
 
 /**
  * Sign-in for the writing areas (decision D16). Two ways in, chosen by CONSOLE_AUTH:
@@ -25,6 +25,9 @@ export const ID_COOKIE_NAMES: Record<Area, string> = { operator: "bc_operator_id
 export const PENDING_COOKIE = "bc_oidc_pending";
 export const PENDING_MAX_AGE_S = 600;
 export const SESSION_MAX_AGE_S = SESSION_HOURS * 3600;
+/** Why the area's last session ended (ISS-21), for the sign-in form that follows; cleared on sign-in and sign-out. */
+export const ENDED_COOKIE_NAMES: Record<Area, string> = { operator: "bc_operator_ended", builder: "bc_builder_ended" };
+export const ENDED_MAX_AGE_S = 300;
 
 export type SignInResult = { readonly ok: true; readonly sealed: string; readonly session: Session } | { readonly ok: false; readonly message: string };
 
@@ -54,11 +57,11 @@ export function engineUrl(): string | null {
   return engine.ok ? engine.value.url : null;
 }
 
-export function keyed(token: string) {
+export function keyed(token: string, timeoutMs?: number) {
   const config = readConfig();
   const url = engineUrl();
   if (!url) return null;
-  return keyedEngine(url, token, { timeoutMs: config.timeoutMs, now: () => new Date() });
+  return keyedEngine(url, token, { timeoutMs: timeoutMs ?? config.timeoutMs, now: () => new Date() });
 }
 
 export async function signIn(area: Area, pasted: string, now: Date = new Date()): Promise<SignInResult> {
@@ -228,4 +231,44 @@ export function openSession(area: Area, sealed: string | undefined, now: Date = 
   const value = unseal(secret, sealed);
   if (!isSession(value, area) || isExpired(value, now)) return null;
   return value;
+}
+
+// -- a pasted key that stops working (ISS-21) ------------------------------------------------------------
+
+/**
+ * The probe runs in src/proxy.ts before the page renders, so it blocks the whole response: it gives up
+ * sooner than a page's reads, and an engine that does not answer leaves the session alone.
+ */
+const PROBE_TIMEOUT_MS = 3000;
+
+/** A probe in flight, by key: a page and its parallel requests share one call. Nothing is remembered after. */
+const probing = new Map<string, Promise<Reading<unknown>>>();
+
+/** The same cheap call sign-in uses to test a key: the actor list for an operator, one job for a builder. */
+function probeKey(session: Session): Promise<Reading<unknown>> | null {
+  const engine = keyed(session.token, Math.min(PROBE_TIMEOUT_MS, readConfig().timeoutMs));
+  if (!engine) return null;
+  const key = `${session.area}:${session.token}`;
+  let pending = probing.get(key);
+  if (!pending) {
+    pending = session.area === "operator" ? engine.adminActors(1) : engine.myJobs(1);
+    probing.set(key, pending);
+    void pending.finally(() => probing.delete(key));
+  }
+  return pending;
+}
+
+/**
+ * Why the area's pasted-key session has ended, or null while it stands (or there is none). The engine is
+ * asked once with the session's key; only its 401 ends the session (services/signin.ts, `standing`).
+ * Identity-provider sessions are left to refreshSession and their own expiry.
+ */
+export async function endedKeySession(area: Area, sealed: string | undefined, now: Date = new Date()): Promise<EndReason | null> {
+  const secret = readConfig().sessionSecret;
+  if (!secret || !sealed) return null;
+  const value = unseal(secret, sealed);
+  if (!isSession(value, area) || value.via !== "key") return null;
+  const probe = isExpired(value, now) ? null : await probeKey(value);
+  const result = standing(value, probe, now);
+  return result.ended ? result.reason : null;
 }

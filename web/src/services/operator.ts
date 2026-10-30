@@ -243,6 +243,8 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
         lines: [...keyLines(input.keyId, key), { label: "Effect", value: "Calls with this key fail at once with 401." }],
         warnings: [
           "This cannot be undone.",
+          // a repeat of a finished revoke answers as the first did (builder-core D61); it was 400 "no active key"
+          ...(key?.revoked_at ? ["This key is already revoked. The engine answers as the first revoke did (204) and changes nothing (builder-core D61)."] : []),
           ...(key?.kind === "admin" ? ["This is an admin key. If it is the one you signed in with, your next action will fail and you will need another admin key."] : []),
         ],
         confirm: { expect: input.keyId.slice(0, 8), prompt: `Type the first 8 characters of the key id, ${input.keyId.slice(0, 8)}, to confirm` },
