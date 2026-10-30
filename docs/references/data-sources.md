@@ -48,6 +48,14 @@ and `GET /v1/jobs/{job_id}` (and `/cost`) with its actor key; the Operator page 
 | `POST /v1/admin/keys/{key_id}/rotate` | Operator | Rotate an access key: a new key with the same owner, kind and permissions, shown once; the old one answers 401 at once. The body carries the required operation reference and an optional `label` that renames it. A repeat of the reference answers `201` with the new key and `token: null` (the result offers to rotate that key). |
 | `POST /v1/admin/keys/{key_id}/revoke` | Operator | Revoke an access key. |
 
+## Identity provider
+
+Auth0's management API, from the Operator page when `CONSOLE_AUTH0_DOMAIN` and the management client are set. The credential stays on the server. This is not an engine call, and it does not move money.
+
+| Route | Area | Notes |
+| --- | --- | --- |
+| `POST /api/v2/users/{user_id}/roles` | Operator | Assign one role to the database user `auth0/<subject>`, created first on the username-password connection. **Add an operator** assigns the operator role and stops there. A Google user with the same email has a different user id and is not assigned. |
+
 ## Batteries
 
 The Clearinghouse Batteries management API at `CONSOLE_BATTERIES_URL` (`http://clearinghouse:8081`),

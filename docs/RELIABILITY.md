@@ -30,6 +30,7 @@ The console reads `CONSOLE_*` variables (compose sets the URLs; `deploy/.env` ho
 | `CONSOLE_AUTH0_MGMT_CLIENT_ID`, `CONSOLE_AUTH0_MGMT_CLIENT_SECRET` | — | Provision: a machine client allowed to create users and assign the builder role. Server only |
 | `CONSOLE_AUTH0_CONNECTION` | `Username-Password-Authentication` | Provision: the database connection the new user is created in |
 | `CONSOLE_AUTH0_BUILDER_ROLE_ID` | — | Provision: the role id whose permissions are the builder scopes |
+| `CONSOLE_AUTH0_OPERATOR_ROLE_ID` | — | Add an operator: the role id whose permission is `livepeer:admin`. Unset leaves builder provisioning working and refuses only that action |
 | `CONSOLE_READER_CLIENT_ID`, `CONSOLE_READER_CLIENT_SECRET`, `CONSOLE_READER_SCOPE` | —, —, `livepeer:read` | oidc: the console's own read-only identity (client credentials) for the background reads |
 
 A missing variable does not stop the console: that source reads "not configured: NAME" on every page.

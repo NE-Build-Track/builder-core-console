@@ -71,6 +71,7 @@ Each item names the M3 task it evidences.
 - [x] 2026-10-29 Pinned to builder-core `bebc2f6` (PR #76, `tasks/mz/iss-11-14-idempotency`, ISS-11 and ISS-14, D57) on branch `tasks/mz/iss-11-operation-refs`: admin commands now **require** an operation reference and are repeat-safe. Re-pin to #76's merge.
 - [x] 2026-10-29 Re-pinned to builder-core `f58a2b1` (PR #76): provisioning an actor already provisioned under a new reference is 409 `already_provisioned` (nothing applied, the amount included), worded as such with a new reference offered; an admin command still running sends `Retry-After` as the seconds until it can be resumed. The engine OpenAPI is unchanged.
 - [x] 2026-10-29 Re-pinned to builder-core `a6ed9b5`, the squash merge of PR #76 on `releases/m3` (its tree is `a41beef`'s; the engine OpenAPI is unchanged since `f58a2b1`).
+- [x] 2026-10-30 Operator page, when sign-in is OIDC: **Add an operator** creates an Auth0 database user (`auth0|<subject>`) and assigns the operator role. No engine call and no allocation. `CONSOLE_AUTH0_OPERATOR_ROLE_ID` is optional, so builder provisioning still works when it is unset. A 409 whose email belongs only to a Google user assigns no role. Account linking stays off on the preview tenant.
 - [x] 2026-10-29 Live check of builder-core D57 on the stack: 37 engine checks and 14 Operator checks in a browser, all passing ([evidence](../../references/evidence/2026-10-29-d57-live-check.md); `scripts/live-check-d57.py`, `scripts/live-check-d57-ui.py`).
   - **References:** create grant, provision, issue key and rotate key now send the dialog's reference, like fund grant, fund allocation and rotate payment key already did; all seven are `reference` and the ISS-11 review warning is gone. The rotate-key body is now always sent (it carries the reference).
   - **Answers:** the writer reads `Idempotent-Replayed`, and every engine problem keeps its `code` and `Retry-After`. A replay says nothing was applied twice; `operation_in_progress` says retry in N s (Try again, same reference); `operation_conflict` says the reference belongs to another request and offers Start over (new reference). Job 409s (`operation_exists`, in progress, conflict) read the same way in the Builder.
@@ -120,6 +121,8 @@ Each item names the M3 task it evidences.
 - **Next.js 16.** Server actions and streaming route handlers are checked against `web/node_modules/next/dist/docs/` before use.
 
 ## Decision log
+
+- 2026-10-30 An operator is an Auth0 database user with the operator role, not an engine actor. The Operator page creates that user and assigns the role to `auth0|<subject>` only. A Google login with the same email stays a different user and does not receive the role, and Auth0 account linking stays off so it cannot inherit it. The action does not call the engine.
 
 - 2026-10-29 builder-core D57: admin commands require `operation_ref`. The console keeps one reference per dialog until a new intent (Do another, or Start over after `operation_conflict`), so a double submit, a closed and reopened dialog, or a retry after a lost answer is the same command. It branches on the problem's `code`, never its text. A replayed key command has no token, so the result offers a rotation rather than pretending a key was shown.
 

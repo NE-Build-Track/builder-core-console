@@ -1,9 +1,10 @@
 import "server-only";
 
-import { ensureBuilderUser } from "@/adapters/auth0/directory";
+import { ensureDirectoryUser } from "@/adapters/auth0/directory";
 import { engineWriter } from "@/adapters/engine/writer";
-import { readConfig } from "@/config/config";
-import { callOf, type ActionInput, type ActionState } from "@/domain/operator";
+import { readConfig, type DirectorySettings } from "@/config/config";
+import type { Exchange } from "@/domain/exchange";
+import { ACTIONS, callOf, type ActionInput, type ActionState } from "@/domain/operator";
 import type { Session } from "@/domain/session";
 import { actorsOf, outcomeOf, parseAction, reviewOf, type OperatorView, type ReviewContext } from "@/services/operator";
 
@@ -49,17 +50,82 @@ async function contextFor(session: Session, input: ActionInput): Promise<ReviewC
   return { grants, allowance, key, unallocated };
 }
 
+const NO_ENGINE: ReviewContext = {
+  grants: { ok: false, source: "identity", problem: { kind: "not_configured", detail: "not an engine call" }, readAt: "1970-01-01T00:00:00.000Z" },
+  allowance: null,
+  key: null,
+  unallocated: {},
+};
+
+type PreparedOperator = {
+  readonly action: Extract<ActionInput, { action: "provisionOperator" }>;
+  readonly roleId: string;
+  readonly settings: DirectorySettings;
+};
+
+/** The operator role id comes from configuration, never from the form. */
+function withOperatorRole(input: Extract<ActionInput, { action: "provisionOperator" }>): { ok: true; value: PreparedOperator } | { ok: false; message: string } {
+  const directory = readConfig().directory;
+  if (!directory.ok) return { ok: false, message: `Auth0 user provisioning is not configured: ${directory.missing}.` };
+  const roleId = directory.value.operatorRoleId;
+  if (!roleId) return { ok: false, message: "Auth0 operator provisioning is not configured: CONSOLE_AUTH0_OPERATOR_ROLE_ID." };
+  return { ok: true, value: { action: { ...input, roleId }, roleId, settings: directory.value } };
+}
+
 export async function reviewAction(session: Session, form: FormData): Promise<ActionState> {
   const values = valuesOf(form);
   const input = parseAction(form);
   if (!input.ok) return { step: "fill", values, error: { field: input.field, message: input.message } };
+  if (input.value.action === "provisionOperator") {
+    const prepared = withOperatorRole(input.value);
+    if (!prepared.ok) return { step: "fill", values, error: { message: prepared.message } };
+    return { step: "review", values, review: reviewOf(prepared.value.action, NO_ENGINE) };
+  }
   return { step: "review", values, review: reviewOf(input.value, await contextFor(session, input.value)) };
+}
+
+async function commitOperator(values: Readonly<Record<string, string>>, input: Extract<ActionInput, { action: "provisionOperator" }>): Promise<ActionState> {
+  const prepared = withOperatorRole(input);
+  if (!prepared.ok) return { step: "fill", values, error: { message: prepared.message } };
+  const { action, roleId, settings } = prepared.value;
+  const started = Date.now();
+  try {
+    const created = await ensureDirectoryUser(settings, { subject: action.subject, email: action.email, name: action.label || action.subject }, roleId);
+    const call = callOf(action);
+    const exchange: Exchange = {
+      method: call.method,
+      path: call.path,
+      ...(call.body === undefined ? {} : { body: call.body }),
+      host: "auth0",
+      status: 204,
+      response: { user_id: created.userId },
+      at: new Date().toISOString(),
+      ms: Date.now() - started,
+    };
+    return {
+      step: "done",
+      ok: true,
+      values,
+      title: ACTIONS.provisionOperator.done,
+      lines: [
+        { label: "Operator", value: created.userId, mono: true },
+        ...(created.password ? [{ label: "Sign-in password (shown once)", value: created.password }] : []),
+      ],
+      secret: null,
+      note: created.password ? null : "This Auth0 user already existed, so no new password was set. The operator role is assigned.",
+      exchange,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Auth0 did not create the user.";
+    return { step: "fill", values, error: { message } };
+  }
 }
 
 export async function commitAction(session: Session, form: FormData): Promise<ActionState> {
   const values = valuesOf(form);
   const input = parseAction(form);
   if (!input.ok) return { step: "fill", values, error: { field: input.field, message: input.message } };
+  if (input.value.action === "provisionOperator") return commitOperator(values, input.value);
   const review = reviewOf(input.value, await contextFor(session, input.value));
   if (review.confirm) {
     const typed = form.get("confirm");
@@ -75,7 +141,7 @@ export async function commitAction(session: Session, form: FormData): Promise<Ac
     const directory = readConfig().directory;
     if (!directory.ok) return { step: "fill", values, error: { message: `Auth0 user provisioning is not configured: ${directory.missing}.` } };
     try {
-      const created = await ensureBuilderUser(directory.value, { subject: action.subject, email: action.email, name: action.label || action.subject });
+      const created = await ensureDirectoryUser(directory.value, { subject: action.subject, email: action.email, name: action.label || action.subject }, directory.value.builderRoleId);
       action = { ...action, actorId: created.userId };
       password = created.password;
     } catch (error) {

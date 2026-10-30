@@ -4,24 +4,25 @@ import { randomBytes } from "node:crypto";
 
 import type { DirectorySettings } from "@/config/config";
 
-/** A builder created in Auth0 before the engine provisions their allocation. `password` is null when the user already existed. */
-export type NewBuilder = { readonly userId: string; readonly password: string | null };
+/** A database user created in Auth0. `password` is null when the user already existed. */
+export type DirectoryUser = { readonly userId: string; readonly password: string | null };
 
 /**
- * Create the Auth0 database user for a subject name, then give them the builder role.
- * The returned user id is what the engine stores as the actor id, and what a later sign-in
- * puts in the token's `sub`. An existing user is reused, so a retried provision does not stop
- * after Auth0 has already created the person.
+ * Create the Auth0 database user for a subject name, then assign one role.
+ * The returned user id is `auth0|<subject>`, which a later sign-in puts in the token's `sub`.
+ * An existing user with that exact id is reused. A 409 whose email belongs to someone else,
+ * including a Google login, throws before any role is assigned.
  */
-export async function ensureBuilderUser(
+export async function ensureDirectoryUser(
   settings: DirectorySettings,
   person: { readonly subject: string; readonly email: string; readonly name: string },
+  roleId: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<NewBuilder> {
+): Promise<DirectoryUser> {
   const token = await managementToken(settings, fetchImpl);
   const password = randomBytes(18).toString("base64url");
   const created = await createUser(settings, person, password, token, fetchImpl);
-  await assignRole(settings, created.userId, token, fetchImpl);
+  await assignRole(settings, created.userId, roleId, token, fetchImpl);
   return created;
 }
 
@@ -47,7 +48,7 @@ async function createUser(
   password: string,
   token: string,
   fetchImpl: typeof fetch,
-): Promise<NewBuilder> {
+): Promise<DirectoryUser> {
   const response = await fetchImpl(`https://${settings.domain}/api/v2/users`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
@@ -72,7 +73,7 @@ async function existingUser(
   person: { readonly subject: string; readonly email: string },
   token: string,
   fetchImpl: typeof fetch,
-): Promise<NewBuilder> {
+): Promise<DirectoryUser> {
   const wanted = `auth0|${person.subject}`;
   const response = await fetchImpl(`https://${settings.domain}/api/v2/users-by-email?email=${encodeURIComponent(person.email)}`, {
     headers: { authorization: `Bearer ${token}` },
@@ -84,11 +85,11 @@ async function existingUser(
   return { userId: wanted, password: null };
 }
 
-async function assignRole(settings: DirectorySettings, userId: string, token: string, fetchImpl: typeof fetch): Promise<void> {
+async function assignRole(settings: DirectorySettings, userId: string, roleId: string, token: string, fetchImpl: typeof fetch): Promise<void> {
   const response = await fetchImpl(`https://${settings.domain}/api/v2/users/${encodeURIComponent(userId)}/roles`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: JSON.stringify({ roles: [settings.builderRoleId] }),
+    body: JSON.stringify({ roles: [roleId] }),
   });
-  if (!response.ok) throw new Error(`Auth0 did not grant the builder role (HTTP ${response.status}).`);
+  if (!response.ok) throw new Error(`Auth0 did not grant the role (HTTP ${response.status}).`);
 }

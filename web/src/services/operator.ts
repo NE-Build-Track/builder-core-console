@@ -21,6 +21,8 @@ import { describeProblem, type Reading } from "@/domain/reading";
 import type { Written } from "@/ports/keyed";
 import { fromUnits, toUnits } from "@/utils/decimal";
 
+import { operatorReview, provisionOperatorOf, SUBJECT } from "./operator-directory";
+
 const ACTION_NAMES = Object.keys(ACTIONS) as OperatorAction[];
 
 function all<T extends object>(parts: { [K in keyof T]: Parsed<T[K]> }): Parsed<T> {
@@ -31,9 +33,6 @@ function all<T extends object>(parts: { [K in keyof T]: Parsed<T[K]> }): Parsed<
   }
   return parsed(out as T);
 }
-
-/** A subject name the operator types. Auth0 stores it as the user id and prefixes the connection, so the token's sub is `auth0|<name>`. */
-const SUBJECT = /^[A-Za-z][A-Za-z0-9._-]{0,63}$/;
 
 function provisionOf(form: FormData, application: () => Parsed<string>, actor: () => Parsed<string>): Parsed<ActionInput> {
   const grantId = ident(form, "grant_id", "Grant");
@@ -116,6 +115,8 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
       return all({ action: parsed("rotateKey" as const), keyId: ident(form, "key_id", "Key"), label: parsed(optionalLabel(form, "label")), operationRef: operationRef(form) });
     case "revokeKey":
       return all({ action: parsed("revokeKey" as const), keyId: ident(form, "key_id", "Key") });
+    case "provisionOperator":
+      return provisionOperatorOf(form);
   }
 }
 
@@ -281,6 +282,8 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
         button: "Revoke the key",
       };
     }
+    case "provisionOperator":
+      return operatorReview(input, base);
   }
 }
 
@@ -345,6 +348,8 @@ export function resultOf(input: ActionInput, value: unknown): { readonly lines: 
       return { lines: [{ label: "Grant", value: input.grantId, mono: true }, { label: "Added", value: dollars(input.amount) }], secret: null };
     case "revokeKey":
       return { lines: [{ label: "Key", value: input.keyId, mono: true }], secret: null };
+    case "provisionOperator":
+      return { lines: [{ label: "Operator", value: input.userId, mono: true }], secret: null };
   }
 }
 

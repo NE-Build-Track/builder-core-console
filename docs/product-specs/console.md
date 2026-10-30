@@ -76,10 +76,12 @@ known gap with its owner and fix.
 
 ## Operator actions
 
-For the operator, signed in with an admin key. Three sections, each row carrying the actions that change
-it: **Grants** (create a grant; fund one), **Actors and allocations** (provision an actor from a grant;
+For the operator, signed in with an admin key, or through the identity provider with the operator role.
+**Operators** (only when sign-in is the identity provider: create an Auth0 database user and assign the
+operator role; no grant and no allocation; a Google login for the same email is a different user and is
+not assigned), **Grants** (create a grant; fund one), **Actors and allocations** (provision an actor from a grant;
 fund its allocation; set its status; rotate its payment key; revoke it) and **Access keys** (issue a key;
-revoke one). Actors are listed from the engine's actor list, plus any key holder it does not list yet.
+revoke one; hidden when the engine's keys are off). Actors are listed from the engine's actor list, plus any key holder it does not list yet.
 
 Every action is a native dialog with three steps (D17): **fill in**; **review**, which reads the stack
 and shows what will change (money as before → after, including the grant's unallocated balance), any

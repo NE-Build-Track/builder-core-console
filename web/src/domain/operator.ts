@@ -18,7 +18,8 @@ export type OperatorAction =
   | "revokeAllocation"
   | "issueKey"
   | "rotateKey"
-  | "revokeKey";
+  | "revokeKey"
+  | "provisionOperator";
 
 /** How the review step treats an action (D17). */
 export type ActionKind = "money" | "irreversible" | "secret" | "everyday";
@@ -78,6 +79,13 @@ export const ACTIONS: Record<OperatorAction, ActionSpec> = {
     done: "Allocation revoked",
   },
   issueKey: { label: "Issue an access key", kind: "secret", route: "POST /v1/admin/keys", repeat: "reference", done: "Key issued" },
+  provisionOperator: {
+    label: "Add an operator",
+    kind: "everyday",
+    route: "POST /api/v2/users/{user_id}/roles",
+    repeat: "same-result",
+    done: "Operator added",
+  },
   rotateKey: { label: "Rotate an access key", kind: "secret", route: "POST /v1/admin/keys/{key_id}/rotate", repeat: "reference", done: "Key rotated" },
   revokeKey: { label: "Revoke an access key", kind: "irreversible", route: "POST /v1/admin/keys/{key_id}/revoke", repeat: "same-result", done: "Key revoked" },
 };
@@ -123,7 +131,17 @@ export type ActionInput =
       readonly operationRef: string;
     }
   | { readonly action: "rotateKey"; readonly keyId: string; readonly label: string; readonly operationRef: string }
-  | { readonly action: "revokeKey"; readonly keyId: string };
+  | { readonly action: "revokeKey"; readonly keyId: string }
+  | {
+      readonly action: "provisionOperator";
+      readonly subject: string;
+      readonly email: string;
+      /** `auth0|<subject>`, the id Auth0 puts in the token's sub for this database user. */
+      readonly userId: string;
+      readonly label: string;
+      /** The Auth0 role id from configuration. Null until the runtime fills it; the form cannot set it. */
+      readonly roleId: string | null;
+    };
 
 /** One planned engine call: the route template, its filled path, and the body. */
 export type PlannedCall = {
@@ -131,6 +149,8 @@ export type PlannedCall = {
   readonly template: string;
   readonly path: string;
   readonly body?: unknown;
+  /** Auth0's management API. Absent means the engine. */
+  readonly host?: "auth0";
 };
 
 const usdAmount = (amount: string): Schemas["Money-Input"] => ({ amount, currency: "USD" });
@@ -185,6 +205,14 @@ export function callOf(input: ActionInput): PlannedCall {
     }
     case "revokeKey":
       return plan(input, { key_id: input.keyId });
+    case "provisionOperator":
+      return {
+        method: "POST",
+        template: "/api/v2/users/{user_id}/roles",
+        path: fillPath("/api/v2/users/{user_id}/roles", { user_id: input.userId }),
+        body: { roles: input.roleId ? [input.roleId] : [] },
+        host: "auth0",
+      };
   }
 }
 

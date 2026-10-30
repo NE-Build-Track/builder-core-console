@@ -38,6 +38,12 @@ export const CATALOG = [
   { source: "engine", route: "GET /v1/admin/keys/{key_id}", credential: "admin key (Operator)", usedFor: "Operator: inspect a key before rotating or revoking it (never its secret)" },
   { source: "engine", route: "POST /v1/admin/keys/{key_id}/rotate", credential: "admin key (Operator)", usedFor: "Operator: rotate an access key (operation reference; new key shown once)" },
   { source: "engine", route: "POST /v1/admin/keys/{key_id}/revoke", credential: "admin key (Operator)", usedFor: "Operator: revoke an access key" },
+  {
+    source: "identity",
+    route: "POST /api/v2/users/{user_id}/roles",
+    credential: "Auth0 management client (server only)",
+    usedFor: "Operator: assign the operator role to the database user auth0/<subject>. The user is created first. A Google user with the same email is not assigned.",
+  },
   { source: "batteries", route: "GET /readyz", credential: "none", usedFor: "Health" },
   { source: "batteries", route: "GET /v1/grants", credential: "console-reader", usedFor: "Money" },
   { source: "batteries", route: "GET /v1/allocations", credential: "console-reader", usedFor: "Money, Usage" },

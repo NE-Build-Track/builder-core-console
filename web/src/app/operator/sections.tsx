@@ -25,6 +25,39 @@ function grantOptions(view: OperatorView, blank: string | null): { value: string
 
 const common = { operate, signInWithKey: signInBuilderWithKey };
 
+export function OperatorsSection() {
+  return (
+    <Section
+      id="h-op-operators"
+      title="Operators"
+      description="People who can open this page. Adding one creates an Auth0 database user and assigns the operator role. It does not draw on a grant."
+      end={
+        <ActionDialog
+          {...common}
+          action="provisionOperator"
+          label="Add an operator"
+          fields={[
+            {
+              type: "text",
+              name: "subject",
+              label: "Subject name",
+              placeholder: "ada",
+              hint: "The user id is auth0/<name>, the token's sub. A Google login for the same email is a different person and does not receive this role.",
+            },
+            { type: "text", name: "email", label: "Email", placeholder: "ada@example.com" },
+            { type: "text", name: "label", label: "Label (optional)" },
+          ]}
+        />
+      }
+    >
+      <p className="note" role="note">
+        The new operator signs in with the database connection and the one-time password from the result. They are not an actor, so they do not appear in the
+        list below.
+      </p>
+    </Section>
+  );
+}
+
 export function GrantsSection({ view }: { readonly view: OperatorView }) {
   return (
     <Section

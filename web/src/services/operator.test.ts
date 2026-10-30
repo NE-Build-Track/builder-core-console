@@ -35,6 +35,12 @@ describe("operator actions", () => {
       value: { action: "provision", actorId: "auth0|carol", subject: "carol", email: "carol@example.com" },
     });
     expect(parseAction(form({ action: "deleteEverything" }))).toMatchObject({ ok: false, field: "action" });
+    expect(parseAction(form({ action: "provisionOperator", subject: "ada", email: "ada@example.com", label: "Ada" }))).toMatchObject({
+      ok: true,
+      value: { action: "provisionOperator", subject: "ada", email: "ada@example.com", userId: "auth0|ada", label: "Ada" },
+    });
+    expect(parseAction(form({ action: "provisionOperator", subject: "ada", email: "not-an-email" }))).toMatchObject({ ok: false, field: "email" });
+    expect(parseAction(form({ action: "provisionOperator", subject: "1ada", email: "ada@example.com" }))).toMatchObject({ ok: false, field: "subject" });
   });
 
   it("plans the exact engine call the review shows and the writer sends", () => {
@@ -74,6 +80,25 @@ describe("operator actions", () => {
       { action: "rotateKey", key_id: "k1" },
     ];
     for (const values of forms) expect(parseAction(form(values)), values.action).toMatchObject({ ok: false, field: "operation_ref" });
+  });
+
+  it("reviews an added operator as an Auth0 user, with no grant and no amount", () => {
+    const review = reviewOf(
+      { action: "provisionOperator", subject: "ada", email: "ada@example.com", userId: "auth0|ada", label: "", roleId: "rol_operator" },
+      context,
+    );
+    expect(review.lines).toContainEqual({ label: "Operator", value: "auth0|ada", mono: true });
+    expect(review.lines.map((line) => line.value ?? "").join(" ")).toContain("operator");
+    expect(review.lines.map((line) => line.label)).not.toContain("From grant");
+    expect(review.lines.map((line) => line.label)).not.toContain("Allocation");
+    expect(review.call).toEqual({
+      method: "POST",
+      template: "/api/v2/users/{user_id}/roles",
+      path: "/api/v2/users/auth0%7Cada/roles",
+      body: { roles: ["rol_operator"] },
+      host: "auth0",
+    });
+    expect(review.button).toBe("Add the operator");
   });
 
   it("shows money moves as before → after", () => {

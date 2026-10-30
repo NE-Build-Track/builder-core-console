@@ -13,7 +13,7 @@ import { authMode, signInEnabled, signInOff } from "@/runtime/session";
 
 import { signInOperator, signOutOperator } from "../actions";
 import { sessionFor } from "../session-cookies";
-import { ActorsSection, GrantsSection, KeysSection } from "./sections";
+import { ActorsSection, GrantsSection, KeysSection, OperatorsSection } from "./sections";
 
 export const metadata: Metadata = { title: "Operator actions" };
 
@@ -21,7 +21,7 @@ export default function OperatorPage({ searchParams }: { readonly searchParams: 
   return (
     <PageView>
       <PageHead icon="pen" eyebrow="Operator" title="Operator actions">
-        Change the stack through the engine&apos;s admin API: fund grants, provision actors and issue their keys. Every action shows what it will change
+        Change the stack: add an operator, fund grants, provision actors and issue their keys. Every action shows what it will change
         and the exact REST call before anything is sent, and the call and response after.
       </PageHead>
       <Streamed tiles={3}>
@@ -75,6 +75,7 @@ async function Operator({ searchParams }: { readonly searchParams: Promise<Recor
   return (
     <>
       <SessionBar session={viewOf(session)} signOut={signOutOperator} />
+      {view.keys ? null : <OperatorsSection />}
       <GrantsSection view={view} />
       <ActorsSection view={view} applicationId={settings.applicationId} />
       {view.keys ? <KeysSection view={{ ...view, keys: view.keys }} applicationId={settings.applicationId} /> : null}

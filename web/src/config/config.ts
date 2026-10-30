@@ -46,13 +46,15 @@ export type BatteriesSettings = { readonly url: string; readonly token: string }
 export type SignerSettings = { readonly url: string; readonly metricsUrl: string };
 export type DiscoverySettings = { readonly url: string };
 
-/** A management client that creates builder users before the engine provisions them. */
+/** A management client that creates Auth0 database users and assigns one role. */
 export type DirectorySettings = {
   readonly domain: string;
   readonly clientId: string;
   readonly clientSecret: string;
   readonly connection: string;
   readonly builderRoleId: string;
+  /** Null when operator provisioning is not configured. Builder provisioning does not need it. */
+  readonly operatorRoleId: string | null;
 };
 
 export type ConsoleConfig = {
@@ -212,6 +214,7 @@ export function readConfig(env: Env = process.env): ConsoleConfig {
         clientSecret: v.CONSOLE_AUTH0_MGMT_CLIENT_SECRET as string,
         connection: text(env, "CONSOLE_AUTH0_CONNECTION") ?? "Username-Password-Authentication",
         builderRoleId: v.CONSOLE_AUTH0_BUILDER_ROLE_ID as string,
+        operatorRoleId: text(env, "CONSOLE_AUTH0_OPERATOR_ROLE_ID"),
       }),
     ),
     applicationId: text(env, "CONSOLE_APPLICATION_ID") ?? "default",

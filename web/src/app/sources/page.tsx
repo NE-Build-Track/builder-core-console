@@ -9,7 +9,7 @@ import { PINS, shortCommit } from "@/domain/pins";
 
 export const metadata: Metadata = { title: "Sources & gaps" };
 
-const SOURCE_TITLES = { engine: "Engine", batteries: "Batteries", signer: "Signer", discovery: "Discovery" } as const;
+const SOURCE_TITLES = { engine: "Engine", batteries: "Batteries", signer: "Signer", discovery: "Discovery", identity: "Identity provider" } as const;
 
 export default function SourcesPage() {
   const counts = Object.entries(SOURCE_TITLES).map(([key, title]) => ({ title, routes: CATALOG.filter((entry) => entry.source === key).length }));

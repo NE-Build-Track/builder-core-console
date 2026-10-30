@@ -50,6 +50,14 @@ Auth0 user first (subject name `carol` becomes user id `auth0|carol`, the builde
 password) and then the engine allocation. The actor id is that user id, so a later sign-in’s `sub`
 is the actor Batteries was funded for.
 
+**Add an operator** creates the same kind of database user and assigns the operator role, then stops.
+There is no allocation and no engine call. The role is stored on `auth0|<subject>` only. A Google
+login for the same email is `google-oauth2|<id>`, a different user, and the roles API is not called
+for it. Leave Auth0 account linking off on this tenant: a link would let the Google user inherit the
+database user's roles. Set `CONSOLE_AUTH0_OPERATOR_ROLE_ID` to the operator role's id. The
+`builder-console` application must have the database connection enabled, or the one-time password
+cannot be used to sign in.
+
 `operator` holds the operator role. `alice`, `bob`, and `carol` hold the builder role. The Auth0
 `sub` is the engine actor id.
 

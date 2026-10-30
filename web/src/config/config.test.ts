@@ -28,6 +28,30 @@ describe("config", () => {
     expect(config.discovery).toEqual({ ok: false, missing: "CONSOLE_DISCOVERY_URL" });
   });
 
+  it("creates Auth0 users without an operator role id, and reads one when it is set", () => {
+    const directory = {
+      CONSOLE_AUTH0_DOMAIN: "tenant.example.auth0.com",
+      CONSOLE_AUTH0_MGMT_CLIENT_ID: "mgmt",
+      CONSOLE_AUTH0_MGMT_CLIENT_SECRET: "secret",
+      CONSOLE_AUTH0_BUILDER_ROLE_ID: "rol_builder",
+    };
+    expect(readConfig(directory).directory).toEqual({
+      ok: true,
+      value: {
+        domain: "tenant.example.auth0.com",
+        clientId: "mgmt",
+        clientSecret: "secret",
+        connection: "Username-Password-Authentication",
+        builderRoleId: "rol_builder",
+        operatorRoleId: null,
+      },
+    });
+    expect(readConfig({ ...directory, CONSOLE_AUTH0_OPERATOR_ROLE_ID: "rol_operator" }).directory).toMatchObject({
+      ok: true,
+      value: { operatorRoleId: "rol_operator", builderRoleId: "rol_builder" },
+    });
+  });
+
   it("clamps numeric settings", () => {
     expect(readConfig({ CONSOLE_CACHE_TTL_S: "9999" }).cacheTtlMs).toBe(300_000);
     expect(readConfig({ CONSOLE_CACHE_TTL_S: "abc" }).cacheTtlMs).toBe(15_000);
