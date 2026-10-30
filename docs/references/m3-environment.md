@@ -4,7 +4,7 @@ The environment the M3 journey runs in, until a deployment on real infrastructur
 repository's stack, the M3 dev stack ([decision record](https://github.com/Cloud-SPE/Network-Engineering-SPE/blob/main/docs/decisions/2026-10-21-m3-reference-app-and-scope.md),
 decision 5). It is builder-core's engine, Clearinghouse Batteries and the node remote signer at the
 commits in [payment-stack.md](payment-stack.md), plus the console, run with Docker Compose on one
-machine. Recorded 21 October 2026.
+machine. Recorded 21 October 2026; refreshed 30 October for the engine at `9e447ce` (builder-core D57–D61).
 
 ## Endpoints
 
@@ -59,6 +59,28 @@ The engine reads Batteries usage every 30 seconds and attributes each ticket to 
 job's cost moves from `pending` to `observed` within about a minute. The console's pages read Batteries
 directly with `console-reader` and show where the two agree (Health, Users). The builder sees only their
 own allowance and wholesale cost, through the engine.
+
+## What the engine promises at this pin (D57–D61)
+
+The engine is builder-core `9e447ce`, the top of open PRs #78–#83 on `releases/m3`; it moves to their
+merge commit when they merge. Its REST walkthrough is builder-core's
+[`docs/guides/rest-builder.md`](https://github.com/NE-Build-Track/livepeer-builder-core/blob/9e447ce8da4b78c4d155b470da1228d1c766f180/docs/guides/rest-builder.md);
+every operation the journey uses, and where the console sends it, is in
+[m3-rest-operations.md](m3-rest-operations.md) (ISS-20).
+
+| Area | Behaviour | Decision |
+| --- | --- | --- |
+| Operation references | Required (422 without) on create grant, fund grant, provision, fund allocation, rotate payment key, issue key and rotate key; a repeat answers from the engine's record (`Idempotent-Replayed: true`), another body under the same reference is 409 `operation_conflict`. The console makes one per dialog | D57 |
+| Repeated revokes | Set status, revoke allocation and revoke key take no reference: a repeat answers as the first did (revoke allocation 200 with the revoked actor, revoke key 204), so a retry after a lost answer is not an error. An actor or key that never existed is still 404 or 400 | D61 |
+| Payment failures | `Failure.reason` on a payment failure: `not_authorized` (403; an inactive grant or allocation, paused included, or an invalid or revoked payment key), `allowance_exhausted` (402; the operator funds it), `signer_unavailable` (503, `Retry-After: 10`), `signer_unknown` (503, the job `uncertain`: it may have charged). Messages are the engine's own; the signer's text stays in the engine log. The console shows each with builder-core's "what it means / what to do" | D58 |
+| Request size | A `/v1/` request body over 16 MiB (`LPB_HTTP_MAX_REQUEST_BYTES`) is 413 `request_too_large` with `limit_bytes`, before the key is checked | D59 |
+| Results | Returned inline, once, not kept; `GET /v1/jobs/{id}/result` is 501 until M4. A provider-hosted URL (fal, for FLUX schnell) expires on the provider's schedule while the job stays succeeded and its cost stands, so the console's Image example sends `sync_mode: true` and gets the picture inline | D59 |
+| History | `GET /v1/jobs` pages newest first with `before` (an ISO time with its offset; without one, 422) | D59 |
+| Cost per app | `CostSummary.by_app` is `{app: {cost_class: Fees}}`: final classes and `pending` never summed, and for every class the apps add up to `by_class` | D60 |
+| Events feed | Held for M3: `GET /v1/events` is 501 with `milestone: "held"` (gap G4) | D60 |
+
+No migration was added after `a6ed9b5`, so the stack's volumes carry over; no new setting is required
+(`LPB_SIGNER_URL` may not carry userinfo, a query or a fragment, which this stack's never does).
 
 ## Limits of this configuration
 

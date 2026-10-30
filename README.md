@@ -14,7 +14,9 @@ Every write is reviewed before it is sent and shows its exact REST call and resp
 
 > Status: **v1 pages accepted; M3 areas built, in review.** Bound to 127.0.0.1. See
 > [docs/exec-plans/active/console-m3.md](docs/exec-plans/active/console-m3.md) and the
-> [M3 journey guide](docs/guides/m3-journey.md).
+> [M3 journey guide](docs/guides/m3-journey.md), which follows builder-core's
+> [REST builder guide](https://github.com/NE-Build-Track/livepeer-builder-core/blob/9e447ce8da4b78c4d155b470da1228d1c766f180/docs/guides/rest-builder.md);
+> every REST call in the journey is in [m3-rest-operations.md](docs/references/m3-rest-operations.md).
 
 ## Pages
 
@@ -28,7 +30,7 @@ Every write is reviewed before it is sent and shows its exact REST call and resp
 | Jobs | Newest costed jobs; any job by id with its Batteries events | engine projections, job, job cost; Batteries usage |
 | Sources & gaps | Every route read, the pins, and what the stack cannot show yet | — |
 | Operator | Grants, actors and keys, each with its actions: create and fund grants, provision and fund actors, set status, rotate the payment key, revoke; issue and revoke access keys | engine admin API with the signed-in admin key |
-| Builder | Catalog with wholesale rates; one job form for any offering with streamed output; the job's attempts, result and network cost; my jobs; my allowance and cost | engine REST API with the signed-in actor key |
+| Builder | Catalog with wholesale rates; one job form for any offering with streamed output; failures and refusals in the engine's words with what to do; the job's attempts, result and network cost; my jobs; my allowance and cost by class and by app | engine REST API with the signed-in actor key |
 
 ## Run the stack
 

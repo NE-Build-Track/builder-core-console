@@ -24,8 +24,8 @@ export default function MyJobsPage({ searchParams }: { readonly searchParams: Se
   return (
     <PageView>
       <PageHead icon="jobs" eyebrow="Builder" title="My jobs">
-        Every job this actor key has run, newest first, with whether payment went out and why a job failed. Open one for its attempts and its network
-        cost.
+        Every job this actor key has run, newest first, with whether payment went out, why a job failed and what to do about it. Open one for its
+        attempts, the engine&apos;s own message and its network cost.
       </PageHead>
       <Streamed tiles={2}>
         <MyJobs searchParams={searchParams} />
@@ -97,7 +97,17 @@ async function MyJobs({ searchParams }: { readonly searchParams: Search }) {
                     </td>
                     <td className="r num">{row.attempts}</td>
                     <td>{row.paid ? "yes" : "no"}</td>
-                    <td className="table-cell-wrap">{row.failure ?? <span className="muted">—</span>}</td>
+                    <td className="table-cell-wrap">
+                      {row.failure ? (
+                        <>
+                          <b>{row.failure.title}</b> <span className="muted">({row.failure.code})</span>
+                          <br />
+                          {row.failure.todo}
+                        </>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

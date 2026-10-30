@@ -6,6 +6,8 @@
  * the actor collection and the auditor, `payment_state` on each session, `JobCost.billable`, the `payment_unknown`
  * outcome and the native HTTP request fields. a6ed9b5 (builder-core PR #76, D57) makes `operation_ref` required on
  * provision, both funds, create grant, both rotations and issue key, and adds `IssuedKey.replayed` with a nullable token.
+ * 9e447ce (builder-core PRs #78, #81, #82, #83: D58–D61) adds `Failure.reason`, `CostSummary.by_app` and `before` on
+ * GET /v1/jobs.
  * Regenerate with `pnpm gen:api`; never edit engine-schema.d.ts by hand.
  */
 import type { components } from "./engine-schema";
@@ -30,6 +32,8 @@ export type JobCost = Schemas["JobCost"];
 export type Reconciliation = Schemas["Reconciliation"];
 export type Job = Schemas["Job"];
 export type Attempt = Schemas["Attempt"];
+/** Why a job failed: `kind` decides failover and cost, `reason` (builder-core D58) what to tell the builder. */
+export type Failure = Schemas["Failure"];
 
 /** How a paid attempt is classified (builder-core docs/contracts/payments.md#cost-classification). */
 export const COST_CLASSES = ["delivered", "failed_after_payment", "uncertain", "pending"] as const;

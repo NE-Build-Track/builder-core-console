@@ -7,7 +7,7 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 | --- | --- | --- |
 | `clearinghouse` | `livepeer/clearinghouse-batteries`, `examples/compose/Dockerfile` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
 | `signer` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
-| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `a6ed9b552a8666f925d86fd8d9fe1d40bfc6aa98` (the merge of PR #76 on `releases/m3`: admin commands require an `operation_ref` and are repeat-safe, D57; migrations `0009` and `0010` are additive. Re-pin to #76's merge) |
+| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `9e447ce8da4b78c4d155b470da1228d1c766f180` (the top of the open PR stack #78 → #81 → #82 → #83 on `releases/m3`, branch `tasks/mz/iss-23-verification`: payment failure reasons, D58; paged job history and a 16 MiB request limit, D59; cost per app and class, the events feed held, D60; repeat-safe revokes, D61. No new migrations since `a6ed9b5`, the merge of PR #76 (D57). Re-pin to the merge commit once the PRs merge) |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relay only (D10) |
 | `console` | this repository, `deploy/console/Dockerfile` | — |
 

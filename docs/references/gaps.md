@@ -38,7 +38,7 @@ fails when the two disagree. The console works within these today; nothing here 
 
 ## G4: No engine metrics or events
 
-**Impact.** The engine has no /metrics (tech debt T4) and /v1/events answers 501 until M4, so job throughput and latency over time are not available.
+**Impact.** The engine has no /metrics (tech debt T4) and /v1/events answers 501 with `milestone: "held"` (builder-core D60: the events feed is held for M3, ISS-18), so job throughput and latency over time are not available.
 
 **Fix.** Engine /metrics (job, discovery and cost-sync counters) and the events feed.
 

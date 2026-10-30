@@ -14,9 +14,9 @@ endpoint (ISS-27) is needed, so neither moves into M3.
 | Offering | `blueclaw/chat/qwen3.8-27b` | `comfystream/fal-flux-schnell` |
 | Path, method | `/v1/chat/completions`, `POST` | `/`, `POST` |
 | Delivery | Streamed (`?stream=true`), server-sent events | Buffered, JSON |
-| Input | OpenAI-style `messages`, `max_tokens: 200`, `stream: true`, `stream_options.include_usage` | `prompt`, `image_size: landscape_4_3`, `num_images: 1`, `enable_safety_checker: true` |
+| Input | OpenAI-style `messages`, `max_tokens: 200`, `stream: true`, `stream_options.include_usage` | `prompt`, `image_size: landscape_4_3`, `num_images: 1`, `enable_safety_checker: true`, `sync_mode: true` (since 30 October: the image inline, builder-core D59) |
 | Advertised rate (21 Oct) | 4,492,197,255 wei per second | 1,212,893,258,909 wei per request |
-| Expected output | Text arriving as events, ending `[DONE]`, with token usage | `output.images[0].url` (a temporary fal URL), width and height |
+| Expected output | Text arriving as events, ending `[DONE]`, with token usage | `images[0].url` as a `data:image/…;base64` URI, width and height (without `sync_mode`, a temporary fal URL that expires; the job and its cost stand when it does) |
 | Expected record | `succeeded`; one attempt, paid; result `text/event-stream` | `succeeded`; one attempt, paid; result `application/json` |
 | Expected cost | `observed`, about $0.0001, one ticket | `observed`, about $0.003, one ticket |
 | Observed 21 Oct (dev runs) | $0.000111 in 1 ticket, twice | $0.003007 in 1 ticket, three times |

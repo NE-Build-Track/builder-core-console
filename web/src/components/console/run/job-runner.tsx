@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { jobRequestOf, PRESETS, RUN_HEADERS, type JobMethod, type JobState, type Preset, type RunInput } from "@/domain/builder";
 import { fillPath } from "@/domain/exchange";
+import { refusalOf, type Refusal } from "@/domain/failures";
 import { outputKind } from "@/domain/output";
 
 import { ExchangePanel, type ShownCall } from "../act/exchange-panel";
@@ -14,7 +15,7 @@ export type OfferingChoice = { readonly app: string; readonly label: string };
 
 type Run =
   | { readonly phase: "running" | "finished" | "stopped"; readonly call: ShownCall; readonly jobId: string | null; readonly output: Output }
-  | { readonly phase: "refused"; readonly call: ShownCall; readonly jobId: string | null; readonly message: string };
+  | { readonly phase: "refused"; readonly call: ShownCall; readonly jobId: string | null; readonly refusal: Refusal };
 
 const POLL_MS = 2000;
 const POLL_LIMIT = 120; // four minutes: long enough for Batteries to report a paid job's cost
@@ -38,7 +39,7 @@ export function JobRunner({
 }: {
   readonly offerings: readonly OfferingChoice[];
   readonly initialApp: string | null;
-  /** Named in a 402 refusal, so the builder can pass it to an operator. */
+  /** Named in a payment refusal, so the builder can pass it to an operator. */
   readonly actorId?: string | null;
 }) {
   const firstPreset = presetFor(initialApp && initialApp === presetFor("image").app ? "image" : "chat");
@@ -126,19 +127,18 @@ export function JobRunner({
     try {
       response = await fetch("/builder/run", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input), signal: abort.current.signal });
     } catch (problem) {
-      setRun({ phase: "refused", call: { ...call, status: null, problem: "the console did not answer" }, jobId: null, message: problem instanceof Error ? problem.message : "network error" });
+      const message = problem instanceof Error ? problem.message : "network error";
+      setRun({ phase: "refused", call: { ...call, status: null, problem: "the console did not answer" }, jobId: null, refusal: refusalOf(null, undefined, undefined, message) });
       return;
     }
     if (!response.ok) {
       const data = record(await response.json().catch(() => null));
-      const job = record(record(data?.response)?.job);
       const exchange = record(data?.exchange) as ShownCall | null;
-      setRun({
-        phase: "refused",
-        call: exchange ?? { ...call, status: response.status, response: data, ms: Date.now() - started },
-        jobId: typeof job?.id === "string" ? job.id : null,
-        message: typeof data?.problem === "string" ? data.problem : `HTTP ${response.status}`,
-      });
+      // only an answer the engine gave carries its body; the console's own refusals (origin, session) have none
+      const engineBody = exchange ? data?.response : undefined;
+      const retryAfterS = typeof data?.retryAfterS === "number" ? data.retryAfterS : undefined;
+      const refusal = refusalOf(response.status, engineBody, retryAfterS, typeof data?.problem === "string" ? data.problem : `HTTP ${response.status}`);
+      setRun({ phase: "refused", call: exchange ?? { ...call, status: response.status, response: data, ms: Date.now() - started }, jobId: refusal.jobId, refusal });
       return;
     }
     const contentType = response.headers.get("content-type") ?? "application/octet-stream";
@@ -241,22 +241,43 @@ export function JobRunner({
 function RunResult({ run, jobState, actorId }: { readonly run: Run; readonly jobState: JobState | null; readonly actorId: string | null }) {
   return (
     <section className="panel run-result" aria-labelledby="run-result-title">
-      <h3 id="run-result-title">{run.phase === "refused" ? "The engine did not run it" : run.phase === "stopped" ? "Stopped" : run.phase === "running" ? "Running" : "Finished"}</h3>
-      {run.phase === "refused" ? (
-        <div className="problem" role="alert">
-          <strong>{run.message}</strong>
-          <span>The response below has the engine&apos;s own words, and the job when there is one.</span>
-          {run.call.status === 402 && actorId ? (
-            <span>
-              An operator provisions an allocation for your actor id <code>{actorId}</code> in Operator actions; then run again.
-            </span>
-          ) : null}
-        </div>
-      ) : (
+      <h3 id="run-result-title">{run.phase === "refused" ? (run.refusal.advice && !run.refusal.nothingPaid ? "The job failed" : "The engine did not run it") : run.phase === "stopped" ? "Stopped" : run.phase === "running" ? "Running" : "Finished"}</h3>
+      {run.phase === "refused" ? <Refused refusal={run.refusal} actorId={actorId} /> : (
         <OutputView key={run.output.contentType} output={run.output} />
       )}
       {run.jobId ? <JobRecord jobId={run.jobId} state={jobState} /> : null}
       <ExchangePanel call={run.call} open={run.phase === "refused"} />
     </section>
+  );
+}
+
+/** Codes after which an operator acts on the builder's allocation or key (engine.md#failures). */
+const OPERATOR_FIXES = ["not_provisioned", "payment · not_authorized", "payment · allowance_exhausted"];
+
+/** A refused run in the engine's table's words (builder-core D58, D59), with the engine's own message beside them. */
+function Refused({ refusal, actorId }: { readonly refusal: Refusal; readonly actorId: string | null }) {
+  return (
+    <div className="problem" role="alert">
+      <strong>{refusal.title}</strong>
+      {refusal.meaning ? <span>{refusal.meaning}</span> : null}
+      {refusal.todo ? (
+        <span>
+          What to do: {refusal.todo}
+          {refusal.retryAfterS !== null ? ` The engine asks for ${refusal.retryAfterS} s.` : ""}
+        </span>
+      ) : null}
+      {refusal.code && OPERATOR_FIXES.includes(refusal.code) && actorId ? (
+        <span>
+          Your actor id, for the operator: <code>{actorId}</code>
+        </span>
+      ) : null}
+      {refusal.advice && refusal.message ? (
+        <span className="muted">
+          The engine said{refusal.code ? <> (<code>{refusal.code}</code>)</> : null}: {refusal.message}
+        </span>
+      ) : (
+        <span>The response below has the engine&apos;s own words, and the job when there is one.</span>
+      )}
+    </div>
   );
 }

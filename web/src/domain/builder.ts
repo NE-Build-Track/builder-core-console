@@ -46,8 +46,9 @@ export const PRESETS: readonly Preset[] = [
     path: "/",
     method: "POST",
     stream: false,
-    input: { prompt: "A lighthouse on a cliff at dusk, watercolour", image_size: "landscape_4_3", num_images: 1, enable_safety_checker: true },
-    note: "One FLUX schnell picture; the runner answers with JSON holding a temporary image URL.",
+    // sync_mode: the image comes back inline as a data URI, not as a provider URL that expires (builder-core D59, ISS-15 Q1)
+    input: { prompt: "A lighthouse on a cliff at dusk, watercolour", image_size: "landscape_4_3", num_images: 1, enable_safety_checker: true, sync_mode: true },
+    note: "One FLUX schnell picture, returned inline in the JSON (sync_mode), so it lasts as long as your copy; without sync_mode it is a provider URL that expires.",
   },
   { id: "empty", label: "Empty", app: null, path: "/", method: "POST", stream: false, input: {}, note: "Start from an empty object." },
 ];

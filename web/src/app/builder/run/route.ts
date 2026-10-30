@@ -40,8 +40,10 @@ export async function POST(request: Request): Promise<Response> {
       },
     });
   }
+  // Retry-After rides along: a refusal such as signer_unavailable (builder-core D58) says when to try again
+  const retryAfterS = started.problem.kind === "http" ? (started.problem.retryAfterS ?? null) : null;
   return Response.json(
-    { problem: describeProblem(started.problem), response: hideSecrets(started.response), exchange: hideSecrets(started.exchange) },
+    { problem: describeProblem(started.problem), response: hideSecrets(started.response), exchange: hideSecrets(started.exchange), retryAfterS },
     { status: started.status ?? 502, headers: { "cache-control": "no-store", [RUN_HEADERS.status]: String(started.status ?? "") } },
   );
 }

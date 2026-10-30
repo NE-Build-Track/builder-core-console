@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { Allowance, Job, JobCost, Offering } from "@/domain/engine";
+import { PRESETS } from "@/domain/builder";
+import type { Allowance, CostSummary, Fees, Job, JobCost, Offering } from "@/domain/engine";
 import type { Reading } from "@/domain/reading";
 import { broken, NOW, read } from "../../tests/support/fixtures";
 
-import { allocationNotice, catalogEntry, jobState, parseRun, rateText, unitWords } from "./builder";
+import { allocationNotice, catalogEntry, jobRow, jobState, parseRun, rateText, unitWords, usage } from "./builder";
 
 const offering = (overrides: Partial<Offering>): Offering => ({
   app: "blueclaw/chat/qwen3.8-27b",
@@ -85,5 +86,72 @@ describe("a builder with no allocation", () => {
     expect(allocationNotice(read("engine", {} as Allowance), "3c446b40")).toBeNull();
     expect(allocationNotice(forbidden, "3c446b40")).toBeNull();
     expect(allocationNotice(down, "3c446b40")).toBeNull();
+  });
+});
+
+describe("my jobs", () => {
+  it("says why a job failed in plain words, with the engine's reason, message and what to do (builder-core D58)", () => {
+    const failed = {
+      id: "j",
+      app: "blueclaw/chat/qwen3.8-27b",
+      state: "failed",
+      created_at: NOW.toISOString(),
+      attempts: [],
+      failure: { kind: "payment", reason: "allowance_exhausted", message: "the signer refused payment: allowance exhausted (HTTP 402)", payment_sent: false },
+    } as unknown as Job;
+    expect(jobRow(failed).failure).toEqual({
+      title: "Payment refused: the allocation is spent",
+      code: "payment · allowance_exhausted",
+      message: "the signer refused payment: allowance exhausted (HTTP 402)",
+      todo: "An operator funds the allocation; then the same operation reference runs again.",
+    });
+    expect(jobRow({ ...failed, failure: null }).failure).toBeNull();
+  });
+});
+
+describe("the FLUX schnell preset", () => {
+  it("asks for the image inline (sync_mode), so the result outlives the provider's URL (builder-core D59, ISS-15 Q1)", () => {
+    const image = PRESETS.find((preset) => preset.id === "image");
+    expect(image?.app).toBe("comfystream/fal-flux-schnell");
+    expect(image?.input).toMatchObject({ sync_mode: true });
+  });
+});
+
+describe("my cost per app and class (builder-core D60)", () => {
+  const fees = (usd: string, eth: string, rows: number): Fees => ({ fee_usd: usd, fee_eth: eth, row_count: rows });
+  const window = { start: "2026-10-13T18:00:00Z", end: "2026-10-20T18:00:00Z" };
+  const allowance = read("engine", {} as Allowance);
+  const summary = (overrides: Partial<CostSummary>): Reading<CostSummary> =>
+    read("engine", {
+      start: window.start,
+      end: window.end,
+      by_class: { delivered: fees("0.003118", "0.0000011", 2), pending: fees("0.000111", "0.0000001", 1) },
+      jobs_with_cost: 3,
+      jobs_pending: 1,
+      by_app: {
+        "blueclaw/chat/qwen3.8-27b": { delivered: fees("0.000111", "0.0000001", 1), pending: fees("0.000111", "0.0000001", 1) },
+        "comfystream/fal-flux-schnell": { delivered: fees("0.003007", "0.000001", 1) },
+      },
+      ...overrides,
+    } as CostSummary);
+
+  it("lists each app with its final classes and pending kept apart, most final spend first", () => {
+    const view = usage(allowance, summary({}), window);
+    expect(view.apps.map((row) => row.app)).toEqual(["comfystream/fal-flux-schnell", "blueclaw/chat/qwen3.8-27b"]);
+    const chat = view.apps[1];
+    expect(chat?.classes.map((cell) => cell.costClass)).toEqual(["delivered", "failed_after_payment", "uncertain", "pending"]);
+    expect(chat?.classes.find((cell) => cell.costClass === "pending")?.fees?.fee_usd).toBe("0.000111");
+    expect(chat?.classes.find((cell) => cell.costClass === "uncertain")?.fees).toBeNull();
+    expect(view.appsUnbalanced).toEqual([]);
+  });
+
+  it("names a class whose apps do not add up to its total, rather than hiding it", () => {
+    const view = usage(allowance, summary({ by_class: { delivered: fees("0.004", "0.0000012", 3), pending: fees("0.000111", "0.0000001", 1) } }), window);
+    expect(view.appsUnbalanced).toEqual(["delivered"]);
+  });
+
+  it("shows no apps when the summary has none or could not be read", () => {
+    expect(usage(allowance, summary({ by_app: {} }), window).apps).toEqual([]);
+    expect(usage(allowance, broken("engine"), window).apps).toEqual([]);
   });
 });

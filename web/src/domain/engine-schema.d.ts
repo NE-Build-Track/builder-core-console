@@ -340,7 +340,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Jobs */
+        /**
+         * List Jobs
+         * @description Newest first; ``before`` (an ISO-8601 time with its offset) is the last page's oldest
+         *     ``created_at``, for the next page (D59).
+         */
         get: operations["list_jobs_v1_jobs_get"];
         put?: never;
         /** Run Job */
@@ -563,8 +567,21 @@ export interface components {
             cost_class: "delivered" | "failed_after_payment" | "uncertain" | "pending";
             fees: components["schemas"]["Fees"];
         };
-        /** CostSummary */
+        /**
+         * CostSummary
+         * @description The costs of the jobs created in ``[start, end)``, in the caller's scope. ``by_app`` attributes
+         *     the same attempt fees to each job's runner app, kept by class as in ``by_class`` (D60), so a final fee
+         *     and a ``pending`` one that can still grow are never one figure. For every class, the apps add up to
+         *     its ``by_class`` total. An app appears once one of its jobs has a costed attempt, with only the classes
+         *     its attempts have.
+         */
         CostSummary: {
+            /** By App */
+            by_app?: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["Fees"];
+                };
+            };
             /** By Class */
             by_class: {
                 [key: string]: components["schemas"]["Fees"];
@@ -665,6 +682,8 @@ export interface components {
              * @default false
              */
             payment_sent: boolean;
+            /** Reason */
+            reason?: ("not_authorized" | "allowance_exhausted" | "signer_unavailable" | "signer_unknown") | null;
             /** Status Code */
             status_code?: number | null;
         };
@@ -1973,6 +1992,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                before?: string | null;
             };
             header?: never;
             path?: never;

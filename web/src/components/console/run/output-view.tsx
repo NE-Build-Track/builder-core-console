@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { formatBytes, imageUrls, outputKind, parseEvents, prettyJson, renderChat } from "@/domain/output";
+import { brokenImageNotice, formatBytes, imageUrls, outputKind, parseEvents, prettyJson, renderChat, shortenDataUris } from "@/domain/output";
 
 export type Output = {
   readonly contentType: string;
@@ -89,13 +89,12 @@ function Body({ output, view, kind }: { readonly output: Output; readonly view: 
         {images.length > 0 ? (
           <div className="output-images">
             {images.map((url) => (
-              // eslint-disable-next-line @next/next/no-img-element -- a runner's temporary URL, not a static asset
-              <img key={url} src={url} alt="An image the runner returned" loading="lazy" />
+              <AnswerImage key={url} url={url} />
             ))}
           </div>
         ) : null}
         <pre className="code" translate="no">
-          {pretty ?? output.text}
+          {shortenDataUris(pretty ?? output.text)}
         </pre>
       </>
     );
@@ -121,4 +120,22 @@ function Body({ output, view, kind }: { readonly output: Output; readonly view: 
       {output.text || (output.streaming ? "…" : "(empty body)")}
     </pre>
   );
+}
+
+/**
+ * An image named in the runner's JSON: inline (a data URI, FLUX schnell with `sync_mode`) or a URL the
+ * model provider hosts, which expires on the provider's schedule. A failed load says so instead of
+ * showing a broken image (builder-core engine.md#provider-hosted-assets).
+ */
+function AnswerImage({ url }: { readonly url: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <p className="empty-state" role="status">
+        {brokenImageNotice(url)}
+      </p>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element -- a runner's inline data or a provider's temporary URL, not a static asset
+  return <img src={url} alt="An image the runner returned" loading="lazy" onError={() => setBroken(true)} />;
 }

@@ -4,9 +4,10 @@
  */
 import { COST_CLASSES, mayHavePaid, type Allowance, type CostClass, type CostSummary, type EngineHealth, type Fees, type Job, type JobCost, type NetworkRate, type Offering } from "@/domain/engine";
 import { isFinalState, type JobState, type RunInput } from "@/domain/builder";
+import { failureAdvice } from "@/domain/failures";
 import { invalid, parsed, wholeNumber, type Parsed } from "@/domain/forms";
 import { mapReading, type Reading } from "@/domain/reading";
-import { weiToEth } from "@/utils/decimal";
+import { compareDecimals, sumDecimals, weiToEth } from "@/utils/decimal";
 import { ageSeconds } from "@/utils/time";
 
 /** An offering read longer ago than this is marked stale, whatever the engine's overall freshness says. */
@@ -92,7 +93,8 @@ export type JobRow = {
   readonly createdAt: string;
   readonly attempts: number;
   readonly paid: boolean;
-  readonly failure: string | null;
+  /** Why it failed, in the engine's table's words (builder-core D58), beside the engine's own message. */
+  readonly failure: { readonly title: string; readonly code: string; readonly message: string; readonly todo: string } | null;
 };
 
 export function jobRow(job: Job): JobRow {
@@ -103,22 +105,59 @@ export function jobRow(job: Job): JobRow {
     createdAt: job.created_at,
     attempts: job.attempts.length,
     paid: job.attempts.some((attempt) => attempt.payment_sent),
-    failure: job.failure ? `${job.failure.kind}: ${job.failure.message}` : null,
+    failure: job.failure ? failureLine(job.failure) : null,
   };
 }
 
+function failureLine(failure: NonNullable<Job["failure"]>): NonNullable<JobRow["failure"]> {
+  const { title, code, message, todo } = failureAdvice(failure);
+  return { title, code, message, todo };
+}
+
 export type ClassTotal = { readonly costClass: CostClass; readonly fees: Fees | null };
+
+/** One app's network cost, class by class: final classes and `pending` (which can still grow) never summed into one figure (D60). */
+export type AppCost = { readonly app: string; readonly classes: readonly ClassTotal[] };
 
 export type UsageView = {
   readonly allowance: Reading<Allowance>;
   readonly summary: Reading<CostSummary>;
   readonly classes: readonly ClassTotal[];
+  /** `CostSummary.by_app` (builder-core D60), the most final spend first. */
+  readonly apps: readonly AppCost[];
+  /** Classes whose apps do not add up to the class total, which the engine promises they do. */
+  readonly appsUnbalanced: readonly CostClass[];
   readonly window: { readonly start: string; readonly end: string };
 };
 
+const FINAL_CLASSES = COST_CLASSES.filter((costClass) => costClass !== "pending");
+
+const usdOf = (row: AppCost, classes: readonly CostClass[]): string =>
+  sumDecimals(row.classes.filter((cell) => classes.includes(cell.costClass)).map((cell) => cell.fees?.fee_usd ?? "0")).total;
+
 export function usage(allowance: Reading<Allowance>, summary: Reading<CostSummary>, window: { readonly start: string; readonly end: string }): UsageView {
   const byClass = summary.ok ? (summary.value.by_class as Partial<Record<string, Fees>>) : {};
-  return { allowance, summary, window, classes: COST_CLASSES.map((costClass) => ({ costClass, fees: byClass[costClass] ?? null })) };
+  const byApp = summary.ok ? (summary.value.by_app ?? {}) : {};
+  const apps = Object.entries(byApp)
+    .map(([app, fees]): AppCost => ({ app, classes: COST_CLASSES.map((costClass) => ({ costClass, fees: (fees as Partial<Record<string, Fees>>)[costClass] ?? null })) }))
+    .sort(
+      (left, right) =>
+        compareDecimals(usdOf(right, FINAL_CLASSES), usdOf(left, FINAL_CLASSES)) ||
+        compareDecimals(usdOf(right, ["pending"]), usdOf(left, ["pending"])) ||
+        left.app.localeCompare(right.app),
+    );
+  const appsUnbalanced = apps.length === 0 ? [] : COST_CLASSES.filter((costClass) => !addsUp(byClass[costClass] ?? null, apps.map((row) => row.classes.find((cell) => cell.costClass === costClass)?.fees ?? null)));
+  return { allowance, summary, window, classes: COST_CLASSES.map((costClass) => ({ costClass, fees: byClass[costClass] ?? null })), apps, appsUnbalanced };
+}
+
+/** Whether the apps' fees for one class add up to the class total: ETH, USD where given, and tickets. */
+function addsUp(total: Fees | null, parts: readonly (Fees | null)[]): boolean {
+  const present = parts.filter((part): part is Fees => part !== null);
+  const sum = (values: readonly string[]) => sumDecimals(values).total;
+  if (compareDecimals(sum(present.map((part) => part.fee_eth)), total?.fee_eth ?? "0") !== 0) return false;
+  if (present.reduce((count, part) => count + part.row_count, 0) !== (total?.row_count ?? 0)) return false;
+  const usd = present.map((part) => part.fee_usd);
+  return total?.fee_usd == null || usd.some((value) => value === null) || compareDecimals(sum(usd as string[]), total.fee_usd) === 0;
 }
 
 export function jobState(job: Reading<Job>, cost: Reading<JobCost>): JobState {
