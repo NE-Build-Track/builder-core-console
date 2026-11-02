@@ -282,11 +282,11 @@ async function Network() {
               <tbody>
                 {runners.map(({ app, runner }) => (
                   <tr key={runner.url}>
-                    <th scope="row" className="mono">
+                    <th scope="row" className="mono cell-wrap-narrow">
                       {host(runner.orchestrator_url)}
                     </th>
-                    <td className="mono">{app}</td>
-                    <td>{runner.gpu?.name ?? "—"}</td>
+                    <td className="mono cell-wrap-narrow">{app}</td>
+                    <td className="cell-wrap-narrow">{runner.gpu?.name ?? "—"}</td>
                     <td className="r num">{runner.gpu?.vram_mb ? `${Math.round(runner.gpu.vram_mb / 1024)} GB` : "—"}</td>
                     <td>
                       <span className="slots">
@@ -298,8 +298,8 @@ async function Network() {
                         </span>
                       </span>
                     </td>
-                    <td className="r mono">{runner.rate ? `${price(runner.rate.amount)} ${runner.rate.currency}/${runner.rate.unit}` : "—"}</td>
-                    <td className="mono">{runner.version ?? "—"}</td>
+                    <td className="r mono cell-wrap-narrow">{runner.rate ? `${price(runner.rate.amount)} ${runner.rate.currency}/${runner.rate.unit}` : "—"}</td>
+                    <td className="mono cell-wrap-narrow">{runner.version ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
