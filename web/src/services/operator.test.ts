@@ -221,3 +221,26 @@ describe("the result of a command", () => {
     expect(outcomeOf(fund, values, refused("already_provisioned"))).toMatchObject({ step: "done", ok: false, retry: "new-reference" });
   });
 });
+
+describe("revoking again (builder-core D61)", () => {
+  const exchange = { method: "POST" as const, path: "/v1/admin/keys/k1abcdefgh/revoke", status: 204, at: "2026-10-30T10:00:00Z", ms: 9 };
+
+  it("says a key that is already revoked answers as the first revoke did and changes nothing", () => {
+    const revoked = { ...context, key: read("engine", { ...ACME_KEY, revoked_at: "2026-10-30T09:00:00Z" }) };
+    const review = reviewOf({ action: "revokeKey", keyId: "k1abcdefgh" }, revoked);
+    expect(review.warnings).toContain("This key is already revoked. The engine answers as the first revoke did (204) and changes nothing (builder-core D61).");
+    expect(reviewOf({ action: "revokeKey", keyId: "k1abcdefgh" }, context).warnings.join(" ")).not.toContain("already revoked");
+  });
+
+  it("reads a repeated revoke as done: 200 with the revoked actor, 204 for a key (they were 404 and 400)", () => {
+    const allocation = outcomeOf(
+      { action: "revokeAllocation", applicationId: "default", actorId: "acme" },
+      { action: "revokeAllocation", application_id: "default", actor_id: "acme" },
+      { ok: true, value: { actor_id: "acme", application_id: "default", allocation_id: "al1", status: "revoked" }, replayed: false, exchange: { ...exchange, status: 200 } },
+    );
+    expect(allocation).toMatchObject({ step: "done", ok: true, title: "Allocation revoked" });
+    expect(allocation.step === "done" && allocation.ok ? allocation.lines : []).toContainEqual({ label: "Status", value: "revoked" });
+    const key = outcomeOf({ action: "revokeKey", keyId: "k1abcdefgh" }, { action: "revokeKey", key_id: "k1abcdefgh" }, { ok: true, value: null, replayed: false, exchange });
+    expect(key).toMatchObject({ step: "done", ok: true, title: "Key revoked" });
+  });
+});

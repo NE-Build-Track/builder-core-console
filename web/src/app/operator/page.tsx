@@ -12,7 +12,7 @@ import { loadOperator } from "@/runtime/operator";
 import { authMode, signInEnabled, signInOff } from "@/runtime/session";
 
 import { signInOperator, signOutOperator } from "../actions";
-import { sessionFor } from "../session-cookies";
+import { endedMessage, sessionFor } from "../session-cookies";
 import { ActorsSection, GrantsSection, KeysSection } from "./sections";
 
 export const metadata: Metadata = { title: "Operator actions" };
@@ -54,8 +54,14 @@ async function Operator({ searchParams }: { readonly searchParams: Promise<Recor
   }
   if (!session) {
     const enabled = signInEnabled();
+    const ended = await endedMessage("operator");
     return (
       <SignIn area="operator" action={signInOperator} enabled={enabled}>
+        {ended ? (
+          <p className="form-error" role="alert">
+            {ended}
+          </p>
+        ) : null}
         {enabled ? (
           <p>
             Operator actions use an <b>admin key</b> (<code>lpk_…</code>, from <code>lpb bootstrap-admin</code> or another admin). It is checked against the

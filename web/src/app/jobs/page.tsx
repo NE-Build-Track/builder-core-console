@@ -8,6 +8,7 @@ import { PageView, Streamed } from "@/components/console/page-view";
 import { Empty, GapChip, PageHead, ReadFrom, Section, Unreadable } from "@/components/console/primitives";
 import { Ago, Amount, Glyph, Id, Pill } from "@/components/console/values";
 import { attemptPayment, COST_CLASS_LABELS, costClasses, type CostClass, type Fees, type Job, type JobCost } from "@/domain/engine";
+import { failureAdvice } from "@/domain/failures";
 import type { JobLookup, State } from "@/domain/views";
 import { loadJobs } from "@/runtime/console";
 
@@ -228,7 +229,7 @@ function LookupResult({ lookup }: { readonly lookup: JobLookup }) {
           <>
             <dt>Failure</dt>
             <dd>
-              {value.failure.kind}: {value.failure.message}
+              <FailureFacts failure={value.failure} />
             </dd>
           </>
         ) : null}
@@ -328,5 +329,17 @@ function LookupResult({ lookup }: { readonly lookup: JobLookup }) {
       {providerEvents && !providerEvents.ok ? <Unreadable reading={providerEvents} what="Batteries events for this job" /> : null}
       <ReadFrom reading={job} />
     </article>
+  );
+}
+
+/** A failure in the engine's table's words (builder-core D58), with its own message and the next step. */
+function FailureFacts({ failure }: { readonly failure: NonNullable<Job["failure"]> }) {
+  const advice = failureAdvice(failure);
+  return (
+    <>
+      <b>{advice.title}</b> (<code>{advice.code}</code>): {advice.message}
+      <br />
+      <span className="muted">What to do: {advice.todo}</span>
+    </>
   );
 }

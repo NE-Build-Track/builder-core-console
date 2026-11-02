@@ -4,9 +4,10 @@
  */
 import { COST_CLASSES, mayHavePaid, type Allowance, type CostClass, type CostSummary, type EngineHealth, type Fees, type Job, type JobCost, type NetworkRate, type Offering } from "@/domain/engine";
 import { isFinalState, type JobState, type RunInput } from "@/domain/builder";
+import { failureAdvice } from "@/domain/failures";
 import { invalid, parsed, wholeNumber, type Parsed } from "@/domain/forms";
 import { mapReading, type Reading } from "@/domain/reading";
-import { weiToEth } from "@/utils/decimal";
+import { compareDecimals, sumDecimals, weiToEth } from "@/utils/decimal";
 import { ageSeconds } from "@/utils/time";
 
 /** An offering read longer ago than this is marked stale, whatever the engine's overall freshness says. */
@@ -32,12 +33,16 @@ export function rateText(amount: string, currency: string, unit: string): string
 }
 
 export type CatalogEntry = {
+  /** One app is listed once per currency and unit, plus once for its runners with no rate (builder-core D62). */
+  readonly key: string;
   readonly app: string;
   readonly modes: readonly string[];
   readonly runners: number;
   readonly ready: number;
   readonly low: RateView;
   readonly high: RateView;
+  /** Whose price it is: every rate the engine serves is the orchestrator's own advertisement. */
+  readonly source: string | null;
   readonly observedAt: string | null;
   readonly ageSeconds: number | null;
   readonly stale: boolean;
@@ -58,24 +63,48 @@ export function catalogEntry(offering: Offering, now: Date): CatalogEntry {
   const age = ageSeconds(offering.observed_at ?? null, now);
   const low = rateOf(offering.rate_low);
   const high = rateOf(offering.rate_high);
-  const stale = age === null || age > STALE_AFTER_S;
+  // the engine says so itself since builder-core D62; an old read is stale here too
+  const stale = offering.stale || age === null || age > STALE_AFTER_S;
+  const rate = offering.rate_low ?? offering.rate_high;
   const notes = [
     ...(offering.ready_count === 0 ? ["No runner is ready right now."] : []),
     ...(!low.known && !high.known ? ["No rate advertised."] : []),
     ...(stale ? ["Read too long ago to trust."] : []),
   ];
   return {
+    key: [offering.app, offering.rate_status, rate?.currency ?? "", rate?.unit ?? ""].join("|"),
     app: offering.app,
     modes: offering.modes,
     runners: offering.runner_count,
     ready: offering.ready_count,
     low,
     high,
+    source: rate ? `advertised by the ${rate.source}` : null,
     observedAt: offering.observed_at ?? null,
     ageSeconds: age,
     stale,
     notes,
   };
+}
+
+/** "0.0000000045 ETH per second (4492197255 wei)", or the range low to high. */
+export function rangeText(entry: CatalogEntry): string {
+  const text = (rate: RateView) => (rate.known ? rate.text : "no rate");
+  if (!entry.low.known && !entry.high.known) return "no rate advertised";
+  if (entry.low.known && entry.high.known && entry.low.amount === entry.high.amount) return text(entry.low);
+  return `${text(entry.low)} to ${text(entry.high)}`;
+}
+
+export type RunChoice = { readonly app: string; readonly label: string };
+
+/** Each app once, labelled from its group with the most ready runners: a job names the app, not a group. */
+export function runChoices(entries: readonly CatalogEntry[]): readonly RunChoice[] {
+  const best = new Map<string, CatalogEntry>();
+  for (const entry of entries) {
+    const seen = best.get(entry.app);
+    if (!seen || entry.ready > seen.ready) best.set(entry.app, entry);
+  }
+  return [...best.values()].map((entry) => ({ app: entry.app, label: `${entry.app} · ${entry.ready}/${entry.runners} ready · ${rangeText(entry)}` }));
 }
 
 export function catalog(offerings: Reading<readonly Offering[]>, discovery: Reading<EngineHealth>, now: Date): CatalogView {
@@ -92,7 +121,8 @@ export type JobRow = {
   readonly createdAt: string;
   readonly attempts: number;
   readonly paid: boolean;
-  readonly failure: string | null;
+  /** Why it failed, in the engine's table's words (builder-core D58), beside the engine's own message. */
+  readonly failure: { readonly title: string; readonly code: string; readonly message: string; readonly todo: string } | null;
 };
 
 export function jobRow(job: Job): JobRow {
@@ -103,22 +133,59 @@ export function jobRow(job: Job): JobRow {
     createdAt: job.created_at,
     attempts: job.attempts.length,
     paid: job.attempts.some((attempt) => attempt.payment_sent),
-    failure: job.failure ? `${job.failure.kind}: ${job.failure.message}` : null,
+    failure: job.failure ? failureLine(job.failure) : null,
   };
 }
 
+function failureLine(failure: NonNullable<Job["failure"]>): NonNullable<JobRow["failure"]> {
+  const { title, code, message, todo } = failureAdvice(failure);
+  return { title, code, message, todo };
+}
+
 export type ClassTotal = { readonly costClass: CostClass; readonly fees: Fees | null };
+
+/** One app's network cost, class by class: final classes and `pending` (which can still grow) never summed into one figure (D60). */
+export type AppCost = { readonly app: string; readonly classes: readonly ClassTotal[] };
 
 export type UsageView = {
   readonly allowance: Reading<Allowance>;
   readonly summary: Reading<CostSummary>;
   readonly classes: readonly ClassTotal[];
+  /** `CostSummary.by_app` (builder-core D60), the most final spend first. */
+  readonly apps: readonly AppCost[];
+  /** Classes whose apps do not add up to the class total, which the engine promises they do. */
+  readonly appsUnbalanced: readonly CostClass[];
   readonly window: { readonly start: string; readonly end: string };
 };
 
+const FINAL_CLASSES = COST_CLASSES.filter((costClass) => costClass !== "pending");
+
+const usdOf = (row: AppCost, classes: readonly CostClass[]): string =>
+  sumDecimals(row.classes.filter((cell) => classes.includes(cell.costClass)).map((cell) => cell.fees?.fee_usd ?? "0")).total;
+
 export function usage(allowance: Reading<Allowance>, summary: Reading<CostSummary>, window: { readonly start: string; readonly end: string }): UsageView {
   const byClass = summary.ok ? (summary.value.by_class as Partial<Record<string, Fees>>) : {};
-  return { allowance, summary, window, classes: COST_CLASSES.map((costClass) => ({ costClass, fees: byClass[costClass] ?? null })) };
+  const byApp = summary.ok ? (summary.value.by_app ?? {}) : {};
+  const apps = Object.entries(byApp)
+    .map(([app, fees]): AppCost => ({ app, classes: COST_CLASSES.map((costClass) => ({ costClass, fees: (fees as Partial<Record<string, Fees>>)[costClass] ?? null })) }))
+    .sort(
+      (left, right) =>
+        compareDecimals(usdOf(right, FINAL_CLASSES), usdOf(left, FINAL_CLASSES)) ||
+        compareDecimals(usdOf(right, ["pending"]), usdOf(left, ["pending"])) ||
+        left.app.localeCompare(right.app),
+    );
+  const appsUnbalanced = apps.length === 0 ? [] : COST_CLASSES.filter((costClass) => !addsUp(byClass[costClass] ?? null, apps.map((row) => row.classes.find((cell) => cell.costClass === costClass)?.fees ?? null)));
+  return { allowance, summary, window, classes: COST_CLASSES.map((costClass) => ({ costClass, fees: byClass[costClass] ?? null })), apps, appsUnbalanced };
+}
+
+/** Whether the apps' fees for one class add up to the class total: ETH, USD where given, and tickets. */
+function addsUp(total: Fees | null, parts: readonly (Fees | null)[]): boolean {
+  const present = parts.filter((part): part is Fees => part !== null);
+  const sum = (values: readonly string[]) => sumDecimals(values).total;
+  if (compareDecimals(sum(present.map((part) => part.fee_eth)), total?.fee_eth ?? "0") !== 0) return false;
+  if (present.reduce((count, part) => count + part.row_count, 0) !== (total?.row_count ?? 0)) return false;
+  const usd = present.map((part) => part.fee_usd);
+  return total?.fee_usd == null || usd.some((value) => value === null) || compareDecimals(sum(usd as string[]), total.fee_usd) === 0;
 }
 
 export function jobState(job: Reading<Job>, cost: Reading<JobCost>): JobState {

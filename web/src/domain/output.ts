@@ -101,6 +101,36 @@ export function imageUrls(value: unknown, found: string[] = []): string[] {
   return found;
 }
 
+const DATA_URI = /"(data:[a-z]+\/[a-z0-9+.-]+;base64,)([A-Za-z0-9+/=]+)"/gi;
+
+/**
+ * JSON text with each base64 data URI cut to its prefix and size. An inline image (FLUX schnell with
+ * `sync_mode: true`) is hundreds of kilobytes of base64; the picture is shown above the JSON and Raw keeps
+ * every byte, so the JSON view stays readable.
+ */
+export function shortenDataUris(text: string): string {
+  return text.replace(DATA_URI, (_, prefix: string, data: string) => {
+    const bytes = Math.floor((data.length * 3) / 4) - (data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0);
+    return `"${prefix}… (${formatBytes(bytes)} inline, shown above; Raw has all of it)"`;
+  });
+}
+
+/**
+ * What to say when an image in a runner's answer does not load. A provider-hosted URL (fal's, for FLUX
+ * schnell without `sync_mode`) expires on the provider's schedule: the job stays succeeded and its cost
+ * stands, and the engine cannot reissue the file (builder-core engine.md#provider-hosted-assets).
+ */
+export function brokenImageNotice(url: string): string {
+  if (/^data:/i.test(url)) return "This inline image could not be shown: the data the runner returned is not a picture the browser can read.";
+  let host = "";
+  try {
+    host = ` (${new URL(url).host})`;
+  } catch {
+    host = "";
+  }
+  return `The provider no longer serves this image${host}. The job still succeeded and its cost stands; the engine never kept the file, so it cannot fetch it again.`;
+}
+
 /** Pretty JSON, or null when the text is not JSON. */
 export function prettyJson(text: string): string | null {
   try {

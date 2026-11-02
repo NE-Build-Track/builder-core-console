@@ -26,7 +26,7 @@ export type ActionKind = "money" | "irreversible" | "secret" | "everyday";
 /**
  * Why sending the same form twice is safe: `reference` when the engine requires an operation reference
  * and answers a repeat from its record of the first (builder-core D57, ISS-11); `same-result` when the
- * call takes none because a repeat ends in the same state (set status, revoke).
+ * call takes none because a repeat ends in the same state and answers the same (set status; revoke, since builder-core D61).
  */
 export type RepeatSafety = "reference" | "same-result";
 

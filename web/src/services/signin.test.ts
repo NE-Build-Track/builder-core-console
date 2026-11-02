@@ -4,7 +4,7 @@ import type { AccessKey, Job } from "@/domain/engine";
 import type { Reading } from "@/domain/reading";
 import { broken, read } from "../../tests/support/fixtures";
 
-import { classifyKey, classifyPerson } from "./signin";
+import { classifyKey, classifyPerson, standing } from "./signin";
 
 const job = { id: "j1", actor_id: "acme", application_id: "default" } as Job;
 const forbidden: Reading<readonly AccessKey[]> = broken("engine", { kind: "http", status: 403, detail: "admin.keys required" });
@@ -25,6 +25,35 @@ describe("sign-in", () => {
   it("says when the engine does not accept the key or cannot be reached", () => {
     expect(classifyKey("builder", unauthenticated, unauthenticated)).toMatchObject({ ok: false, message: expect.stringContaining("revoked") });
     expect(classifyKey("operator", broken("engine"), broken("engine"))).toMatchObject({ ok: false, message: expect.stringContaining("could not be asked") });
+  });
+});
+
+describe("a key session ending (ISS-21)", () => {
+  const session = { expiresAt: "2026-10-30T20:00:00.000Z" };
+  const now = new Date("2026-10-30T12:00:00.000Z");
+
+  it("ends the session with a clear message when the engine answers 401 to its key", () => {
+    expect(standing(session, broken("engine", { kind: "http", status: 401, detail: "invalid or revoked API key" }), now)).toEqual({
+      ended: true,
+      reason: "refused",
+      message: "The engine no longer accepts this key: it was revoked or it expired. Sign in again with a valid key.",
+    });
+  });
+
+  it("keeps the session when the key works, lacks a permission (403), or the engine is down or failing", () => {
+    expect(standing(session, read("engine", []), now)).toEqual({ ended: false });
+    expect(standing(session, broken("engine", { kind: "http", status: 403, detail: "jobs.read required" }), now)).toEqual({ ended: false });
+    expect(standing(session, broken("engine", { kind: "http", status: 500, detail: "internal error" }), now)).toEqual({ ended: false });
+    expect(standing(session, broken("engine", { kind: "http", status: 503, detail: "not ready" }), now)).toEqual({ ended: false });
+    expect(standing(session, broken("engine", { kind: "unreachable", detail: "ECONNREFUSED" }), now)).toEqual({ ended: false });
+    expect(standing(session, broken("engine", { kind: "unexpected", detail: "not JSON" }), now)).toEqual({ ended: false });
+    expect(standing(session, null, now)).toEqual({ ended: false });
+  });
+
+  it("still ends a session whose 8 hours ran out, whatever the engine says", () => {
+    const later = new Date("2026-10-30T20:00:00.000Z");
+    expect(standing(session, read("engine", []), later)).toMatchObject({ ended: true, reason: "expired", message: expect.stringContaining("8 hours") });
+    expect(standing(session, null, later)).toMatchObject({ ended: true, reason: "expired" });
   });
 });
 

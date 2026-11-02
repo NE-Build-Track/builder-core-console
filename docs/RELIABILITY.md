@@ -34,6 +34,9 @@ A missing variable does not stop the console: that source reads "not configured:
   where it would have appeared.
 - Upstream reads time out after `CONSOLE_TIMEOUT_S`. A page waits at most one timeout per sequential
   read; Users reads actors four at a time.
+- A signed-in Operator or Builder page waits for one key check (`src/proxy.ts`, ISS-21) before it renders.
+  It times out after 3 seconds (or `CONSOLE_TIMEOUT_S`, if lower), and a check that fails for any reason
+  but a 401 lets the page render as usual.
 - The console keeps no state. Restarting it loses only the 15-second cache.
 - `/livez` is process liveness and reads nothing upstream; the compose healthcheck uses it.
 

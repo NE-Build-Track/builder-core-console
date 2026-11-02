@@ -6,6 +6,7 @@
 | [gaps.md](gaps.md) | What the stack cannot show yet, the fix, and who owns it |
 | [payment-stack.md](payment-stack.md) | Batteries and the signer: pins, topology, secrets |
 | [m3-environment.md](m3-environment.md) | The M3 funded configuration: endpoints, credentials, funding, accounting (ISS-13) |
+| [m3-rest-operations.md](m3-rest-operations.md) | Every REST operation in the M3 journey, the console action that sends it, and its evidence (ISS-20) |
 | [harness-engineering.md](harness-engineering.md) | The working method this repository follows |
 
 ## Evidence

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Drive the console's Operator actions in a browser against builder-core's repeat-safe commands (D57, #76).
+"""Drive the console's Operator and Builder areas in a browser against builder-core D57, D58 and D61.
 
 Runs headless Chrome through Playwright, signed in with the stack's admin key. Run it after
-scripts/live-check-d57.py, with the actor and grant it prints; it spends nothing (no jobs run):
+scripts/live-check-d57.py, with the actor and grant it prints. It runs one job, on a paused allocation,
+which the signer refuses before anything is signed; if the pause did not hold, that is one short paid
+chat (about $0.0001):
 
     uv run --no-project --with playwright python scripts/live-check-d57-ui.py --actor <actor> --grant <grant id>
 
@@ -10,7 +12,14 @@ What it checks: each Operator dialog carries its own console-<action>-<uuid> ope
 and an allocation funded through the UI apply once (the API replay of the UI's reference answers
 Idempotent-Replayed: true); provisioning an actor already provisioned shows "already provisioned ... Fund
 its allocation instead" and offers a new reference; a reference used for another request is shown as not
-applied; an issued key's token is shown once, and its replay has none. Screenshots go to .local/.
+applied; an issued key's token is shown once, and its replay has none.
+
+Since builder-core 9e447ce: with the actor's allocation paused through the Status dialog, a run in the
+Builder (signed in with the key issued above) is refused and the console names it as a payment refusal in
+the engine's words, not a generic error (D58); the allocation is set active again. Revoking the issued key
+and then the allocation through the console reads as done, and a repeat of each answers as the first did:
+204 for the key, 200 with the revoked actor for the allocation (D61). The actor is revoked at the end.
+Screenshots go to .local/.
 Evidence: docs/references/evidence/2026-10-29-d57-live-check.md.
 """
 
@@ -85,6 +94,27 @@ def review_and_commit(dialog):
     dialog.locator('button[value="commit"]').click()
     dialog.locator('[aria-current="step"]', has_text="Result").wait_for(timeout=60000)
     return dialog.inner_text()
+
+
+def review_confirm_and_commit(dialog, typed):
+    dialog.locator('button[value="review"]').click()
+    dialog.locator('input[name="confirm"]').wait_for(timeout=30000)
+    dialog.locator('input[name="confirm"]').fill(typed)
+    dialog.locator('button[value="commit"]').click()
+    dialog.locator('[aria-current="step"]', has_text="Result").wait_for(timeout=60000)
+    return dialog.inner_text()
+
+
+def set_status(page, status):
+    page.goto(f"{CONSOLE}/operator")
+    row = page.locator("tr").filter(has_text=ACTOR).first
+    row.get_by_role("button", name="Status", exact=True).first.click()
+    dialog = page.locator("dialog[open]")
+    dialog.wait_for()
+    dialog.locator('select[name="status"]').select_option(status)
+    text = review_and_commit(dialog)
+    close(page)
+    return text
 
 
 def close(page):
@@ -176,6 +206,55 @@ with sync_playwright() as p:
     close(page)
     status, headers, replay = api("POST", "/v1/admin/keys", {"actor_id": ACTOR, "application_id": "default", "kind": "actor", "operation_ref": kref})
     check("U7 the API replay of the UI's reference: 201, token null, replayed true", status == 201 and replay["token"] is None and replay.get("replayed") is True, f"{status} {replay}")
+    kid = replay["key"]["key_id"] if isinstance(replay, dict) and replay.get("key") else None
+
+    # U8 (D58): a payment refusal reads as one, in the engine's words, not a generic error
+    text = set_status(page, "paused")
+    check("U8 pause the allocation through the Status dialog: Status set", "Status set" in text, text[:300])
+    if shown:
+        page.goto(f"{CONSOLE}/builder")
+        page.locator('form.signin input[name="key"]').fill(shown.group(0))
+        page.locator('form.signin button[type="submit"]').click()
+        page.locator('form[aria-label="Run a job"]').wait_for(timeout=30000)
+        page.get_by_role("button", name="Chat", exact=True).click()
+        page.get_by_role("button", name="Run (paid)").click()
+        page.locator("#run-result-title").wait_for(timeout=180000)
+        page.wait_for_timeout(1500)
+        result = page.locator("section.run-result").inner_text()
+        page.screenshot(path=str(SHOTS / "live-d58-payment-refused.png"), full_page=True)
+        check("U8 the run is refused before anything ran: The engine did not run it", "The engine did not run it" in result, result[:500])
+        check("U8 named as a payment refusal with what to do (engine.md#failures)", "Payment refused" in result and "What to do:" in result and "payment ·" in result, result[:500])
+    else:
+        check("U8 the issued key's token was captured for the Builder", False, "no lpk_ token on the result")
+    text = set_status(page, "active")
+    check("U8 set the allocation active again: Status set", "Status set" in text, text[:300])
+
+    # U9 (D61): revoke the issued key through the console; a repeat answers as the first (204, was 400)
+    if kid:
+        page.goto(f"{CONSOLE}/operator")
+        row = page.locator("tr").filter(has=page.locator(f'code[title="{kid}"]')).first
+        row.get_by_role("button", name="Revoke", exact=True).click()
+        dialog = page.locator("dialog[open]")
+        dialog.wait_for()
+        text = review_confirm_and_commit(dialog, kid[:8])
+        check("U9 revoke the key through the UI: Key revoked", "Key revoked" in text, text[:300])
+        close(page)
+        status, _, _ = api("POST", f"/v1/admin/keys/{kid}/revoke")
+        check("U9 a repeat of that revoke answers 204, as the first did (D61)", status == 204, str(status))
+    else:
+        check("U9 the issued key's id was known", False, str(replay)[:200])
+
+    # U10 (D61): revoke the allocation through the console; a repeat is 200 with the revoked actor (was 404)
+    page.goto(f"{CONSOLE}/operator")
+    row = page.locator("tr").filter(has_text=ACTOR).first
+    row.get_by_role("button", name="Revoke", exact=True).click()
+    dialog = page.locator("dialog[open]")
+    dialog.wait_for()
+    text = review_confirm_and_commit(dialog, ACTOR)
+    check("U10 revoke the allocation through the UI: Allocation revoked, status revoked", "Allocation revoked" in text and "revoked" in text.split("Allocation revoked", 1)[-1], text[:400])
+    close(page)
+    status, _, actor_body = api("POST", f"/v1/admin/applications/default/actors/{ACTOR}/allocation/revoke")
+    check("U10 a repeat of that revoke is 200 with the actor, revoked (D61)", status == 200 and isinstance(actor_body, dict) and actor_body.get("status") == "revoked", f"{status} {actor_body}")
     browser.close()
 
 failed = [name for name, ok, _ in results if not ok]

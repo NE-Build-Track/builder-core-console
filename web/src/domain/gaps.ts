@@ -21,8 +21,8 @@ export const GAPS = [
     id: "G1",
     title: "The Jobs page lists projections, not jobs",
     impact:
-      "builder-core lists every actor's jobs to an admin or auditor (GET /v1/jobs, its D44), but the Jobs page still shows the newest cost projections and looks jobs up by id. builder-core has no filters or paging for that list yet.",
-    fix: "List jobs from GET /v1/jobs with the reader's credential; ask builder-core for filters (actor, app, state, time) and paging.",
+      "builder-core lists every actor's jobs to an admin or auditor (GET /v1/jobs, its D44) and pages that list with before (its D59, PR #81, in review), but the Jobs page still shows the newest cost projections and looks jobs up by id. The list has no filters (actor, app, state, time) yet.",
+    fix: "List jobs from GET /v1/jobs with the reader's credential, paging with before; ask builder-core for filters (actor, app, state, time).",
     owner: "this repository",
   },
   {
@@ -36,7 +36,7 @@ export const GAPS = [
     id: "G4",
     title: "No engine metrics or events",
     impact:
-      "The engine has no /metrics (tech debt T4) and /v1/events answers 501 until M4, so job throughput and latency over time are not available.",
+      'The engine has no /metrics (tech debt T4) and /v1/events answers 501 with milestone: "held" (builder-core D60: the events feed is held for M3, ISS-18), so job throughput and latency over time are not available.',
     fix: "Engine /metrics (job, discovery and cost-sync counters) and the events feed.",
     owner: "builder-core",
   },
@@ -68,7 +68,7 @@ export const GAPS = [
     id: "G8",
     title: "The keys-mode reader holds an admin key",
     impact:
-      "builder-core has a read-only auditor credential (its #69), and the OIDC reader uses one, so the engine refuses its writes. With CONSOLE_AUTH=keys the reader still holds an engine admin key, which can do everything; the console stays read-only there only because its code makes GET requests alone (tests/structure/read-only.test.ts).",
+      "builder-core has a read-only auditor credential (its #69), and the OIDC reader uses one, so the engine refuses its writes. With CONSOLE_AUTH=keys the reader still holds an engine admin key, which can do everything; the console stays read-only there only because its code makes GET requests alone (tests/structure/writes.test.ts).",
     fix: "Issue the keys-mode reader an auditor key (kind auditor) instead of an admin key; the Money page then shows the engine's grants as not available, as in OIDC mode.",
     owner: "this repository",
   },
@@ -97,14 +97,6 @@ export const GAPS = [
     owner: "builder-core",
   },
   {
-    id: "G12",
-    title: "Creating a grant returns an incomplete record",
-    impact:
-      "POST /v1/admin/grants answers 201 with the new grant's id but an empty name, status and total, so the console reads the grant list again after creating one instead of showing the response.",
-    fix: "Map Batteries' create response fully in the engine (the grant list already maps the same fields).",
-    owner: "builder-core",
-  },
-  {
     id: "G13",
     title: "No who-am-I call",
     impact:
@@ -116,8 +108,8 @@ export const GAPS = [
     id: "G14",
     title: "Rates are in wei only",
     impact:
-      "Offerings carry the orchestrators' rates in wei per their own unit, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries.",
-    fix: "Add a USD rate beside the advertised one, with the ETH price, its source and its time (ISS-10).",
+      "Offerings carry the orchestrators' rates in wei per their own unit, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries. builder-core PR #77 (its D62, in review) adds price_usd to each rate, but it is the runner's own figure, passed on unconverted, and the live orchestrators send none (checked 30 October), so the gap stays open in practice.",
+    fix: "A USD rate beside the advertised one, with the ETH price, its source and its time (ISS-10): orchestrators that advertise price_usd, or a conversion in the engine.",
     owner: "builder-core",
   },
 ] as const satisfies readonly Gap[];

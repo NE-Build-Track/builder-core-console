@@ -136,7 +136,7 @@ def add_reader(target: Path) -> None:
     secret = secrets.token_hex(32)
     creds_file.write_text(creds.rstrip("\n") + "\n" + reader_block(secret))
     token_file.write_text(secret)
-    print(f"Added the {READER_ID} credential (read-only) to {creds_file}. Restart clearinghouse to load it.")
+    print(f"Added the {READER_ID} credential (read-only) to {creds_file}. Run `make restart-payments` to load it (it recreates the signer too).")
 
 
 def allow_grant_funding(target: Path) -> None:
@@ -157,7 +157,7 @@ def allow_grant_funding(target: Path) -> None:
         raise SystemExit(f"could not find the {GRANT_DESK_ID} allow list in {creds_file}; add grants.fund by hand")
     new = ", ".join(f'"{name}"' for name in GRANT_DESK_ALLOW)
     creds_file.write_text(f"{head}{found}{before}allow = [{new}]{after}")
-    print(f"{GRANT_DESK_ID} may now fund grants ({creds_file}). Restart clearinghouse to load it.")
+    print(f"{GRANT_DESK_ID} may now fund grants ({creds_file}). Run `make restart-payments` to load it (it recreates the signer too).")
 
 
 def main() -> None:

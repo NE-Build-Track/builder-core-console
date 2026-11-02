@@ -1,18 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import type { Allowance, Job, JobCost, Offering } from "@/domain/engine";
+import { PRESETS } from "@/domain/builder";
+import type { Allowance, CostSummary, Fees, Job, JobCost, Offering } from "@/domain/engine";
 import type { Reading } from "@/domain/reading";
 import { broken, NOW, read } from "../../tests/support/fixtures";
 
-import { allocationNotice, catalogEntry, jobState, parseRun, rateText, unitWords } from "./builder";
+import { allocationNotice, catalogEntry, jobRow, jobState, parseRun, rateText, runChoices, unitWords, usage } from "./builder";
 
 const offering = (overrides: Partial<Offering>): Offering => ({
   app: "blueclaw/chat/qwen3.8-27b",
   modes: ["immediate"],
   runner_count: 2,
   ready_count: 2,
-  rate_low: { amount: "4492197255", currency: "wei", unit: "seconds" },
-  rate_high: { amount: "4492197255", currency: "wei", unit: "seconds" },
+  rate_low: { amount: "4492197255", currency: "wei", unit: "seconds", source: "orchestrator", observed_at: new Date(NOW.getTime() - 20_000).toISOString(), observed_by: "engine" },
+  rate_high: { amount: "4492197255", currency: "wei", unit: "seconds", source: "orchestrator", observed_at: new Date(NOW.getTime() - 20_000).toISOString(), observed_by: "engine" },
+  rate_status: "available",
+  stale: false,
   observed_at: new Date(NOW.getTime() - 20_000).toISOString(),
   ...overrides,
 });
@@ -31,6 +34,39 @@ describe("builder catalog", () => {
     const old = catalogEntry(offering({ ready_count: 0, rate_low: null, rate_high: null, observed_at: new Date(NOW.getTime() - 3_600_000).toISOString() }), NOW);
     expect(old.stale).toBe(true);
     expect(old.notes).toEqual(["No runner is ready right now.", "No rate advertised.", "Read too long ago to trust."]);
+  });
+});
+
+describe("the catalog's rates since builder-core D62 (ISS-10)", () => {
+  it("names where a rate came from: the orchestrator advertised it", () => {
+    expect(catalogEntry(offering({}), NOW).source).toBe("advertised by the orchestrator");
+    expect(catalogEntry(offering({ rate_low: null, rate_high: null, rate_status: "missing" }), NOW).source).toBeNull();
+  });
+
+  it("trusts the engine when it says a rate is stale, even after a recent read", () => {
+    const entry = catalogEntry(offering({ stale: true }), NOW);
+    expect(entry.stale).toBe(true);
+    expect(entry.notes).toContain("Read too long ago to trust.");
+  });
+
+  it("says no rate for the group of runners the engine lists with no payable rate", () => {
+    const missing = catalogEntry(offering({ rate_low: null, rate_high: null, rate_status: "missing" }), NOW);
+    expect(missing.notes).toContain("No rate advertised.");
+  });
+
+  it("tells apart one app's groups: one per currency and unit, and the runners with no rate", () => {
+    const wei = catalogEntry(offering({}), NOW);
+    const usd = catalogEntry(offering({ rate_low: { ...offering({}).rate_low!, amount: "0.002", currency: "usd", unit: "fixed" }, rate_high: { ...offering({}).rate_high!, amount: "0.002", currency: "usd", unit: "fixed" } }), NOW);
+    const missing = catalogEntry(offering({ rate_low: null, rate_high: null, rate_status: "missing" }), NOW);
+    expect(new Set([wei.key, usd.key, missing.key]).size).toBe(3);
+  });
+
+  it("offers each app once to run, from its group with the most ready runners", () => {
+    const busy = catalogEntry(offering({ ready_count: 2 }), NOW);
+    const missing = catalogEntry(offering({ ready_count: 0, rate_low: null, rate_high: null, rate_status: "missing" }), NOW);
+    const other = catalogEntry(offering({ app: "blueclaw/image/flux-schnell", ready_count: 1 }), NOW);
+    expect(runChoices([missing, busy, other]).map((choice) => choice.app)).toEqual(["blueclaw/chat/qwen3.8-27b", "blueclaw/image/flux-schnell"]);
+    expect(runChoices([missing, busy, other])[0]?.label).toContain("2/2 ready");
   });
 });
 
@@ -85,5 +121,72 @@ describe("a builder with no allocation", () => {
     expect(allocationNotice(read("engine", {} as Allowance), "3c446b40")).toBeNull();
     expect(allocationNotice(forbidden, "3c446b40")).toBeNull();
     expect(allocationNotice(down, "3c446b40")).toBeNull();
+  });
+});
+
+describe("my jobs", () => {
+  it("says why a job failed in plain words, with the engine's reason, message and what to do (builder-core D58)", () => {
+    const failed = {
+      id: "j",
+      app: "blueclaw/chat/qwen3.8-27b",
+      state: "failed",
+      created_at: NOW.toISOString(),
+      attempts: [],
+      failure: { kind: "payment", reason: "allowance_exhausted", message: "the signer refused payment: allowance exhausted (HTTP 402)", payment_sent: false },
+    } as unknown as Job;
+    expect(jobRow(failed).failure).toEqual({
+      title: "Payment refused: the allocation is spent",
+      code: "payment · allowance_exhausted",
+      message: "the signer refused payment: allowance exhausted (HTTP 402)",
+      todo: "An operator funds the allocation; then the same operation reference runs again.",
+    });
+    expect(jobRow({ ...failed, failure: null }).failure).toBeNull();
+  });
+});
+
+describe("the FLUX schnell preset", () => {
+  it("asks for the image inline (sync_mode), so the result outlives the provider's URL (builder-core D59, ISS-15 Q1)", () => {
+    const image = PRESETS.find((preset) => preset.id === "image");
+    expect(image?.app).toBe("comfystream/fal-flux-schnell");
+    expect(image?.input).toMatchObject({ sync_mode: true });
+  });
+});
+
+describe("my cost per app and class (builder-core D60)", () => {
+  const fees = (usd: string, eth: string, rows: number): Fees => ({ fee_usd: usd, fee_eth: eth, row_count: rows });
+  const window = { start: "2026-10-13T18:00:00Z", end: "2026-10-20T18:00:00Z" };
+  const allowance = read("engine", {} as Allowance);
+  const summary = (overrides: Partial<CostSummary>): Reading<CostSummary> =>
+    read("engine", {
+      start: window.start,
+      end: window.end,
+      by_class: { delivered: fees("0.003118", "0.0000011", 2), pending: fees("0.000111", "0.0000001", 1) },
+      jobs_with_cost: 3,
+      jobs_pending: 1,
+      by_app: {
+        "blueclaw/chat/qwen3.8-27b": { delivered: fees("0.000111", "0.0000001", 1), pending: fees("0.000111", "0.0000001", 1) },
+        "comfystream/fal-flux-schnell": { delivered: fees("0.003007", "0.000001", 1) },
+      },
+      ...overrides,
+    } as CostSummary);
+
+  it("lists each app with its final classes and pending kept apart, most final spend first", () => {
+    const view = usage(allowance, summary({}), window);
+    expect(view.apps.map((row) => row.app)).toEqual(["comfystream/fal-flux-schnell", "blueclaw/chat/qwen3.8-27b"]);
+    const chat = view.apps[1];
+    expect(chat?.classes.map((cell) => cell.costClass)).toEqual(["delivered", "failed_after_payment", "uncertain", "pending"]);
+    expect(chat?.classes.find((cell) => cell.costClass === "pending")?.fees?.fee_usd).toBe("0.000111");
+    expect(chat?.classes.find((cell) => cell.costClass === "uncertain")?.fees).toBeNull();
+    expect(view.appsUnbalanced).toEqual([]);
+  });
+
+  it("names a class whose apps do not add up to its total, rather than hiding it", () => {
+    const view = usage(allowance, summary({ by_class: { delivered: fees("0.004", "0.0000012", 3), pending: fees("0.000111", "0.0000001", 1) } }), window);
+    expect(view.appsUnbalanced).toEqual(["delivered"]);
+  });
+
+  it("shows no apps when the summary has none or could not be read", () => {
+    expect(usage(allowance, summary({ by_app: {} }), window).apps).toEqual([]);
+    expect(usage(allowance, broken("engine"), window).apps).toEqual([]);
   });
 });
