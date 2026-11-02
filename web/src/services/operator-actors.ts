@@ -57,11 +57,11 @@ export function actorsOf(known: Reading<readonly KnownActor[]>, keys: readonly A
   return [...rows.values()].sort((a, b) => a.applicationId.localeCompare(b.applicationId) || a.actorId.localeCompare(b.actorId));
 }
 
-/** Actors as the keys show them, added to the engine's actor list for key holders it does not list yet. Admin keys are not actors. */
+/** Actors as the keys show them, added to the engine's actor list for key holders it does not list yet. Admin and auditor keys are not actors. */
 export function actorsFromKeys(keys: readonly AccessKey[]): readonly Omit<OperatorActor, "allowance" | "label" | "name" | "status" | "provisioned">[] {
   const byActor = new Map<string, { applicationId: string; actorId: string; activeKeys: number; revokedKeys: number }>();
   for (const key of keys) {
-    if (key.kind === "admin") continue;
+    if (key.kind === "admin" || key.kind === "auditor") continue;
     const id = `${key.application_id}\u0000${key.actor_id}`;
     const row = byActor.get(id) ?? { applicationId: key.application_id, actorId: key.actor_id, activeKeys: 0, revokedKeys: 0 };
     if (key.revoked_at) row.revokedKeys += 1;

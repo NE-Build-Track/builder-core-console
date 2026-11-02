@@ -22,6 +22,41 @@ describe("docs", () => {
     for (const item of GAPS) expect(text, `${item.id} title in gaps.md`).toContain(`## ${item.id}: ${item.title}`);
   });
 
+  it("says the same about each gap in gaps.md as in domain/gaps.ts: owner, impact and fix", () => {
+    const text = read(path.join(REPO, "docs", "references", "gaps.md"));
+    // code spans are formatting in the doc; the page shows the same words as plain text
+    const sections = new Map([...text.split(/^## /m)].map((part) => [part.match(/^(G\d+):/)?.[1] ?? "", part.replace(/`/g, "")] as const));
+    const drift = GAPS.flatMap((item) => {
+      const section = sections.get(item.id) ?? "";
+      const out: string[] = [];
+      if (!section.includes(`**Impact.** ${item.impact}\n`)) out.push(`${item.id}: the impact in gaps.md differs from domain/gaps.ts. Make them the same words.`);
+      if (!section.includes(`**Fix.** ${item.fix}\n`)) out.push(`${item.id}: the fix in gaps.md differs from domain/gaps.ts. Make them the same words.`);
+      if (!section.includes(`**Owner.** ${item.owner}.`)) out.push(`${item.id}: gaps.md names another owner than ${item.owner}.`);
+      if (!new RegExp(`^\\| \\[${item.id}\\]\\([^)]*\\) \\| ${item.owner} \\|`, "m").test(text)) out.push(`${item.id}: the table at the top of gaps.md has no open row for it with owner ${item.owner}.`);
+      return out;
+    });
+    expect(drift).toEqual([]);
+  });
+
+  it("keeps a closed gap out of the open list, and every open gap out of Closed", () => {
+    const text = read(path.join(REPO, "docs", "references", "gaps.md"));
+    const closedPart = text.split(/^## Closed$/m)[1] ?? "";
+    const closed = [...closedPart.matchAll(/^- \*\*(G\d+)\b/gm)].map((match) => match[1]);
+    const open = new Set<string>(GAPS.map((item) => item.id));
+    expect(closed.length).toBeGreaterThan(0);
+    expect(closed.filter((id) => id !== undefined && open.has(id)).map((id) => `${id} is under Closed in gaps.md but still open in domain/gaps.ts. Remove it from GAPS.`)).toEqual([]);
+  });
+
+  it("cites only test files that exist in a gap", () => {
+    const missing = GAPS.flatMap((item) =>
+      [...`${item.impact} ${item.fix}`.matchAll(/\b((?:tests|src)\/[\w/.-]+\.test\.ts)\b/g)]
+        .map((match) => match[1] as string)
+        .filter((file) => !existsSync(path.join(REPO, "web", file)))
+        .map((file) => `${item.id} cites ${file}, which does not exist. Point at the test that holds the rule now.`),
+    );
+    expect(missing).toEqual([]);
+  });
+
   it("documents every route in the catalog in data-sources.md", () => {
     const text = read(path.join(REPO, "docs", "references", "data-sources.md"));
     const missing = CATALOG.filter((entry) => !text.includes(`\`${entry.route}\``)).map((entry) => `${entry.source} ${entry.route}`);

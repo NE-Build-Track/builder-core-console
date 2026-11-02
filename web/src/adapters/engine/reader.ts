@@ -38,7 +38,7 @@ export function engineReader(settings: SourceSettings<EngineSettings>, options: 
   });
 
   async function bearer(): Promise<Reading<string>> {
-    if (settings.ok && settings.value.adminToken) return ok("engine", settings.value.adminToken, at());
+    if (settings.ok && settings.value.readerToken) return ok("engine", settings.value.readerToken, at());
     if (!tokens) return failed("engine", { kind: "not_configured", detail: "CONSOLE_READER_CLIENT_ID, CONSOLE_READER_CLIENT_SECRET" }, at());
     return tokens.token();
   }
@@ -78,12 +78,9 @@ export function engineReader(settings: SourceSettings<EngineSettings>, options: 
     },
     offerings: () => call((c) => c.GET("/v1/offerings", { signal: signal() })),
     runners: (app) => call((c) => c.GET("/v1/runners", { params: { query: { app } }, signal: signal() })),
-    // Grants fund every application and carry none, so the engine refuses them to an auditor (builder-core #69):
-    // with only the read-only token, say so instead of asking for a 403.
-    grants: () =>
-      settings.ok && !settings.value.adminToken && tokens
-        ? Promise.resolve(failed("engine", { kind: "not_permitted", detail: "the read-only auditor never reads the operator's grants" }, at()))
-        : call((c) => c.GET("/v1/admin/grants", { signal: signal() })),
+    // Grants fund every application and carry none, so the engine refuses them to an auditor (builder-core #69),
+    // which the reader is in both sign-in modes: say so instead of asking for a 403.
+    grants: () => Promise.resolve(failed("engine", { kind: "not_permitted", detail: "the read-only auditor never reads the operator's grants" }, at())),
     keys: () => call((c) => c.GET("/v1/admin/keys", { signal: signal() })),
     actors: () => call((c) => c.GET("/v1/admin/actors", { params: { query: { limit: 1000 } }, signal: signal() })),
     allowance: (actorId) =>
@@ -105,6 +102,8 @@ export function engineReader(settings: SourceSettings<EngineSettings>, options: 
         }),
       ),
     job: (id) => call((c) => c.GET("/v1/jobs/{job_id}", { params: { path: { job_id: id } }, signal: signal() })),
+    jobs: ({ limit, before }) =>
+      call((c) => c.GET("/v1/jobs", { params: { query: { limit, ...(before ? { before } : {}) } }, signal: signal() })),
     jobCost: (id) =>
       call((c) => c.GET("/v1/jobs/{job_id}/cost", { params: { path: { job_id: id } }, signal: signal() })),
   };

@@ -8,8 +8,12 @@ import "server-only";
 
 export type SourceSettings<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly missing: string };
 
-/** `adminToken` is null when the console signs in through the identity provider: reads then use the reader's token. */
-export type EngineSettings = { readonly url: string; readonly adminToken: string | null };
+/**
+ * `readerToken` is an engine auditor key (kind auditor, read-only: builder-core D46), so the engine refuses any
+ * write the console's reads could send (gap G8, closed). It is null when the console signs in through the
+ * identity provider: reads then use the reader's token. The engine admin key is never read here.
+ */
+export type EngineSettings = { readonly url: string; readonly readerToken: string | null };
 
 /** The console as an OpenID Connect client (CONSOLE_AUTH=oidc): authorization code with PKCE, server side. */
 export type OidcSettings = {
@@ -185,10 +189,10 @@ export function readConfig(env: Env = process.env): ConsoleConfig {
     auth: signIn,
     engine:
       signIn.mode === "oidc"
-        ? settings({ CONSOLE_ENGINE_URL: url(env, "CONSOLE_ENGINE_URL") }, (v) => ({ url: v.CONSOLE_ENGINE_URL as string, adminToken: null }))
+        ? settings({ CONSOLE_ENGINE_URL: url(env, "CONSOLE_ENGINE_URL") }, (v) => ({ url: v.CONSOLE_ENGINE_URL as string, readerToken: null }))
         : settings(
-            { CONSOLE_ENGINE_URL: url(env, "CONSOLE_ENGINE_URL"), CONSOLE_ENGINE_ADMIN_TOKEN: text(env, "CONSOLE_ENGINE_ADMIN_TOKEN") },
-            (v) => ({ url: v.CONSOLE_ENGINE_URL as string, adminToken: v.CONSOLE_ENGINE_ADMIN_TOKEN as string }),
+            { CONSOLE_ENGINE_URL: url(env, "CONSOLE_ENGINE_URL"), CONSOLE_ENGINE_READER_TOKEN: text(env, "CONSOLE_ENGINE_READER_TOKEN") },
+            (v) => ({ url: v.CONSOLE_ENGINE_URL as string, readerToken: v.CONSOLE_ENGINE_READER_TOKEN as string }),
           ),
     batteries: settings(
       { CONSOLE_BATTERIES_URL: url(env, "CONSOLE_BATTERIES_URL"), CONSOLE_BATTERIES_TOKEN: text(env, "CONSOLE_BATTERIES_TOKEN") },

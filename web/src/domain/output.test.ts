@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatBytes, imageUrls, outputKind, parseEvents, renderChat } from "./output";
+import { brokenImageNotice, formatBytes, imageUrls, outputKind, parseEvents, renderChat, shortenDataUris } from "./output";
 
 describe("output views", () => {
   it("picks the view from the content type", () => {
@@ -39,5 +39,34 @@ describe("output views", () => {
   it("formats sizes", () => {
     expect(formatBytes(512)).toBe("512 bytes");
     expect(formatBytes(2048)).toBe("2.0 KB");
+  });
+});
+
+describe("images in a JSON answer (builder-core D59)", () => {
+  const jpeg = `data:image/jpeg;base64,${"/9j/4AAQSkZJRg".repeat(40)}==`;
+  const inline = { images: [{ url: jpeg, width: 1024, height: 768, content_type: "image/jpeg" }], seed: 1, has_nsfw_concepts: [false] };
+
+  it("finds FLUX schnell's inline image (sync_mode: true returns a data URI in images[].url)", () => {
+    expect(imageUrls(inline)).toEqual([jpeg]);
+  });
+
+  it("finds it where the live runner puts it: output.images[0].url, under the fal endpoint id", () => {
+    const live = { endpoint_id: "fal-ai/flux/schnell", output: { images: [{ url: jpeg, width: 1024, height: 768 }] } };
+    expect(imageUrls(live)).toEqual([jpeg]);
+  });
+
+  it("shortens data URIs in the JSON view, saying how large each is, and leaves everything else as it was", () => {
+    const shown = shortenDataUris(JSON.stringify(inline, null, 2));
+    expect(shown).not.toContain(jpeg);
+    expect(shown).toMatch(/"url": "data:image\/jpeg;base64,… \(\d+ bytes inline, shown above; Raw has all of it\)"/);
+    expect(shown).toContain('"width": 1024');
+    expect(shortenDataUris('{"url": "https://v3.fal.media/files/x.jpg"}')).toBe('{"url": "https://v3.fal.media/files/x.jpg"}');
+  });
+
+  it("says a provider's image that no longer loads is gone, while the job and its cost stand", () => {
+    expect(brokenImageNotice("https://v3.fal.media/files/lion/x.jpg")).toBe(
+      "The provider no longer serves this image (v3.fal.media). The job still succeeded and its cost stands; the engine never kept the file, so it cannot fetch it again.",
+    );
+    expect(brokenImageNotice(jpeg)).toBe("This inline image could not be shown: the data the runner returned is not a picture the browser can read.");
   });
 });

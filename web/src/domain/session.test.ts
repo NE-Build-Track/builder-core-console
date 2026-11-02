@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { needsRefresh, viewOf, type Session } from "./session";
+import { ENDED_MESSAGES, isEndReason, needsRefresh, viewOf, type Session } from "./session";
 
 const base: Session = {
   area: "builder",
@@ -30,5 +30,13 @@ describe("sessions", () => {
     expect(view.token).toBeUndefined();
     expect(view.refreshToken).toBeUndefined();
     expect(view).toMatchObject({ via: "oidc", name: "alice", actorId: "0032bc7b" });
+  });
+
+  it("reads only the console's own reasons for an ended session back from its cookie", () => {
+    expect(isEndReason("refused")).toBe(true);
+    expect(isEndReason("expired")).toBe(true);
+    expect(isEndReason("<script>")).toBe(false);
+    expect(isEndReason(undefined)).toBe(false);
+    expect(ENDED_MESSAGES.refused).toContain("revoked");
   });
 });

@@ -7,7 +7,7 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 | --- | --- | --- |
 | `clearinghouse` | `livepeer/clearinghouse-batteries`, `examples/compose/Dockerfile` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
 | `signer` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
-| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `a6ed9b552a8666f925d86fd8d9fe1d40bfc6aa98` (the merge of PR #76 on `releases/m3`: admin commands require an `operation_ref` and are repeat-safe, D57; migrations `0009` and `0010` are additive. Re-pin to #76's merge) |
+| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `15142129ebbf51103658f8ad48fd5adae052c56d` (`releases/m3` after PRs #78, #81, #82, #83 and #77 merged, 2 November: payment failure reasons, D58; paged job history and a 16 MiB request limit, D59; cost per app and class, the events feed held, D60; repeat-safe revokes, D61; network rates with their source and age, D62; and, from #90, where each runner call's time went. Migration `0011` adds the attempt timings: the stack's `engine-data` volume upgrades from `0010` on start) |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relay only (D10) |
 | `console` | this repository, `deploy/console/Dockerfile` | — |
 
@@ -35,10 +35,16 @@ The same files ChatLPT uses: `keystore.json`, `keystore-password` (payer account
 `grants.read`, `allocations.read`, `api_keys.read`, `sessions.read`, `settlements.read`, `usage.read`,
 `ledger.read` and `escrow.read`.
 
+**Batteries' on-chain listener** reports the payer's TicketBroker deposit and reserve (Money, payer escrow).
+`deploy/compose.yaml` turns it on from `deploy/.env`: `BATTERIES_ONCHAIN_LISTENER=true` and `PAYER_ADDRESS`
+(`first-run.sh` reads it from `keystore.json`), with the signer's `rpc-url`. It opens with a `getSenderInfo`
+snapshot at a recent block, so it needs no start block, then polls every 30 s (`config/clearinghouse.toml`).
+ChatLPT's Batteries does not run it; two listeners on one payer only read.
+
 `init-secrets.py` either creates all of them in an empty folder, or, when the folder already holds a
 `clearinghouse.toml` (copied from ChatLPT to use the same values), appends only the reader and adds
 `grants.fund` to this stack's grant desk, so a grant can be created with an amount through the engine
-(gap G12's neighbour in [gaps.md](gaps.md); ChatLPT's own Batteries is unchanged).
+(see "Not a console gap: funded grants through the engine" in [gaps.md](gaps.md); ChatLPT's own Batteries is unchanged).
 
 ## Engine settings
 

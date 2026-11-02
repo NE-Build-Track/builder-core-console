@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check builder-core's repeat-safe commands (D57, #76) live, through the engine on this stack.
+"""Check builder-core's repeat-safe commands (D57, #76) and D59–D61 live, through the engine on this stack.
 
 THIS SPENDS REAL MONEY: about six short paid chat jobs (well under a cent). Run it with the full stack up
 (`make up`) and pass --yes. Each run makes its own grant and actor, named live-d57-<time>, so runs never
@@ -22,17 +22,27 @@ What it checks, against the real Batteries and signer:
   runs again under its reference;
 - the test actor's reconciliation is balanced after cost sync.
 
+Since builder-core 9e447ce (D59–D61; free checks, nothing more is paid): `GET /v1/jobs?before=` pages to
+older jobs and refuses a time without an offset (422); a request declaring a body over 16 MiB is 413
+`request_too_large` with `limit_bytes`; the cost summary's `by_app` adds up to `by_class` for every class;
+`GET /v1/events` is 501 `milestone: "held"`; `GET /v1/jobs/{id}/result` is 501 (M4); a repeated key revoke
+is 204 both times and an unknown key is still 400. The allocation revoke repeat is checked through the
+console by scripts/live-check-d57-ui.py, which needs the actor until its end.
+
 It ends with the actor and grant for scripts/live-check-d57-ui.py. Evidence:
 docs/references/evidence/2026-10-29-d57-live-check.md.
 """
 
 import argparse
+import http.client
 import json
 import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -235,6 +245,58 @@ check("A7 the rotated key runs a paid job", s == 200, str(s))
 s, _, _ = call("GET", "/v1/allowance", token)
 check("A7 the old access key is refused (401)", s == 401, str(s))
 
+# -- D59: paged history, and the request limit (free) ----------------------------------------------
+live = newkey["token"]
+s, _, page = call("GET", "/v1/jobs?limit=2", live)
+check("P1 GET /v1/jobs?limit=2 lists the actor's newest jobs", s == 200 and isinstance(page, list) and len(page) == 2, f"{s} {str(page)[:160]}")
+s, _, naive = call("GET", "/v1/jobs?before=" + urllib.parse.quote("2026-10-30T12:00:00"), live)
+check("P1 before without an offset is 422 (D59)", s == 422, f"{s} {str(naive)[:160]}")
+if isinstance(page, list) and page:
+    oldest = page[-1]["created_at"]
+    s, _, older = call("GET", "/v1/jobs?limit=50&before=" + urllib.parse.quote(oldest), live)
+    at = lambda job: datetime.fromisoformat(job["created_at"].replace("Z", "+00:00"))  # noqa: E731
+    check("P1 before=<the page's oldest created_at> lists only older jobs", s == 200 and isinstance(older, list) and all(at(job) < at(page[-1]) for job in older), f"{s} {str(older)[:160]}")
+
+
+def oversize(token):
+    """Declare a 17 MiB body and send none: the engine refuses on Content-Length before reading it (D59)."""
+    connection = http.client.HTTPConnection(urllib.parse.urlsplit(BASE).netloc, timeout=30)
+    connection.putrequest("POST", "/v1/jobs")
+    connection.putheader("Authorization", f"Bearer {token}")
+    connection.putheader("Content-Type", "application/json")
+    connection.putheader("Content-Length", str(17 * 1024 * 1024))
+    connection.endheaders()
+    response = connection.getresponse()
+    raw = response.read()
+    connection.close()
+    return response.status, json.loads(raw) if raw.strip() else None
+
+
+s, too_large = oversize(live)
+check("L1 a body over 16 MiB is 413 request_too_large with limit_bytes (D59)", s == 413 and too_large.get("code") == "request_too_large" and too_large.get("limit_bytes") == 16 * 1024 * 1024, f"{s} {too_large}")
+s, _, result = call("GET", f"/v1/jobs/{header(h1, 'Livepeer-Job-Id')}/result", token=live)
+check("R1 GET /v1/jobs/{id}/result is 501 until M4 (results are inline once, D59)", s == 501 and isinstance(result, dict) and result.get("milestone") == "M4", f"{s} {str(result)[:160]}")
+
+# -- D60: cost per app and class, the events feed held (free) ---------------------------------------
+now = datetime.now(timezone.utc)
+window = urllib.parse.urlencode({"start": (now - timedelta(days=1)).isoformat(), "end": (now + timedelta(minutes=5)).isoformat()})
+s, _, summary = call("GET", f"/v1/costs/summary?{window}")
+by_app, by_class = (summary or {}).get("by_app") or {}, (summary or {}).get("by_class") or {}
+classes = set(by_class) | {name for fees in by_app.values() for name in fees}
+adds_up = all(sum(Decimal(str(fees.get(name, {}).get("fee_eth", "0"))) for fees in by_app.values()) == Decimal(str(by_class.get(name, {}).get("fee_eth", "0"))) for name in classes)
+check("C1 by_app is per app and class, and the apps add up to by_class for every class (D60)", s == 200 and by_app and adds_up, json.dumps(summary)[:400])
+s, _, held = call("GET", "/v1/events")
+check("E1 GET /v1/events is 501, milestone held (D60)", s == 501 and isinstance(held, dict) and held.get("milestone") == "held", f"{s} {held}")
+
+# -- D61: a repeated key revoke answers as the first (free) -----------------------------------------
+_, _, spare = call("POST", "/v1/admin/keys", body={"actor_id": actor, "application_id": "default", "label": f"{actor}-spare", "operation_ref": f"{RUN}-k2"})
+spare_id = spare["key"]["key_id"]
+s1, _, _ = call("POST", f"/v1/admin/keys/{spare_id}/revoke")
+s2, _, _ = call("POST", f"/v1/admin/keys/{spare_id}/revoke")
+check("K1 revoke a key, then repeat it: 204 both times (D61; the repeat was 400)", s1 == 204 and s2 == 204, f"{s1} {s2}")
+s, _, _ = call("POST", "/v1/admin/keys/key_does_not_exist/revoke")
+check("K1 a key that never existed is still refused (400 or 404)", s in (400, 404), str(s))
+
 # -- cost sync and reconciliation ------------------------------------------------------------------
 time.sleep(5)
 for _ in range(12):
@@ -248,5 +310,5 @@ print(json.dumps(rec, indent=1)[:900])
 
 failed = [name for name, ok, _ in results if not ok]
 print(f"\n{len(results) - len(failed)} passed, {len(failed)} failed  (run {RUN})")
-print(f"for the browser check: --actor {actor} --grant {gid}")
+print(f"for the browser check: --actor {actor} --grant {gid}  (it pauses, reactivates and finally revokes this actor)")
 sys.exit(1 if failed else 0)

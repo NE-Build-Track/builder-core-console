@@ -6,7 +6,7 @@ describe("config", () => {
   it("reads a complete environment", () => {
     const config = readConfig({
       CONSOLE_ENGINE_URL: "http://engine:8080/",
-      CONSOLE_ENGINE_ADMIN_TOKEN: "lpk_x",
+      CONSOLE_ENGINE_READER_TOKEN: "lpk_reader",
       CONSOLE_BATTERIES_URL: "http://clearinghouse:8081",
       CONSOLE_BATTERIES_TOKEN: "t",
       CONSOLE_SIGNER_URL: "http://clearinghouse:8937",
@@ -14,7 +14,7 @@ describe("config", () => {
       CONSOLE_DISCOVERY_URL: "http://discovery:8939/",
       CONSOLE_CACHE_TTL_S: "5",
     });
-    expect(config.engine).toEqual({ ok: true, value: { url: "http://engine:8080", adminToken: "lpk_x" } });
+    expect(config.engine).toEqual({ ok: true, value: { url: "http://engine:8080", readerToken: "lpk_reader" } });
     expect(config.auth).toEqual({ mode: "keys" });
     expect(config.discovery).toEqual({ ok: true, value: { url: "http://discovery:8939" } });
     expect(config.cacheTtlMs).toBe(5000);
@@ -23,7 +23,7 @@ describe("config", () => {
 
   it("names what is missing instead of failing to start", () => {
     const config = readConfig({ CONSOLE_ENGINE_URL: "not a url" });
-    expect(config.engine).toEqual({ ok: false, missing: "CONSOLE_ENGINE_URL, CONSOLE_ENGINE_ADMIN_TOKEN" });
+    expect(config.engine).toEqual({ ok: false, missing: "CONSOLE_ENGINE_URL, CONSOLE_ENGINE_READER_TOKEN" });
     expect(config.batteries).toEqual({ ok: false, missing: "CONSOLE_BATTERIES_URL, CONSOLE_BATTERIES_TOKEN" });
     expect(config.discovery).toEqual({ ok: false, missing: "CONSOLE_DISCOVERY_URL" });
   });
@@ -52,6 +52,11 @@ describe("config", () => {
     });
   });
 
+  it("never reads with the engine admin key, even when the environment holds one (gap G8)", () => {
+    const config = readConfig({ CONSOLE_ENGINE_URL: "http://engine:8080", CONSOLE_ENGINE_ADMIN_TOKEN: "lpk_admin" });
+    expect(config.engine).toEqual({ ok: false, missing: "CONSOLE_ENGINE_READER_TOKEN" });
+  });
+
   it("clamps numeric settings", () => {
     expect(readConfig({ CONSOLE_CACHE_TTL_S: "9999" }).cacheTtlMs).toBe(300_000);
     expect(readConfig({ CONSOLE_CACHE_TTL_S: "abc" }).cacheTtlMs).toBe(15_000);
@@ -72,7 +77,7 @@ describe("config", () => {
 
     it("needs no engine admin key: background reads use the reader's client-credentials token", () => {
       const config = readConfig(oidc);
-      expect(config.engine).toEqual({ ok: true, value: { url: "http://engine:8080", adminToken: null } });
+      expect(config.engine).toEqual({ ok: true, value: { url: "http://engine:8080", readerToken: null } });
       expect(config.auth).toEqual({
         mode: "oidc",
         oidc: {

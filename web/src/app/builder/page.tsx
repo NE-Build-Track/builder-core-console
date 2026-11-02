@@ -4,12 +4,12 @@ import { connection } from "next/server";
 import { ExchangePanel } from "@/components/console/act/exchange-panel";
 import { PageView, Streamed } from "@/components/console/page-view";
 import { Empty, GapChip, PageHead, ReadFrom, Section, Unreadable } from "@/components/console/primitives";
-import { JobRunner, type OfferingChoice } from "@/components/console/run/job-runner";
+import { JobRunner } from "@/components/console/run/job-runner";
 import { Ago, Pill } from "@/components/console/values";
 import { loadAllocationNotice, loadCatalog, loadMyJobs } from "@/runtime/builder";
-import type { CatalogEntry, RateView } from "@/services/builder";
+import { rangeText, runChoices } from "@/services/builder";
 
-import { sessionFor } from "../session-cookies";
+import { endedMessage, sessionFor } from "../session-cookies";
 import { BuilderBar, BuilderSignIn } from "./gate";
 
 export const metadata: Metadata = { title: "Builder" };
@@ -32,25 +32,15 @@ export default function BuilderPage({ searchParams }: { readonly searchParams: S
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? null;
 
-function rateText(rate: RateView): string {
-  return rate.known ? rate.text : "no rate";
-}
-
-function rangeText(entry: CatalogEntry): string {
-  if (!entry.low.known && !entry.high.known) return "no rate advertised";
-  if (entry.low.known && entry.high.known && entry.low.amount === entry.high.amount) return rateText(entry.low);
-  return `${rateText(entry.low)} to ${rateText(entry.high)}`;
-}
-
 async function Builder({ searchParams }: { readonly searchParams: Search }) {
   await connection();
   const search = await searchParams;
   const session = await sessionFor("builder");
-  if (!session) return <BuilderSignIn message={first(search.signin)} />;
+  if (!session) return <BuilderSignIn message={first(search.signin) ?? (await endedMessage("builder"))} />;
   const [view, jobs] = await Promise.all([loadCatalog(session), loadMyJobs(session)]);
   const notice = await loadAllocationNotice(session, jobs.actorId);
   const entries = view.entries.ok ? view.entries.value : [];
-  const choices: OfferingChoice[] = entries.map((entry) => ({ app: entry.app, label: `${entry.app} · ${entry.ready}/${entry.runners} ready · ${rangeText(entry)}` }));
+  const choices = runChoices(entries);
   const asked = first(search.app);
   return (
     <>
@@ -92,7 +82,7 @@ async function Builder({ searchParams }: { readonly searchParams: Search }) {
               </thead>
               <tbody>
                 {entries.map((entry) => (
-                  <tr key={entry.app}>
+                  <tr key={entry.key}>
                     <td className="mono table-cell-wrap">
                       <bdi>{entry.app}</bdi>
                       {entry.notes.length > 0 ? <span className="hint"> · {entry.notes.join(" ")}</span> : null}
@@ -100,7 +90,10 @@ async function Builder({ searchParams }: { readonly searchParams: Search }) {
                     <td className="r num">
                       {entry.ready}/{entry.runners}
                     </td>
-                    <td className="table-cell-wrap">{rangeText(entry)}</td>
+                    <td className="table-cell-wrap">
+                      {rangeText(entry)}
+                      {entry.source ? <span className="hint"> · {entry.source}</span> : null}
+                    </td>
                     <td>{entry.stale ? <Pill state="warn">stale</Pill> : <Ago iso={entry.observedAt} />}</td>
                     <td className="r">
                       <a className="btn" href={`/builder?app=${encodeURIComponent(entry.app)}#run`}>

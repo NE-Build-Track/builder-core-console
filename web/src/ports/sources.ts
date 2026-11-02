@@ -38,6 +38,8 @@ export interface EngineReader {
     readonly applicationId: string;
     readonly actorId?: string;
   }): Promise<Reading<Reconciliation>>;
+  /** GET /v1/jobs: every actor's jobs in the reader's application, newest first, paged by `before` (builder-core D44, D59). */
+  jobs(query: { readonly limit: number; readonly before?: string }): Promise<Reading<readonly Job[]>>;
   job(id: string): Promise<Reading<Job>>;
   jobCost(id: string): Promise<Reading<JobCost>>;
 }

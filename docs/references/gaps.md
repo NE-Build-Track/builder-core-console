@@ -6,27 +6,16 @@ fails when the two disagree. The console works within these today; nothing here 
 
 | Gap | Owner | Unlocks |
 | --- | --- | --- |
-| [G1](#g1-the-jobs-page-lists-projections-not-jobs) | this repository | A real Jobs page: throughput, failures by kind, per-actor and per-app job history. |
 | [G3](#g3-cost-projections-capped-at-25) | builder-core | Job cost history beyond the newest 25; cost trends per app. |
 | [G4](#g4-no-engine-metrics-or-events) | builder-core | Job rates, latency and failure trends over time; live updates instead of polling. |
 | [G5](#g5-signer-metrics-are-loopback-only) | signer | Drop the relay container. |
 | [G6](#g6-usage-feed-has-no-time-filter) | batteries | Usage over a window without walking the whole history; no partial totals. |
-| [G7](#g7-payer-deposit-and-reserve-not-shown) | this repository | Payer runway: deposit and reserve against the burn rate. |
-| [G8](#g8-the-keys-mode-reader-holds-an-admin-key) | this repository | A console credential that cannot write even if the code tried, in both modes. |
 | [G9](#g9-admin-reads-are-scoped-to-one-application) | builder-core | Per-actor money across every application. |
 | [G10](#g10-no-application-wide-reconciliation-in-per_actor-mode) | builder-core | One reconciliation read for the Health page instead of one per actor. |
 | [G11](#g11-reconciliation-flags-normal-sync-lag-as-unbalanced) | builder-core | An engine flag that only goes false on real money gaps, so it can drive alerts. |
-| [G12](#g12-creating-a-grant-returns-an-incomplete-record) | builder-core | The created grant shown from one call. |
 | [G13](#g13-no-who-am-i-call) | builder-core | The Builder names its actor from the moment it signs in. |
 | [G14](#g14-rates-are-in-wei-only) | builder-core | Rates a builder can read in dollars before running a job. |
-
-## G1: The Jobs page lists projections, not jobs
-
-**Impact.** builder-core lists every actor's jobs to an admin or auditor (GET /v1/jobs, its D44), but the Jobs page still shows the newest cost projections and looks jobs up by id. builder-core has no filters or paging for that list yet.
-
-**Fix.** List jobs from GET /v1/jobs with the reader's credential; ask builder-core for filters (actor, app, state, time) and paging.
-
-**Owner.** this repository. **Unlocks:** A real Jobs page: throughput, failures by kind, per-actor and per-app job history.
+| [G15](#g15-the-job-list-has-no-filters) | builder-core | Per-actor and per-app job history, and failures by kind, without paging through every job. |
 
 ## G3: Cost projections capped at 25
 
@@ -38,7 +27,7 @@ fails when the two disagree. The console works within these today; nothing here 
 
 ## G4: No engine metrics or events
 
-**Impact.** The engine has no /metrics (tech debt T4) and /v1/events answers 501 until M4, so job throughput and latency over time are not available.
+**Impact.** The engine has no /metrics (tech debt T4) and /v1/events answers 501 with `milestone: "held"` (builder-core D60: the events feed is held for M3, ISS-18), so job throughput and latency over time are not available.
 
 **Fix.** Engine /metrics (job, discovery and cost-sync counters) and the events feed.
 
@@ -59,22 +48,6 @@ fails when the two disagree. The console works within these today; nothing here 
 **Fix.** A since/until filter (or newest-first order) on /v1/usage and /v1/sessions.
 
 **Owner.** batteries. **Unlocks:** Usage over a window without walking the whole history; no partial totals.
-
-## G7: Payer deposit and reserve not shown
-
-**Impact.** The signer's /readyz says only ready or not. Deposit and reserve amounts appear in Batteries' escrow report only when its on-chain listener runs, which this stack (like ChatLPT's) does not enable.
-
-**Fix.** Enable the Batteries on-chain listener with the payer address, or read TicketBroker directly.
-
-**Owner.** this repository. **Unlocks:** Payer runway: deposit and reserve against the burn rate.
-
-## G8: The keys-mode reader holds an admin key
-
-**Impact.** builder-core has a read-only auditor credential (its #69), and the OIDC reader uses one, so the engine refuses its writes. With CONSOLE_AUTH=keys the reader still holds an engine admin key, which can do everything; the console stays read-only there only because its code makes GET requests alone (tests/structure/read-only.test.ts).
-
-**Fix.** Issue the keys-mode reader an auditor key (kind auditor) instead of an admin key; the Money page then shows the engine's grants as not available, as in OIDC mode.
-
-**Owner.** this repository. **Unlocks:** A console credential that cannot write even if the code tried, in both modes.
 
 ## G9: Admin reads are scoped to one application
 
@@ -100,14 +73,6 @@ fails when the two disagree. The console works within these today; nothing here 
 
 **Owner.** builder-core. **Unlocks:** An engine flag that only goes false on real money gaps, so it can drive alerts.
 
-## G12: Creating a grant returns an incomplete record
-
-**Impact.** POST /v1/admin/grants answers 201 with the new grant's id but an empty name, status and total, so the console reads the grant list again after creating one instead of showing the response.
-
-**Fix.** Map Batteries' create response fully in the engine (the grant list already maps the same fields).
-
-**Owner.** builder-core. **Unlocks:** The created grant shown from one call.
-
 ## G13: No who-am-I call
 
 **Impact.** Nothing tells a key which actor and application it belongs to, so the Builder learns its actor id from its newest job and shows none until the key has run one.
@@ -118,11 +83,19 @@ fails when the two disagree. The console works within these today; nothing here 
 
 ## G14: Rates are in wei only
 
-**Impact.** Offerings carry the orchestrators' rates in wei per their own unit, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries.
+**Impact.** Offerings carry the orchestrators' rates in their own currency and unit, mostly wei, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries. Since builder-core D62 (PR #77, merged) a rate carries the runner's own `price_usd` when it advertises one, and the catalog shows it beside the wei rate, but it is the runner's figure, passed on unconverted, and most orchestrators send none (on 2 November, one of the three the stack's discovery reached did).
 
-**Fix.** Add a USD rate beside the advertised one, with the ETH price, its source and its time (ISS-10).
+**Fix.** A USD rate for every runner, with the ETH price, its source and its time (ISS-10): a conversion in the engine, or orchestrators that all advertise `price_usd`.
 
 **Owner.** builder-core. **Unlocks:** Rates a builder can read in dollars before running a job.
+
+## G15: The job list has no filters
+
+**Impact.** The Jobs page lists every actor's jobs newest first (`GET /v1/jobs`, paged with `before`), but the engine takes no filter, so finding one actor's, one app's or one state's jobs means paging through the rest.
+
+**Fix.** Filters on `GET /v1/jobs`: `actor_id`, `app`, `state` and a time window (builder-core's ISS-29 REST guide proposes the paging cursor, not the filters).
+
+**Owner.** builder-core. **Unlocks:** Per-actor and per-app job history, and failures by kind, without paging through every job.
 
 ## Not a console gap: funded grants through the engine
 
@@ -135,6 +108,24 @@ credentials and still uses the CLI.
 
 ## Closed
 
+- **G7, payer deposit and reserve were not shown** (closed 2 November). The stack runs Batteries' on-chain
+  listener (`BATTERIES_ONCHAIN_LISTENER`, `PAYER_ADDRESS` in `deploy/.env`; it polls the signer's RPC every
+  30 s and opens with a `getSenderInfo` snapshot, so no start block is needed). The Money page shows the
+  payer's TicketBroker deposit and reserve from `GET /v1/escrow/report`, which serves ETH decimals
+  (`deposit_balance_eth`, not the store's wei: the console's schema expected wei until it was seen live).
+- **G8, the keys-mode reader held an admin key** (closed 2 November). With `CONSOLE_AUTH=keys` the
+  console now reads with `CONSOLE_ENGINE_READER_TOKEN`, an auditor key `first-run.sh` issues, which the
+  engine lets only read (builder-core D46), as the OIDC reader already did; `deploy/compose.yaml` blanks
+  the admin key and the engine's Batteries tokens for the console container. The Money page shows the
+  engine's grants as not available in both modes (grants carry no application, builder-core #69).
+- **G1, the Jobs page listed projections, not jobs** (closed 2 November). The Jobs page lists every
+  actor's jobs in the application from `GET /v1/jobs` (builder-core D44), newest first, 50 at a time, paging
+  with `before` (D59). The engine takes no filters yet: that is G15.
+- **G12, creating a grant returned an incomplete record** (closed 30 October). builder-core's
+  `POST /v1/admin/grants` now answers with the grant's name, status and total (seen live on the stack:
+  `{"name": …, "status": "active", "total": "0.01"}`; `scripts/live-check-d57.py` A5, "created grant
+  read back in full"). The Operator result step still shows only the new grant's id and the amount
+  sent; showing the response's name, status and total is a small follow-up, not a gap.
 - **G2, no list of provisioned actors** (closed 28 October). builder-core #69 lists actors
   (`GET /v1/admin/actors`), and the Users and Operator pages read it; access keys only add the actors
   that hold a key the engine does not list yet.

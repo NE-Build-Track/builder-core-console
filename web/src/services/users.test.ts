@@ -21,6 +21,12 @@ describe("users", () => {
     expect(admins.map((key) => key.key_id)).toEqual(["a1"]);
   });
 
+  it("lists an auditor key (the console's own reader) with the admin keys, not as an actor (gap G8)", () => {
+    const { actors, admins } = groupKeys([accessKey({ key_id: "k1" }), accessKey({ key_id: "r1", kind: "auditor", actor_id: "console-reader" })]);
+    expect(actors.map((actor) => actor.actorId)).toEqual(["customer-42"]);
+    expect(admins.map((key) => key.key_id)).toEqual(["r1"]);
+  });
+
   it("reads money only for the console's application (gap G9)", async () => {
     const sources = fakeSources({
       engine: { keys: async () => read("engine", [accessKey(), accessKey({ key_id: "k3", actor_id: "customer-7", application_id: "chatlpt" })]) },

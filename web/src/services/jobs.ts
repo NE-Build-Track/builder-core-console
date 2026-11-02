@@ -1,13 +1,20 @@
 /**
- * Jobs, within what the engine exposes today (gap G1, G3): the newest cost projections, and any job by
- * id with its attempts, its cost, and the Batteries events its signed sessions produced
- * (docs/product-specs/console.md#jobs).
+ * Jobs: every job in the application a page at a time (GET /v1/jobs, builder-core D44 and D59), the newest
+ * cost projections (gap G3), and any job by id with its attempts, its cost, and the Batteries events its
+ * signed sessions produced (docs/product-specs/console.md#jobs).
  */
 import type { UsageEvent } from "@/domain/batteries";
 import type { Job } from "@/domain/engine";
-import { ok, type Reading } from "@/domain/reading";
-import type { JobLookup, JobsView } from "@/domain/views";
+import { failureAdvice } from "@/domain/failures";
+import { mapReading, ok, type Reading } from "@/domain/reading";
+import type { JobList, JobListRow, JobLookup, JobsView } from "@/domain/views";
 import type { Sources } from "@/ports/sources";
+
+/** Jobs per page of the list. */
+export const JOB_PAGE = 50;
+
+/** An ISO-8601 time with its offset: the engine refuses `before` without one (builder-core D59). */
+const AWARE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -39,10 +46,38 @@ export async function lookupJob(sources: Sources, id: string): Promise<JobLookup
   };
 }
 
-export async function jobs(sources: Sources, lookupId: string | null): Promise<JobsView> {
-  const [projections, lookup] = await Promise.all([
+function listRow(job: Job): JobListRow {
+  const failure = job.failure ? failureAdvice(job.failure) : null;
+  return {
+    id: job.id,
+    actorId: job.actor_id,
+    app: job.app,
+    state: job.state,
+    createdAt: job.created_at,
+    attempts: job.attempts.length,
+    paid: job.attempts.some((attempt) => attempt.payment_sent),
+    failure: failure ? { title: failure.title, code: failure.code } : null,
+  };
+}
+
+export async function jobList(sources: Sources, before: string | null): Promise<JobList> {
+  const given = before?.trim() || null;
+  const usable = given !== null && AWARE_TIME.test(given) && !Number.isNaN(Date.parse(given)) ? given : null;
+  const read = await sources.engine.jobs(usable ? { limit: JOB_PAGE, before: usable } : { limit: JOB_PAGE });
+  const full = read.ok && read.value.length === JOB_PAGE;
+  return {
+    rows: mapReading(read, (list) => list.map(listRow)),
+    before: usable,
+    older: full ? (read.value.at(-1)?.created_at ?? null) : null,
+    invalidBefore: given !== null && usable === null,
+  };
+}
+
+export async function jobs(sources: Sources, lookupId: string | null, before: string | null = null): Promise<JobsView> {
+  const [list, projections, lookup] = await Promise.all([
+    jobList(sources, before),
     sources.engine.costProjections(),
     lookupId && isJobId(lookupId) ? lookupJob(sources, lookupId) : Promise.resolve(null),
   ]);
-  return { projections, lookup, invalidId: lookupId !== null && lookupId !== "" && !isJobId(lookupId) };
+  return { list, projections, lookup, invalidId: lookupId !== null && lookupId !== "" && !isJobId(lookupId) };
 }

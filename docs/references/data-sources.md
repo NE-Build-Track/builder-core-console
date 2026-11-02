@@ -7,7 +7,9 @@ Every route is a GET (decision D1).
 ## Engine
 
 The stock builder-core REST service at `CONSOLE_ENGINE_URL` (`http://engine:8080` in compose), read
-with `CONSOLE_ENGINE_ADMIN_TOKEN`, an `lpk_` admin key from `lpb bootstrap-admin`. Types come from
+with `CONSOLE_ENGINE_READER_TOKEN`, an `lpk_` auditor key (read-only: the engine refuses its writes,
+builder-core D46) that `first-run.sh` issues; with `CONSOLE_AUTH=oidc`, with the reader's client-credentials
+token. The console never holds the engine admin key. Types come from
 `openapi/engine.openapi.json`, the spec of the pinned engine (D12).
 
 | Route | Page | Notes |
@@ -15,27 +17,28 @@ with `CONSOLE_ENGINE_ADMIN_TOKEN`, an `lpk_` admin key from `lpb bootstrap-admin
 | `GET /readyz` | Health, Network, footer | No auth. Answers 503 with the same `EngineHealth` body when not ready; the console reads that as an unready engine, not a failure. Gives discovery freshness, cost-sync time and error, running jobs, allocation mode, version. |
 | `GET /v1/offerings` | Network | Apps on offer, runner counts, rate range. |
 | `GET /v1/runners` | Network | Per app (`?app=`): runner URL, orchestrator, capacity, GPU, price, version. |
-| `GET /v1/admin/grants` | Money | The engine's view of Batteries grants (through its grant-desk credential). Admin only: the auditor reader never asks (builder-core #69), and the Money page says so. |
+| `GET /v1/admin/grants` | Money (not read) | The engine's view of Batteries grants (through its grant-desk credential). Admin only: the auditor reader never asks (builder-core #69), and the Money page says so; the Operator page reads it with the signed-in admin key. |
 | `GET /v1/admin/keys` | Users | Every access key: actor, application, kind, permissions, revoked. The Users and Operator pages add these to `GET /v1/admin/actors`, for key holders the engine does not list yet. |
-| `GET /v1/allowance` | Users | `?actor_id=`: the actor's allocation, granted, spent, available. Scoped to the admin key's application (gap G9). |
+| `GET /v1/allowance` | Users | `?actor_id=`: the actor's allocation, granted, spent, available. Scoped to the reader key's application (gap G9). |
 | `GET /v1/costs/summary` | Users, Usage | Spend by cost class over a window, optionally per actor (gap G9). |
 | `GET /v1/costs/projections` | Jobs | The 25 newest job costs (gap G3). |
 | `GET /v1/admin/reconciliation` | Health, Users | Batteries spend against engine attribution, per application or actor: `balanced`, `unattributed`. Per application answers 404 in per_actor mode (gap G10). |
-| `GET /v1/jobs/{job_id}` | Jobs | Any job by id, with attempts and signed sessions. There is no admin job list (gap G1). |
+| `GET /v1/jobs` | Jobs | Every actor's jobs in the reader's application (builder-core D44), newest first, 50 at a time; the next page asks `before` the oldest job's `created_at` (D59). No filters (gap G15). |
+| `GET /v1/jobs/{job_id}` | Jobs | Any job by id, with attempts and signed sessions. |
 | `GET /v1/jobs/{job_id}/cost` | Jobs | The job's cost by attempt and cost class. |
 
 ### With a signed-in key (Operator actions and Builder, D15–D18)
 
-These calls use the key the person signed in with, not the console's admin key, and are never cached.
-The Builder also reads `GET /v1/offerings`, `GET /v1/runners`, `GET /v1/allowance`, `GET /v1/costs/summary`
+These calls use the key the person signed in with, not the console's reader key, and are never cached.
+The Builder also reads `GET /v1/offerings`, `GET /v1/runners`, `GET /v1/allowance`, `GET /v1/costs/summary` (`by_class`, and `by_app` per app and class since builder-core D60)
 and `GET /v1/jobs/{job_id}` (and `/cost`) with its actor key; the Operator page reads `GET /v1/admin/grants`,
 `GET /v1/admin/keys` and each actor's `GET /v1/allowance` with the admin key.
 
 | Route | Area | Notes |
 | --- | --- | --- |
 | `GET /v1/jobs` | Builder, sign-in | The key's own jobs. At sign-in it shows the key works; the newest job names the actor (gap G13). |
-| `POST /v1/jobs` | Builder | Runs a job. `?stream=true` for chat; the response streams through the console unchanged, with `Livepeer-Job-Id`. |
-| `POST /v1/admin/grants` | Operator | Create a grant with an amount. Needs the grant desk to hold `grants.fund` (deploy/init-secrets.py). Returns only the id (gap G12). Requires an operation reference; a repeat answers from the engine's record. |
+| `POST /v1/jobs` | Builder | Runs a job. `?stream=true` for chat; the response streams through the console unchanged, with `Livepeer-Job-Id`. An error answer is read by its body: the job's `failure.kind` and `reason` (402, 403, 503: builder-core D58), `code: request_too_large` with `limit_bytes` (413, D59), or a 409 `operation_*` code (D57); `Retry-After` is passed to the browser. |
+| `POST /v1/admin/grants` | Operator | Create a grant with an amount. Needs the grant desk to hold `grants.fund` (deploy/init-secrets.py). Answers with the grant's id, name, status and total (G12, closed 30 October). Requires an operation reference; a repeat answers from the engine's record. |
 | `POST /v1/admin/grant/fund` | Operator | Add to a grant. Requires an operation reference; a repeat applies once. |
 | `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation` | Operator | Provision an actor with an allocation drawn from a grant. Requires an operation reference; a repeat answers from the engine's record, and an actor already provisioned comes back as it is. |
 | `POST /v1/admin/applications/{application_id}/actors/{actor_id}/allocation/fund` | Operator | Add to an allocation. Requires an operation reference. |
@@ -72,7 +75,7 @@ with no time filter (gap G6). Shapes: `web/src/domain/batteries.ts`.
 | `GET /v1/sessions` | Usage | Payment sessions: `app`, `orchestrator` (ticket recipient), allocation, key. Joins usage to app and orchestrator. |
 | `GET /v1/usage` | Usage, Jobs | Every applied or quarantined `create_signed_ticket` event: `computed_fee_usd`, `computed_fee_eth`, `manifest_id`, `payment_session_id`. Jobs filters by `manifest_id`. |
 | `GET /v1/ledger/report` | Money | Double-entry balances per account (`allocation_available`, `allocation_spent`, `grant_funding_source`, `grant_unallocated`). |
-| `GET /v1/escrow/report` | Money | Payer deposit and reserve in wei, only with the on-chain listener (gap G7). |
+| `GET /v1/escrow/report` | Money | The payer's TicketBroker deposit and reserve, as ETH decimals (`deposit_balance_eth`, `reserve_balance_eth`, `total_balance_eth`; the API rewrites the store's wei), with the block they are confirmed through. Filled by Batteries' on-chain listener, which this stack runs (`BATTERIES_ONCHAIN_LISTENER`, `PAYER_ADDRESS`). |
 
 Available but not yet read: `GET /v1/settlements` (empty without the on-chain listener) and
 `GET /v1/escrow/activity`.

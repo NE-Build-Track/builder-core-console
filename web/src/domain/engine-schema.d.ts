@@ -340,7 +340,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Jobs */
+        /**
+         * List Jobs
+         * @description Newest first; ``before`` (an ISO-8601 time with its offset) is the last page's oldest
+         *     ``created_at``, for the next page (D59).
+         */
         get: operations["list_jobs_v1_jobs_get"];
         put?: never;
         /** Run Job */
@@ -551,6 +555,7 @@ export interface components {
             started_at: string;
             /** Status Code */
             status_code: number | null;
+            timings?: components["schemas"]["CallTimings"] | null;
         };
         /** AttemptCost */
         AttemptCost: {
@@ -563,8 +568,34 @@ export interface components {
             cost_class: "delivered" | "failed_after_payment" | "uncertain" | "pending";
             fees: components["schemas"]["Fees"];
         };
-        /** CostSummary */
+        /**
+         * CallTimings
+         * @description Where one runner call's time went before the runner answered, in milliseconds (#89). A step the
+         *     call never reached is ``None``, and each step adds up its repeats.
+         */
+        CallTimings: {
+            /** Challenge Ms */
+            challenge_ms?: number | null;
+            /** Response Ms */
+            response_ms?: number | null;
+            /** Signing Ms */
+            signing_ms?: number | null;
+        };
+        /**
+         * CostSummary
+         * @description The costs of the jobs created in ``[start, end)``, in the caller's scope. ``by_app`` attributes
+         *     the same attempt fees to each job's runner app, kept by class as in ``by_class`` (D60), so a final fee
+         *     and a ``pending`` one that can still grow are never one figure. For every class, the apps add up to
+         *     its ``by_class`` total. An app appears once one of its jobs has a costed attempt, with only the classes
+         *     its attempts have.
+         */
         CostSummary: {
+            /** By App */
+            by_app?: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["Fees"];
+                };
+            };
             /** By Class */
             by_class: {
                 [key: string]: components["schemas"]["Fees"];
@@ -665,6 +696,8 @@ export interface components {
              * @default false
              */
             payment_sent: boolean;
+            /** Reason */
+            reason?: ("not_authorized" | "allowance_exhausted" | "signer_unavailable" | "signer_unknown") | null;
             /** Status Code */
             status_code?: number | null;
         };
@@ -973,19 +1006,58 @@ export interface components {
         };
         /**
          * NetworkRate
-         * @description A rate as the orchestrator advertises it (wholesale network price, not retail).
+         * @description A rate exactly as advertised: a wholesale network price per unit, not a job quote or a retail price.
          */
         NetworkRate: {
             /** Amount */
             amount: string;
             /** Currency */
             currency: string;
+            /** Price Usd */
+            price_usd?: string | null;
+            /**
+             * Source
+             * @default orchestrator
+             * @constant
+             */
+            source: "orchestrator";
+            /** Unit */
+            unit: string;
+        };
+        /**
+         * ObservedRate
+         * @description A rate as the catalog serves it: when it was last known, and whose clock says so.
+         */
+        ObservedRate: {
+            /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /**
+             * Observed By
+             * @enum {string}
+             */
+            observed_by: "orchestrator" | "engine";
+            /** Price Usd */
+            price_usd?: string | null;
+            /**
+             * Source
+             * @default orchestrator
+             * @constant
+             */
+            source: "orchestrator";
             /** Unit */
             unit: string;
         };
         /**
          * Offering
-         * @description One runner app, as a builder sees it.
+         * @description One runner app in one (currency, unit), as a builder sees it. An app's runners with no rate are one
+         *     more offering with no range: they still serve jobs, so the catalog lists them.
          */
         Offering: {
             /** App */
@@ -997,12 +1069,19 @@ export interface components {
              * Format: date-time
              */
             observed_at: string;
-            rate_high: components["schemas"]["NetworkRate"] | null;
-            rate_low: components["schemas"]["NetworkRate"] | null;
+            rate_high: components["schemas"]["ObservedRate"] | null;
+            rate_low: components["schemas"]["ObservedRate"] | null;
+            /**
+             * Rate Status
+             * @enum {string}
+             */
+            rate_status: "available" | "missing";
             /** Ready Count */
             ready_count: number;
             /** Runner Count */
             runner_count: number;
+            /** Stale */
+            stale: boolean;
         };
         /** ProvisionBody */
         ProvisionBody: {
@@ -1123,9 +1202,13 @@ export interface components {
             metadata?: string | null;
             /** Mode */
             mode: string | null;
+            /** Observed At */
+            observed_at?: string | null;
             /** Orchestrator Url */
             orchestrator_url: string | null;
             rate: components["schemas"]["NetworkRate"] | null;
+            /** Rate Error */
+            rate_error?: string | null;
             /** Runner Id */
             runner_id: string | null;
             /** Url */
@@ -1973,6 +2056,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                before?: string | null;
             };
             header?: never;
             path?: never;

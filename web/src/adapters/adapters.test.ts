@@ -93,6 +93,14 @@ describe("batteries adapter", () => {
     expect(reading).toMatchObject({ ok: true, value: { truncated: true } });
   });
 
+  it("reads the escrow report as the API serves it: ETH decimals, not wei (seen live at ca09e47, gap G7)", async () => {
+    // Batteries' API rewrites each store-native *_wei field as an *_eth decimal (internal/app/presentation.go)
+    const row = { chain_id: "42161", confirmed_through_block: "520662913", contract_address: "0xa8bb618b1520e284046f3dfc448851a1ff26e41b", deposit_balance_eth: "0.18051204", reserve_balance_eth: "0.3366", sender: "0x5ae4e42db3671370a0c25aff451e7482aaec3d0b", total_balance_eth: "0.51711204" };
+    vi.stubGlobal("fetch", vi.fn(async () => respond(200, [row])));
+    const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).escrow();
+    expect(reading.ok && reading.value.map((item) => [item.deposit_balance_eth, item.reserve_balance_eth, item.total_balance_eth])).toEqual([["0.18051204", "0.3366", "0.51711204"]]);
+  });
+
   it("rejects a body that does not match the pinned shape, naming the field", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => respond(200, { items: [{ id: "g1" }], next_cursor: "" })));
     const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).grants();
@@ -116,7 +124,7 @@ describe("batteries adapter", () => {
 });
 
 describe("engine adapter", () => {
-  const settings = { ok: true as const, value: { url: "http://e:8080", adminToken: "lpk_admin" } };
+  const settings = { ok: true as const, value: { url: "http://e:8080", readerToken: "lpk_reader" } };
   const health = { ready: false, discovery_fresh: false, discovery_observed_at: null, discovery_error: "x", cost_sync_at: null, cost_sync_error: null, running_jobs: 0, allocation_mode: "per_actor", version: "v" };
 
   it("reads an unready engine's health from its 503 body", async () => {
@@ -124,10 +132,10 @@ describe("engine adapter", () => {
     expect(await engineReader(settings, { timeoutMs: 1000, now }).health()).toMatchObject({ ok: true, value: { ready: false } });
   });
 
-  it("sends the admin key and only GETs", async () => {
+  it("sends the reader's auditor key and only GETs", async () => {
     const fetch = vi.fn(async (request: Request) => {
       expect(request.method).toBe("GET");
-      expect(request.headers.get("authorization")).toBe("Bearer lpk_admin");
+      expect(request.headers.get("authorization")).toBe("Bearer lpk_reader");
       expect(request.url).toBe("http://e:8080/v1/admin/reconciliation?application_id=default&actor_id=a");
       return respond(200, { application_id: "default" });
     });
@@ -136,16 +144,15 @@ describe("engine adapter", () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
-  it("never asks for the engine's grants with the read-only auditor token (builder-core #69)", async () => {
+  it("never asks for the engine's grants: the reader is an auditor in both sign-in modes (builder-core #69, gap G8)", async () => {
     const fetch = vi.fn(async () => respond(200, []));
     vi.stubGlobal("fetch", fetch);
     const auditor = { token: async () => ({ ok: true as const, source: "identity" as const, value: "jwt-reader", readAt: NOW.toISOString() }) };
-    const reader = engineReader({ ok: true, value: { url: "http://e:8080", adminToken: null } }, { timeoutMs: 1000, now }, auditor);
+    const oidc = engineReader({ ok: true, value: { url: "http://e:8080", readerToken: null } }, { timeoutMs: 1000, now }, auditor);
     // grants fund every application and carry none, so the engine refuses them to an auditor
-    expect(await reader.grants()).toMatchObject({ ok: false, problem: { kind: "not_permitted" } });
+    expect(await oidc.grants()).toMatchObject({ ok: false, problem: { kind: "not_permitted" } });
+    expect(await engineReader(settings, { timeoutMs: 1000, now }).grants()).toMatchObject({ ok: false, problem: { kind: "not_permitted" } });
     expect(fetch).not.toHaveBeenCalled();
-    await engineReader(settings, { timeoutMs: 1000, now }).grants(); // with an admin key they are read
-    expect(fetch).toHaveBeenCalledOnce();
   });
 
   it("inspects one key with the signed-in key, and reads its refusal as a problem (ISS-08)", async () => {

@@ -5,11 +5,11 @@ import { CopyButton } from "@/components/console/copy-button";
 import { CountUp } from "@/components/console/count-up";
 import { Icon } from "@/components/console/icons";
 import { PageView, Streamed } from "@/components/console/page-view";
-import { Empty, GapChip, Grid, PageHead, ReadFrom, Ring, Section, Tile, Truncated, Unreadable } from "@/components/console/primitives";
+import { Empty, Grid, PageHead, ReadFrom, Ring, Section, Tile, Truncated, Unreadable } from "@/components/console/primitives";
 import { AgoMs, Amount, Id, Pill, Usd } from "@/components/console/values";
 import type { AllocationView, GrantView } from "@/domain/views";
 import { loadMoney } from "@/runtime/console";
-import { approximate, difference, roundForDisplay, share, toUnits, weiToEth } from "@/utils/decimal";
+import { approximate, difference, roundForDisplay, share, toUnits } from "@/utils/decimal";
 
 export const metadata: Metadata = { title: "Money" };
 
@@ -160,21 +160,24 @@ async function Money() {
           ) : null}
         </Section>
 
-        <Section id="h-escrow" title="Payer escrow" reveal end={<GapChip id="G7" />}>
+        <Section id="h-escrow" title="Payer escrow" reveal>
           <Unreadable reading={view.escrow} what="The escrow report" />
           {view.escrow.ok && view.escrow.value.length === 0 ? (
             <div className="panel">
               <p className="note">
                 <Icon name="gap" />
-                <span>Deposit and reserve appear here when Batteries runs its on-chain listener. This stack, like ChatLPT&apos;s, does not run it yet.</span>
+                <span>
+                  Deposit and reserve appear here when Batteries runs its on-chain listener: set <code>BATTERIES_ONCHAIN_LISTENER=true</code> and{" "}
+                  <code>PAYER_ADDRESS</code> in <code>deploy/.env</code> (<code>first-run.sh</code> fills the address).
+                </span>
               </p>
             </div>
           ) : null}
           {view.escrow.ok
             ? view.escrow.value.map((row) => {
-                const deposit = weiToEth(row.deposit_balance_wei);
-                const reserve = weiToEth(row.reserve_balance_wei);
-                const total = weiToEth(row.total_balance_wei);
+                const deposit = row.deposit_balance_eth;
+                const reserve = row.reserve_balance_eth;
+                const total = row.total_balance_eth;
                 return (
                   <div key={`${row.chain_id}-${row.sender}`} className="panel">
                     <div className="escrow-head">

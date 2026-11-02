@@ -8,21 +8,23 @@ import { PageView, Streamed } from "@/components/console/page-view";
 import { Empty, GapChip, PageHead, ReadFrom, Section, Unreadable } from "@/components/console/primitives";
 import { Ago, Amount, Glyph, Id, Pill } from "@/components/console/values";
 import { attemptPayment, COST_CLASS_LABELS, costClasses, type CostClass, type Fees, type Job, type JobCost } from "@/domain/engine";
+import { failureAdvice } from "@/domain/failures";
 import type { JobLookup, State } from "@/domain/views";
 import { loadJobs } from "@/runtime/console";
+
+import { JobListSection, JOB_STATES } from "./job-list";
 
 export const metadata: Metadata = { title: "Jobs" };
 
 type Props = { readonly searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 const CLASS_STYLE: Record<CostClass, string> = { delivered: "c-delivered", failed_after_payment: "c-failed", uncertain: "c-uncertain", pending: "c-pending" };
-const JOB_STATES: Record<Job["state"], State> = { queued: "unknown", running: "unknown", succeeded: "ok", failed: "bad", uncertain: "warn" };
 
 export default function JobsPage({ searchParams }: Props) {
   return (
     <PageView>
       <PageHead icon="jobs" eyebrow="Jobs" title="Jobs">
-        Any job by id, with its attempts, the orchestrators it tried, what each attempt cost, and the signed sessions behind it. <GapChip id="G1" />
+        Every job in the application, newest first, and any job by id with its attempts, the orchestrators it tried, what each attempt cost, and the signed sessions behind it.
       </PageHead>
       <Suspense fallback={<LookupForm value="" />}>
         <LookupFormFromQuery searchParams={searchParams} />
@@ -35,6 +37,7 @@ export default function JobsPage({ searchParams }: Props) {
 }
 
 const pickId = (params: Record<string, string | string[] | undefined>) => (typeof params.id === "string" ? params.id : "");
+const pickBefore = (params: Record<string, string | string[] | undefined>) => (typeof params.before === "string" ? params.before : null);
 
 async function LookupFormFromQuery({ searchParams }: Props) {
   return <LookupForm value={pickId(await searchParams)} />;
@@ -96,9 +99,10 @@ const PAYMENT_WORDS = { paid: "yes", unknown: "unknown", none: "no" } as const;
 const SESSION_WORDS = { paid: null, unknown: "the signer has not confirmed it", unpaid: "refused by the signer: never matched or billed" } as const;
 
 async function Jobs({ searchParams }: Props) {
-  const id = pickId(await searchParams);
+  const params = await searchParams;
+  const id = pickId(params);
   await connection();
-  const view = await loadJobs(id || null);
+  const view = await loadJobs(id || null, pickBefore(params));
   return (
     <>
       {view.invalidId ? (
@@ -108,6 +112,7 @@ async function Jobs({ searchParams }: Props) {
         </p>
       ) : null}
       {view.lookup ? <LookupResult lookup={view.lookup} /> : null}
+      <JobListSection list={view.list} />
 
       <Section id="h-newest" title="Newest costed jobs" description="GET /v1/costs/projections returns the 25 newest." end={<GapChip id="G3" />} reveal>
         <Unreadable reading={view.projections} what="Cost projections" />
@@ -228,7 +233,7 @@ function LookupResult({ lookup }: { readonly lookup: JobLookup }) {
           <>
             <dt>Failure</dt>
             <dd>
-              {value.failure.kind}: {value.failure.message}
+              <FailureFacts failure={value.failure} />
             </dd>
           </>
         ) : null}
@@ -328,5 +333,17 @@ function LookupResult({ lookup }: { readonly lookup: JobLookup }) {
       {providerEvents && !providerEvents.ok ? <Unreadable reading={providerEvents} what="Batteries events for this job" /> : null}
       <ReadFrom reading={job} />
     </article>
+  );
+}
+
+/** A failure in the engine's table's words (builder-core D58), with its own message and the next step. */
+function FailureFacts({ failure }: { readonly failure: NonNullable<Job["failure"]> }) {
+  const advice = failureAdvice(failure);
+  return (
+    <>
+      <b>{advice.title}</b> (<code>{advice.code}</code>): {advice.message}
+      <br />
+      <span className="muted">What to do: {advice.todo}</span>
+    </>
   );
 }

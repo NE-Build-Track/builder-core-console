@@ -66,7 +66,7 @@ export const loadNetwork = () => network(current());
 export const loadMoney = () => money(current());
 export const loadUsers = () => users(current());
 export const loadUsage = (window: WindowName) => usage(current(), window);
-export const loadJobs = (lookupId: string | null) => jobs(current(), lookupId);
+export const loadJobs = (lookupId: string | null, before: string | null = null) => jobs(current(), lookupId, before);
 export const loadNavCounts = () => navCounts(current());
 export const consoleSettings = () => {
   const config = readConfig();

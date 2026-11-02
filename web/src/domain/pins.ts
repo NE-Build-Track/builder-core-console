@@ -6,8 +6,8 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "a6ed9b552a8666f925d86fd8d9fe1d40bfc6aa98",
-    note: "tasks/mz/iss-11-14-idempotency (PR #76, on releases/m3 after #69): admin commands require an operation reference and are repeat-safe (D57)",
+    commit: "15142129ebbf51103658f8ad48fd5adae052c56d",
+    note: "releases/m3 with PRs #78, #81, #82, #83 and #77 merged: payment failure reasons, paged history and a request limit, cost per app, repeat-safe revokes, rates with source and age (D58–D62)",
   },
   batteries: {
     repository: "livepeer/clearinghouse-batteries",
