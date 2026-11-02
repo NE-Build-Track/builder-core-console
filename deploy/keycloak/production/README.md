@@ -9,6 +9,11 @@ Software has no subscription fee. Hosting, DNS and paid inference are separate c
 For remote installation and repeat releases, use the [Ansible playbook](../../ansible/README.md).
 This directory also supports operating Compose directly. It is a single-host deployment, not HA.
 
+If the engine, Batteries and their database already run elsewhere, use the
+[remote-service deployment](../../ansible/README.md#full-stack-and-repeat-releases). Only the console
+and identity services run on this host; their Compose file never loads payment credentials or starts
+a signer. Keycloak has its own private identity database, separate from the engine's remote Postgres.
+
 On a host that already uses Apache for 80/443, choose `--edge-mode apache` at initialization and
 `edge_mode: apache` in Ansible. The third overlay disables Caddy and publishes Keycloak only on
 `127.0.0.1:18081`; Ansible adds two new virtual hosts and a separate Certbot certificate without
@@ -63,6 +68,8 @@ its environment or Ansible Vault; never put it on the command line. The script c
   Google credentials, mode 0600. Back it up encrypted. Windows users must also restrict its ACL.
 - `production/runtime/livepeer-realm.json`: no demo people or passwords; secret values remain
   environment placeholders. This directory is ignored by Git and the console Docker build.
+  The realm file is mode 0644 so the non-root container can read its bind mount; its host directory
+  remains private and the separate secret-bearing env file remains mode 0600.
 
 Repeated `init` preserves secrets and refuses changed deployment inputs. It neither starts services
 nor updates an existing realm. The overlay sets production OIDC configuration explicitly and

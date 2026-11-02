@@ -16,7 +16,7 @@
       ansible.builtin.assert:
         that:
           - ansible_facts.distribution in ['Debian', 'Ubuntu']
-          - deployment_mode in ['identity', 'full']
+          - deployment_mode in ['identity', 'full', 'remote']
           - edge_mode in ['caddy', 'apache']
           - release_revision is match('^[0-9a-f]{40}$')
           - deployment_root is match('^/opt/[a-zA-Z0-9_-]+$')
@@ -34,6 +34,7 @@
           - google_client_secret | default('') | length > 0
           - deployment_mode != 'full' or builder_stack_env is defined
           - deployment_mode != 'full' or builder_secrets_directory is defined
+          - deployment_mode != 'remote' or remote_console_env is defined
       no_log: true
 
     - name: Inspect existing Docker installation
@@ -171,6 +172,8 @@
           - "{{ google_client_id }}"
           - --edge-mode
           - "{{ edge_mode }}"
+          - --stack-mode
+          - "{{ 'remote' if deployment_mode == 'remote' else 'local' }}"
       environment:
         GOOGLE_CLIENT_SECRET: "{{ google_client_secret }}"
       changed_when: not identity_env.stat.exists
@@ -182,6 +185,14 @@
         dest: "{{ deployment_root }}/shared/keycloak.env"
         remote_src: true
         mode: '0600'
+      no_log: true
+
+    - name: Install only remote-console connection credentials
+      ansible.builtin.copy:
+        content: "{{ remote_console_env }}"
+        dest: "{{ release_path }}/deploy/keycloak/production/runtime/remote-console.env"
+        mode: '0600'
+      when: deployment_mode == 'remote'
       no_log: true
 
     - name: Validate combined Compose configuration without displaying secrets
@@ -203,12 +214,12 @@
         app_placeholder: "{{ deployment_mode == 'identity' }}"
       when: edge_mode == 'apache'
 
-    - name: Start full stack with its supplied payer configuration
+    - name: Start the selected full or remote-service deployment
       ansible.builtin.command:
         argv: [python3, "{{ configure }}", stack, --, up, -d, --build, --wait, --wait-timeout, '300']
       register: full_start
       changed_when: "'Started' in full_start.stderr or 'Recreated' in full_start.stderr or 'Created' in full_start.stderr"
-      when: deployment_mode == 'full'
+      when: deployment_mode in ['full', 'remote']
 
     - name: Verify public issuer and certificate
       ansible.builtin.uri:
@@ -230,7 +241,7 @@
         url: "https://{{ console_host }}/money"
         follow_redirects: none
         status_code: 303
-      when: deployment_mode == 'full' and validate_public_endpoints | bool
+      when: deployment_mode in ['full', 'remote'] and validate_public_endpoints | bool
 
     - name: Mark the successfully deployed release
       ansible.builtin.file:

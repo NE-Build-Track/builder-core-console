@@ -92,6 +92,15 @@ class ProvisioningTests(unittest.TestCase):
                 command = configure.compose_command()
             self.assertEqual(command[-2:], ["-f", str(here / "apache.compose.yaml")])
 
+    def test_remote_services_never_load_local_engine_or_payer_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            here = Path(directory)
+            configure.write_private(here / ".env", "EDGE_MODE='apache'\nSTACK_MODE='remote'\n")
+            with patch.object(configure, "HERE", here):
+                command = configure.compose_command()
+            self.assertEqual(command[-2:], ["-f", str(here / "remote.compose.yaml")])
+            self.assertNotIn(str(configure.DEPLOY / ".env"), command)
+
     def test_operator_requires_existing_google_identity_and_uses_uuid(self):
         uid = "c3f6357e-9f2b-4def-b708-2d87e16222ac"
         args = argparse.Namespace(command="grant-operator", user_id=uid)

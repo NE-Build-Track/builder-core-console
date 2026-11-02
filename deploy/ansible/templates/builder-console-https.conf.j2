@@ -13,6 +13,7 @@
     ProxyRequests Off
     ProxyPreserveHost On
     RequestHeader unset Forwarded
+    RequestHeader unset X-Forwarded-For
     RequestHeader set X-Forwarded-Proto "https"
     RequestHeader set X-Forwarded-Host "{{ console_host }}"
     RequestHeader set X-Forwarded-Port "443"
@@ -34,6 +35,7 @@
     ProxyRequests Off
     ProxyPreserveHost On
     RequestHeader unset Forwarded
+    RequestHeader unset X-Forwarded-For
     RequestHeader set X-Forwarded-Proto "https"
     RequestHeader set X-Forwarded-Host "{{ auth_host }}"
     RequestHeader set X-Forwarded-Port "443"

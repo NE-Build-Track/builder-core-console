@@ -17,6 +17,7 @@ test:
 provisioning-test:
 	python3 -m unittest discover -s deploy/keycloak/production -v
 	python3 -m unittest discover -s deploy/ansible -v
+	python3 -m unittest discover -s deploy/railway-reader -v
 
 compose-config:
 	$(COMPOSE) config -q

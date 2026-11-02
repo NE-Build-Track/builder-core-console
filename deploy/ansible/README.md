@@ -86,6 +86,36 @@ apt repository when Compose is absent. Review package conflicts first on a host 
 
 ## Full stack and repeat releases
 
+For an existing remote engine/payment stack, use `deployment_mode: remote` and `edge_mode: apache`.
+This uses the standalone `production/remote.compose.yaml`, containing only the console, Keycloak
+and Keycloak's private PostgreSQL database. It does not start a local engine, Batteries, discovery
+or signer, and does not load the payer environment/secrets. Existing engine/Batteries/Postgres
+services and state stay on their current platform. Supply `remote_console_env` privately:
+
+```yaml
+deployment_mode: remote
+edge_mode: apache
+remote_console_env: |
+  CONSOLE_ENGINE_URL='https://engine.example'
+  CONSOLE_BATTERIES_URL='https://batteries.example'
+  CONSOLE_BATTERIES_TOKEN='DEDICATED_READ_ONLY_TOKEN'
+  CONSOLE_DISCOVERY_URL='https://discovery.example'
+```
+
+The remote engine must accept this Keycloak issuer, the configured audience, strict `at+jwt` tokens
+and the role-gated scopes in the production guide. Retain its existing API-key mode when other
+clients use it. Background engine reads use Keycloak's reader client, not an engine admin key.
+Batteries must be reachable over HTTPS and have a dedicated read-only credential; do not transfer
+its operator token. Keep remote Postgres private: the console does not connect to the engine database.
+For a Railway Batteries service without a reader credential hook, use the optional
+[Railway reader deployment](../railway-reader/README.md).
+Signer metrics can remain unconfigured and are labelled unavailable; no signer key or public metrics
+listener is needed by this deployment.
+
+An existing configuration generated before `STACK_MODE` was introduced can select remote mode on
+its next release. Once a mode is persisted, `init` refuses changing it silently; review the service
+and state transition explicitly. Keycloak's database volume is preserved under the same Compose project.
+
 For `deployment_mode: full`, provide `builder_stack_env` and `builder_secrets_directory` from the
 completed [base stack bootstrap](../README.md). The playbook copies these files privately, builds
 the pinned stack images and starts the services. Starting the signer is operationally significant:

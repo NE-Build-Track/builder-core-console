@@ -40,6 +40,19 @@ safe signup and a repeatable Ansible rollout to the operator's supplied SSH host
   templates and a staged edge playbook. Ansible applied only the new HTTP challenge/redirect sites successfully.
 - 2026-11-02: AWS identity verification succeeded, but the provisioning user lacks DNS write permission for
   the zone. User will add the two A records. Google callback registration was corrected and verified.
+- 2026-11-02: Private Keycloak deployment on ReportingWebsite is healthy and serves its expected issuer.
+  Corrected realm bind-mount permissions for a non-root Linux container; env credentials remain private.
+- 2026-11-02: User narrowed rollout to console/identity on ReportingWebsite, retaining engine, Batteries,
+  signer and the existing Postgres on Railway. Added a standalone remote-service Compose mode with no payer config.
+- 2026-11-02: Railway login renewed; production metadata inspected. No signer/wallet or database migration occurred.
+  A proposed PostgreSQL TCP endpoint was rejected by automatic approval review and was not created; the safer
+  connection plan uses Keycloak's separate private local database and a dedicated Batteries reader.
+- 2026-11-02: User explicitly approved that connection plan. Final names are `app.eliteencoder.net` and
+  `issuer.eliteencoder.net`; `.xyz` is inactive. Verified final DNS, preserved existing identity/client secrets
+  while updating callbacks/audience, and issued the two-domain certificate through the existing Apache edge.
+- 2026-11-02: Added a narrow optional reader hook around the pinned Railway Batteries entrypoint. Disposable
+  integration checks passed: anonymous reads 401, reader reads 200, reader writes 403, original operator reads 200.
+  Started its deployment to the existing Railway Batteries service; no signer or database moved.
 
 ## Decision log
 

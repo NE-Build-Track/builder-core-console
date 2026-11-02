@@ -7,7 +7,7 @@ google_client_id: replace-me.apps.googleusercontent.com
 google_client_secret: replace-me
 
 # Default starts only Keycloak, PostgreSQL and HTTPS. No payment services or engine jobs.
-deployment_mode: identity
+deployment_mode: identity  # remote: console/Keycloak only, with an existing remote engine/payment stack
 install_docker: false
 edge_mode: caddy  # apache: keep an existing Apache server on 80/443; Keycloak binds loopback :18081
 use_existing_acme_account: false  # apache only; reuse the host's registered Certbot account
@@ -25,3 +25,10 @@ release_revision: replace-with-full-commit-sha
 #   LPB_BATTERIES_TOKEN='...'
 #   ...
 # builder_secrets_directory: /path/to/private/deploy/secrets/
+
+# For deployment_mode: remote, provide only console connection settings and the dedicated Batteries reader.
+# remote_console_env: |
+#   CONSOLE_ENGINE_URL='https://engine.example'
+#   CONSOLE_BATTERIES_URL='https://batteries.example'
+#   CONSOLE_BATTERIES_TOKEN='READ_ONLY_TOKEN'
+#   CONSOLE_DISCOVERY_URL='https://discovery.example'
