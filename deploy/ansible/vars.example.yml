@@ -9,6 +9,9 @@ google_client_secret: replace-me
 # Default starts only Keycloak, PostgreSQL and HTTPS. No payment services or engine jobs.
 deployment_mode: identity
 install_docker: false
+edge_mode: caddy  # apache: keep an existing Apache server on 80/443; Keycloak binds loopback :18081
+use_existing_acme_account: false  # apache only; reuse the host's registered Certbot account
+validate_public_endpoints: true
 deployment_root: /opt/builder-console
 
 # Controller-side git archive of the reviewed revision. No server-side GitHub credentials.

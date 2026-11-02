@@ -84,6 +84,14 @@ class ProvisioningTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             configure.origin("http://engine.example.com")
 
+    def test_existing_apache_adds_only_the_loopback_overlay(self):
+        with tempfile.TemporaryDirectory() as directory:
+            here = Path(directory)
+            configure.write_private(here / ".env", "EDGE_MODE='apache'\n")
+            with patch.object(configure, "HERE", here):
+                command = configure.compose_command()
+            self.assertEqual(command[-2:], ["-f", str(here / "apache.compose.yaml")])
+
     def test_operator_requires_existing_google_identity_and_uses_uuid(self):
         uid = "c3f6357e-9f2b-4def-b708-2d87e16222ac"
         args = argparse.Namespace(command="grant-operator", user_id=uid)

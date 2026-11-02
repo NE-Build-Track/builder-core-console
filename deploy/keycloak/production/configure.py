@@ -150,13 +150,20 @@ def initialize(args):
         "ENGINE_AUDIENCE": args.engine_audience, "ACME_EMAIL": args.acme_email,
         "GOOGLE_CLIENT_ID": args.google_client_id or os.environ.get("GOOGLE_CLIENT_ID"),
         "GOOGLE_CLIENT_SECRET": os.environ.get("GOOGLE_CLIENT_SECRET"),
+        "EDGE_MODE": getattr(args, "edge_mode", None),
     }
     for name, value in supplied.items():
         if value is not None:
             if name in existing and existing[name] != value:
                 raise ValueError(f"{name} changed: init is first-install only; use the documented rotation procedure")
             values[name] = value
-    for name in ("AUTH_HOST", "CONSOLE_HOST", "ENGINE_AUDIENCE", "ACME_EMAIL", "GOOGLE_CLIENT_ID"):
+    values.setdefault("EDGE_MODE", "caddy")
+    if values["EDGE_MODE"] == "apache":
+        values.setdefault("ACME_EMAIL", "")
+    required = ["AUTH_HOST", "CONSOLE_HOST", "ENGINE_AUDIENCE", "GOOGLE_CLIENT_ID"]
+    if values["EDGE_MODE"] == "caddy":
+        required.append("ACME_EMAIL")
+    for name in required:
         if not values.get(name):
             raise ValueError(f"Missing {name}; see init --help")
     hostname(values["AUTH_HOST"])
@@ -164,7 +171,7 @@ def initialize(args):
     if values["AUTH_HOST"] == values["CONSOLE_HOST"]:
         raise ValueError("Auth and console must have different DNS names")
     origin(values["ENGINE_AUDIENCE"])
-    if not re.fullmatch(r"[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+", values["ACME_EMAIL"]):
+    if values["ACME_EMAIL"] and not re.fullmatch(r"[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+", values["ACME_EMAIL"]):
         raise ValueError("ACME_EMAIL must be an email address")
     if not re.fullmatch(r"[A-Za-z0-9_-]+\.apps\.googleusercontent\.com", values["GOOGLE_CLIENT_ID"]):
         raise ValueError("Use a Google Web application OAuth client ID")
@@ -192,9 +199,12 @@ def initialize(args):
 def compose_command():
     if not (HERE / ".env").exists():
         raise ValueError("Run configure.py init first")
-    return ["docker", "compose", "--project-name", "builder-console",
+    command = ["docker", "compose", "--project-name", "builder-console",
             "--env-file", str(DEPLOY / ".env"), "--env-file", str(HERE / ".env"),
             "-f", str(DEPLOY / "compose.yaml"), "-f", str(HERE / "compose.yaml")]
+    if read_env(HERE / ".env").get("EDGE_MODE") == "apache":
+        command += ["-f", str(HERE / "apache.compose.yaml")]
+    return command
 
 
 def admin(arguments, raw=False):
@@ -235,6 +245,7 @@ def main():
     init = commands.add_parser("init", help="Generate initial files; preserve existing secrets on rerun")
     for option in ("auth-host", "console-host", "engine-audience", "acme-email", "google-client-id"):
         init.add_argument(f"--{option}")
+    init.add_argument("--edge-mode", choices=("caddy", "apache"), help="Use an existing Apache TLS edge instead of Caddy")
     stack = commands.add_parser("stack", help="Run Docker Compose with the production overlay")
     stack.add_argument("arguments", nargs=argparse.REMAINDER)
     private_admin = commands.add_parser("admin", help="Run kcadm privately inside Keycloak; output may contain secrets")

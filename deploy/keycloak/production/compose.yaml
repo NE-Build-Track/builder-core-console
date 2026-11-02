@@ -90,7 +90,7 @@ services:
     environment:
       AUTH_HOST: ${AUTH_HOST}
       CONSOLE_HOST: ${CONSOLE_HOST}
-      ACME_EMAIL: ${ACME_EMAIL:?Run production/configure.py init}
+      ACME_EMAIL: ${ACME_EMAIL:-}
     ports: ["80:80", "443:443"]
     volumes:
       - ./keycloak/production/Caddyfile:/etc/caddy/Caddyfile:ro

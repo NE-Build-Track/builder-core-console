@@ -13,6 +13,27 @@ first. Do not run concurrent releases against the same host.
 Install the controller dependency with `python3 -m pip install -r deploy/ansible/requirements.txt`
 inside a virtual environment.
 
+## Existing Apache hosts
+
+Set `edge_mode: apache` to retain the host's existing Apache listener and sites. The playbook requires
+its `proxy`, `proxy_http`, `ssl`, `headers` and `rewrite` modules and Certbot to already be available.
+It adds only `builder-console-http.conf` / `builder-console-https.conf`, refuses to overwrite files
+without its management marker, validates Apache before each graceful reload, and obtains a separate
+`builder-console` certificate for the two new names. Keycloak binds loopback port 18081; the console
+keeps loopback port 3060. Check both are free before deployment. The auth vhost proxies only the public
+realm/resources paths; administration remains private and denied paths return 403 with Apache.
+
+Use `use_existing_acme_account: true` to reuse the host's existing registered Certbot account. Otherwise
+the supplied `acme_email` is used for registration. DNS must already point at the host for HTTP-01.
+
+If DNS or Google configuration is still pending, `edge.yml` can prepare the new hostnames separately.
+Set `edge_issue_certificate: false` to install only their HTTP challenge/redirect virtual hosts while
+waiting for DNS. Rerun with certificates enabled once DNS resolves; HTTPS returns 503 on both names
+until `deploy.yml` installs the real proxy routes. In the normal identity-only deployment, auth is
+live but the app stays 503 until the full stack is configured. Keep
+`validate_public_endpoints: true` for a completed rollout; setting it false allows a staged private
+installation, which must not be reported as publicly verified.
+
 ## Inventory from a MobaXterm session
 
 The `.moba` bookmark supplies an SSH address, port, username and a reference to a key. It is data,

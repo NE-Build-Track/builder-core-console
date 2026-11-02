@@ -9,6 +9,11 @@ Software has no subscription fee. Hosting, DNS and paid inference are separate c
 For remote installation and repeat releases, use the [Ansible playbook](../../ansible/README.md).
 This directory also supports operating Compose directly. It is a single-host deployment, not HA.
 
+On a host that already uses Apache for 80/443, choose `--edge-mode apache` at initialization and
+`edge_mode: apache` in Ansible. The third overlay disables Caddy and publishes Keycloak only on
+`127.0.0.1:18081`; Ansible adds two new virtual hosts and a separate Certbot certificate without
+editing other sites. See [Apache coexistence](../../ansible/README.md#existing-apache-hosts).
+
 ## Prerequisites
 
 - A dedicated Linux host, Docker Engine with Compose v2, Python 3.10+, and sufficient space for the
@@ -74,6 +79,7 @@ python3 deploy/keycloak/production/configure.py stack -- up -d --build --wait
 `stack` always loads the base Compose file, this overlay and both environment files, independent of
 the working directory. Use it for subsequent `ps`, `logs`, `restart`, `exec`, `stop` and `up` commands.
 Avoid plain `docker compose up`, which would omit the production overlay.
+In Apache mode, omit `edge` from identity-only commands; do not explicitly start the disabled Caddy service.
 
 ## Signup, operators and allocations
 
@@ -105,7 +111,7 @@ test an explicit verification policy before relying on the email flag.
 
 ## Public and private boundaries
 
-- Only Caddy publishes 80/443. The engine and console retain their loopback bindings. Keycloak,
+- Caddy, or the existing Apache server, owns 80/443. The engine and console retain their loopback bindings. Keycloak,
   PostgreSQL, Batteries, signer and metrics have no public host ports.
 - Caddy terminates HTTPS on this single host, overwrites forwarded headers and proxies Keycloak
   only on its private Docker network. Do not add an external HTTP listener for Keycloak.

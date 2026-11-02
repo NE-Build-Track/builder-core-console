@@ -16,6 +16,7 @@ safe signup and a repeatable Ansible rollout to the operator's supplied SSH host
 - [x] Configuration preserves generated secrets and explicit operator provisioning uses existing UUIDs.
 - [x] Stack-wide pages and shared-layout aggregates require live operator authorization in production.
 - [x] Ansible supports a private MobaXterm-derived inventory and Vault-backed deployment to a Linux host.
+- [x] An existing Apache host can retain 80/443 and its other sites; Keycloak uses a loopback-only backend.
 - [x] Offline checks, real Keycloak import/token checks and production build pass.
 - [ ] Public DNS, Google credentials and verified SSH connection available for a live host rollout.
 
@@ -33,6 +34,12 @@ safe signup and a repeatable Ansible rollout to the operator's supplied SSH host
   at strict host-key verification; no remote configuration changed. DNS/Google/SSH inputs requested from the operator.
 - 2026-11-02: GitHub's OAuth credential refused workflow updates without `workflow` scope. Existing Actions
   configuration stays unchanged; the new Python/Ansible/container checks remain runnable through the documented commands.
+- 2026-11-02: User selected ReportingWebsite instead of SmokePing, supplied AWS/Google credentials privately,
+  and chose `app.eliteencoder.xyz` / `auth.eliteencoder.xyz`. Existing SSH host trust and OpenSSH key work.
+- 2026-11-02: ReportingWebsite uses Apache on 80/443. Added an Apache Compose overlay, scoped virtual-host
+  templates and a staged edge playbook. Ansible applied only the new HTTP challenge/redirect sites successfully.
+- 2026-11-02: AWS identity verification succeeded, but the provisioning user lacks DNS write permission for
+  the zone. User will add the two A records. Google callback registration was corrected and verified.
 
 ## Decision log
 

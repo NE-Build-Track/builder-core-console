@@ -7,6 +7,8 @@
     deployment_root: /opt/builder-console
     deployment_mode: identity
     install_docker: false
+    edge_mode: caddy
+    validate_public_endpoints: true
     release_path: "{{ deployment_root }}/releases/{{ release_revision }}"
     configure: "{{ release_path }}/deploy/keycloak/production/configure.py"
   tasks:
@@ -15,6 +17,7 @@
         that:
           - ansible_facts.distribution in ['Debian', 'Ubuntu']
           - deployment_mode in ['identity', 'full']
+          - edge_mode in ['caddy', 'apache']
           - release_revision is match('^[0-9a-f]{40}$')
           - deployment_root is match('^/opt/[a-zA-Z0-9_-]+$')
           - source_archive is defined
@@ -166,6 +169,8 @@
           - "{{ acme_email }}"
           - --google-client-id
           - "{{ google_client_id }}"
+          - --edge-mode
+          - "{{ edge_mode }}"
       environment:
         GOOGLE_CLIENT_SECRET: "{{ google_client_secret }}"
       changed_when: not identity_env.stat.exists
@@ -186,10 +191,17 @@
 
     - name: Start identity services and HTTPS
       ansible.builtin.command:
-        argv: [python3, "{{ configure }}", stack, --, up, -d, --build, --wait, --wait-timeout, '180', keycloak, edge]
+        argv: "{{ [ 'python3', configure, 'stack', '--', 'up', '-d', '--build', '--wait', '--wait-timeout', '180', 'keycloak'] + (['edge'] if edge_mode == 'caddy' else []) }}"
       register: identity_start
       changed_when: "'Started' in identity_start.stderr or 'Recreated' in identity_start.stderr or 'Created' in identity_start.stderr"
       when: deployment_mode == 'identity'
+
+    - name: Configure virtual hosts on an existing Apache edge
+      ansible.builtin.include_tasks: apache.yml
+      vars:
+        edge_placeholder: false
+        app_placeholder: "{{ deployment_mode == 'identity' }}"
+      when: edge_mode == 'apache'
 
     - name: Start full stack with its supplied payer configuration
       ansible.builtin.command:
@@ -206,17 +218,19 @@
       until: discovery.status | default(0) == 200
       retries: 12
       delay: 5
+      when: validate_public_endpoints | bool
 
     - name: Verify issuer identity
       ansible.builtin.assert:
         that: discovery.json.issuer == 'https://' + auth_host + '/realms/livepeer'
+      when: validate_public_endpoints | bool
 
     - name: Verify private console reads redirect to operator login
       ansible.builtin.uri:
         url: "https://{{ console_host }}/money"
         follow_redirects: none
         status_code: 303
-      when: deployment_mode == 'full'
+      when: deployment_mode == 'full' and validate_public_endpoints | bool
 
     - name: Mark the successfully deployed release
       ansible.builtin.file:
