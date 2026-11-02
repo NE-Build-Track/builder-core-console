@@ -77,18 +77,18 @@ deployment_mode: remote
 edge_mode: apache
 remote_console_env: |
   CONSOLE_ENGINE_URL='https://engine.example'
-  CONSOLE_BATTERIES_URL='https://batteries.example'
-  CONSOLE_BATTERIES_TOKEN='DEDICATED_READ_ONLY_TOKEN'
   CONSOLE_DISCOVERY_URL='https://discovery.example'
 ```
 
 The remote engine must accept this Keycloak issuer, the configured audience, strict `at+jwt` tokens
 and the role-gated scopes in the production guide. Retain its existing API-key mode when other
 clients use it. Background engine reads use Keycloak's reader client, not an engine admin key.
-Batteries must be reachable over HTTPS and have a dedicated read-only credential; do not transfer
-its operator token. Keep remote Postgres private: the console does not connect to the engine database.
-For a Railway Batteries service without a reader credential hook, use the optional
-[Railway reader deployment](../railway-reader/README.md).
+Do not expose Batteries or copy any of its credentials to the console. Remote mode disables direct
+Batteries management reads, so Batteries-only figures are explicitly unavailable; existing engine
+reads and Builder actions still work. The engine keeps its own payment credentials inside its
+current platform. Keep remote Postgres private: the console does not connect to the engine database.
+See [G16 and the proposed engine read API](../../docs/references/engine-payment-reads.md) for the
+remaining coverage.
 Signer metrics can remain unconfigured and are labelled unavailable; no signer key or public metrics
 listener is needed by this deployment.
 

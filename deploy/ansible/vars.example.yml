@@ -26,9 +26,7 @@ release_revision: replace-with-full-commit-sha
 #   ...
 # builder_secrets_directory: /path/to/private/deploy/secrets/
 
-# For deployment_mode: remote, provide only console connection settings and the dedicated Batteries reader.
+# For deployment_mode: remote, provide only engine/discovery connection settings; no Batteries credentials.
 # remote_console_env: |
 #   CONSOLE_ENGINE_URL='https://engine.example'
-#   CONSOLE_BATTERIES_URL='https://batteries.example'
-#   CONSOLE_BATTERIES_TOKEN='READ_ONLY_TOKEN'
 #   CONSOLE_DISCOVERY_URL='https://discovery.example'

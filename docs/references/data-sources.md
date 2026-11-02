@@ -53,6 +53,11 @@ and `GET /v1/jobs/{job_id}` (and `/cost`) with its actor key; the Operator page 
 
 ## Batteries
 
+The local stack can read these directly. The remote Keycloak deployment leaves Batteries
+unconfigured and labels these readings unavailable; it uses engine APIs for existing engine
+reads and actions. See [G16](gaps.md#g16-engine-api-does-not-cover-batteries-only-console-reads)
+and the [engine enhancement draft](engine-payment-reads.md).
+
 The Clearinghouse Batteries management API at `CONSOLE_BATTERIES_URL` (`http://clearinghouse:8081`),
 read with the `console-reader` credential (`*.read` only; `deploy/init-secrets.py`). Header:
 `Livepeer-Clearinghouse-Token`. Lists are cursor-paged (`limit` ≤ 1000, `next_cursor`), oldest first,

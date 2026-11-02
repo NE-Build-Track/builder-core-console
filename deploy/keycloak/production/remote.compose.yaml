@@ -64,9 +64,12 @@ services:
     build:
       context: ../../..
       dockerfile: deploy/console/Dockerfile
-    # This file contains only CONSOLE_* connection settings and a read-only Batteries token.
+    # This file contains only console connection settings; no Batteries credentials.
     env_file: [./runtime/remote-console.env]
     environment:
+      # Remote mode reads through the engine; direct Batteries management access stays disabled.
+      CONSOLE_BATTERIES_URL: ""
+      CONSOLE_BATTERIES_TOKEN: ""
       CONSOLE_AUTH: oidc
       CONSOLE_PROTECT_READS: "true"
       CONSOLE_OIDC_ISSUER: https://${AUTH_HOST}/realms/livepeer

@@ -96,6 +96,13 @@ export const GAPS = [
     fix: "Filters on GET /v1/jobs: actor_id, app, state and a time window (builder-core's ISS-29 REST guide proposes the paging cursor, not the filters).",
     owner: "builder-core",
   },
+  {
+    id: "G16",
+    title: "Engine API does not cover Batteries-only console reads",
+    impact: "The remote console has no direct Batteries credential. Its grant lists, payment-session usage, ledger and escrow readings are unavailable where the engine does not expose an equivalent.",
+    fix: "Add scoped, paginated engine payment reads with exact amounts, freshness and explicit upstream failures; keep Batteries credentials inside the engine deployment.",
+    owner: "builder-core",
+  },
 ] as const satisfies readonly Gap[];
 
 export type GapId = (typeof GAPS)[number]["id"];
