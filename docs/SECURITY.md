@@ -9,7 +9,8 @@
 - **Sessions.** The pasted key is checked against the engine, then sealed (AES-256-GCM under
   `CONSOLE_SESSION_SECRET`) into an httpOnly, `SameSite=Strict` cookie for 8 hours; the browser cannot
   read it and the server stores nothing. Server actions are origin-checked by Next.js; the Builder's
-  run endpoint checks `Origin` itself. Sign-out deletes the cookie. Before a page of either area renders, `src/proxy.ts` asks the engine once with
+  run endpoint checks the complete `Origin` against the registered public console origin in OIDC mode,
+  including behind a reverse proxy; forwarded host headers do not select the trusted origin. Sign-out deletes the cookie. Before a page of either area renders, `src/proxy.ts` asks the engine once with
   the session's key (`GET /v1/admin/actors?limit=1` or `GET /v1/jobs?limit=1`); a 401 (the key was revoked or
   expired) clears the cookie and the page shows the sign-in form saying why. A 403, a 5xx or no answer leaves
   the session alone. A Builder run answered 401 ends the session the same way.

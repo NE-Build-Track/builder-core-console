@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation, deployment and live connection verification complete; user-driven Google sign-in check pending.
+Identity deployment and live connections verified; Builder proxy-origin correction is being deployed.
 
 ## Goal
 
@@ -21,7 +21,7 @@ and credentials externally; no host inventory or access keys belong in this chan
 - [x] A dedicated Batteries credential permits only explicit read operations.
 - [x] Offline checks, real Keycloak token/role checks and the application build pass.
 - [x] Verify the remote engine accepts the deployed identity provider's reader token.
-- [ ] Complete the final user-driven Google sign-in check.
+- [x] Complete the final user-driven Google sign-in check.
 
 ## Progress
 
@@ -38,6 +38,8 @@ and credentials externally; no host inventory or access keys belong in this chan
 - 2026-11-02: Live connection checks passed: engine reader access 200, anonymous and invalid-signature
   actor reads 401, Batteries reader access 200, protected-page redirects and private issuer endpoints.
 - 2026-11-02: Deployment inputs remain external, and key-file patterns are excluded from version control.
+- 2026-11-02: User confirmed Google Builder sign-in. A valid run was rejected by the proxy host comparison;
+  changed the guard to compare the registered complete origin and added nine regression cases. All 249 web tests pass.
 
 ## Decision log
 

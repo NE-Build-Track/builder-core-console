@@ -2,6 +2,7 @@ import { RUN_HEADERS } from "@/domain/builder";
 import { hideSecrets } from "@/domain/exchange";
 import { describeProblem, failed } from "@/domain/reading";
 import { startRun } from "@/runtime/builder";
+import { consoleOrigin } from "@/runtime/session";
 import { parseRun } from "@/services/builder";
 import { standing } from "@/services/signin";
 
@@ -16,8 +17,9 @@ import { endedBy, sessionFor } from "../../session-cookies";
  */
 export async function POST(request: Request): Promise<Response> {
   const origin = request.headers.get("origin");
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  if (!origin || !host || new URL(origin).host !== host) return Response.json({ problem: "Only the console itself may start a run." }, { status: 403 });
+  // Proxies may append multiple X-Forwarded-Host values. Validate the complete registered public
+  // origin instead; no client-supplied forwarded header can select the trusted origin.
+  if (origin !== consoleOrigin(request.url)) return Response.json({ problem: "Only the console itself may start a run." }, { status: 403 });
   const session = await sessionFor("builder");
   if (!session) return Response.json({ problem: "Your builder session ended. Sign in again." }, { status: 401 });
   let body: unknown;
