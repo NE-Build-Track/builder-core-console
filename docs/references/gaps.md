@@ -6,26 +6,17 @@ fails when the two disagree. The console works within these today; nothing here 
 
 | Gap | Owner | Unlocks |
 | --- | --- | --- |
-| [G1](#g1-the-jobs-page-lists-projections-not-jobs) | this repository | A real Jobs page: throughput, failures by kind, per-actor and per-app job history. |
 | [G3](#g3-cost-projections-capped-at-25) | builder-core | Job cost history beyond the newest 25; cost trends per app. |
 | [G4](#g4-no-engine-metrics-or-events) | builder-core | Job rates, latency and failure trends over time; live updates instead of polling. |
 | [G5](#g5-signer-metrics-are-loopback-only) | signer | Drop the relay container. |
 | [G6](#g6-usage-feed-has-no-time-filter) | batteries | Usage over a window without walking the whole history; no partial totals. |
 | [G7](#g7-payer-deposit-and-reserve-not-shown) | this repository | Payer runway: deposit and reserve against the burn rate. |
-| [G8](#g8-the-keys-mode-reader-holds-an-admin-key) | this repository | A console credential that cannot write even if the code tried, in both modes. |
 | [G9](#g9-admin-reads-are-scoped-to-one-application) | builder-core | Per-actor money across every application. |
 | [G10](#g10-no-application-wide-reconciliation-in-per_actor-mode) | builder-core | One reconciliation read for the Health page instead of one per actor. |
 | [G11](#g11-reconciliation-flags-normal-sync-lag-as-unbalanced) | builder-core | An engine flag that only goes false on real money gaps, so it can drive alerts. |
 | [G13](#g13-no-who-am-i-call) | builder-core | The Builder names its actor from the moment it signs in. |
 | [G14](#g14-rates-are-in-wei-only) | builder-core | Rates a builder can read in dollars before running a job. |
-
-## G1: The Jobs page lists projections, not jobs
-
-**Impact.** builder-core lists every actor's jobs to an admin or auditor (GET /v1/jobs, its D44) and pages that list with `before` (its D59, PR #81, in review), but the Jobs page still shows the newest cost projections and looks jobs up by id. The list has no filters (actor, app, state, time) yet.
-
-**Fix.** List jobs from GET /v1/jobs with the reader's credential, paging with `before`; ask builder-core for filters (actor, app, state, time).
-
-**Owner.** this repository. **Unlocks:** A real Jobs page: throughput, failures by kind, per-actor and per-app job history.
+| [G15](#g15-the-job-list-has-no-filters) | builder-core | Per-actor and per-app job history, and failures by kind, without paging through every job. |
 
 ## G3: Cost projections capped at 25
 
@@ -67,14 +58,6 @@ fails when the two disagree. The console works within these today; nothing here 
 
 **Owner.** this repository. **Unlocks:** Payer runway: deposit and reserve against the burn rate.
 
-## G8: The keys-mode reader holds an admin key
-
-**Impact.** builder-core has a read-only auditor credential (its #69), and the OIDC reader uses one, so the engine refuses its writes. With CONSOLE_AUTH=keys the reader still holds an engine admin key, which can do everything; the console stays read-only there only because its code makes GET requests alone (tests/structure/writes.test.ts).
-
-**Fix.** Issue the keys-mode reader an auditor key (kind auditor) instead of an admin key; the Money page then shows the engine's grants as not available, as in OIDC mode.
-
-**Owner.** this repository. **Unlocks:** A console credential that cannot write even if the code tried, in both modes.
-
 ## G9: Admin reads are scoped to one application
 
 **Impact.** Allowance, cost summary and projections use the admin key's own application_id, so per-actor money shows only for CONSOLE_APPLICATION_ID. Reconciliation takes any application.
@@ -109,11 +92,19 @@ fails when the two disagree. The console works within these today; nothing here 
 
 ## G14: Rates are in wei only
 
-**Impact.** Offerings carry the orchestrators' rates in wei per their own unit, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries. builder-core PR #77 (its D62, in review) adds `price_usd` to each rate, but it is the runner's own figure, passed on unconverted, and the live orchestrators send none (checked 30 October), so the gap stays open in practice.
+**Impact.** Offerings carry the orchestrators' rates in their own currency and unit, mostly wei, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries. Since builder-core D62 (PR #77, merged) a rate carries the runner's own `price_usd` when it advertises one, and the catalog shows it beside the wei rate, but it is the runner's figure, passed on unconverted, and most orchestrators send none (on 2 November, one of the three the stack's discovery reached did).
 
-**Fix.** A USD rate beside the advertised one, with the ETH price, its source and its time (ISS-10): orchestrators that advertise `price_usd`, or a conversion in the engine.
+**Fix.** A USD rate for every runner, with the ETH price, its source and its time (ISS-10): a conversion in the engine, or orchestrators that all advertise `price_usd`.
 
 **Owner.** builder-core. **Unlocks:** Rates a builder can read in dollars before running a job.
+
+## G15: The job list has no filters
+
+**Impact.** The Jobs page lists every actor's jobs newest first (`GET /v1/jobs`, paged with `before`), but the engine takes no filter, so finding one actor's, one app's or one state's jobs means paging through the rest.
+
+**Fix.** Filters on `GET /v1/jobs`: `actor_id`, `app`, `state` and a time window (builder-core's ISS-29 REST guide proposes the paging cursor, not the filters).
+
+**Owner.** builder-core. **Unlocks:** Per-actor and per-app job history, and failures by kind, without paging through every job.
 
 ## Not a console gap: funded grants through the engine
 
@@ -126,6 +117,14 @@ credentials and still uses the CLI.
 
 ## Closed
 
+- **G8, the keys-mode reader held an admin key** (closed 2 November). With `CONSOLE_AUTH=keys` the
+  console now reads with `CONSOLE_ENGINE_READER_TOKEN`, an auditor key `first-run.sh` issues, which the
+  engine lets only read (builder-core D46), as the OIDC reader already did; `deploy/compose.yaml` blanks
+  the admin key and the engine's Batteries tokens for the console container. The Money page shows the
+  engine's grants as not available in both modes (grants carry no application, builder-core #69).
+- **G1, the Jobs page listed projections, not jobs** (closed 2 November). The Jobs page lists every
+  actor's jobs in the application from `GET /v1/jobs` (builder-core D44), newest first, 50 at a time, paging
+  with `before` (D59). The engine takes no filters yet: that is G15.
 - **G12, creating a grant returned an incomplete record** (closed 30 October). builder-core's
   `POST /v1/admin/grants` now answers with the grant's name, status and total (seen live on the stack:
   `{"name": …, "status": "active", "total": "0.01"}`; `scripts/live-check-d57.py` A5, "created grant

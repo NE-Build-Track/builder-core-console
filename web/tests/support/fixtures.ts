@@ -266,6 +266,7 @@ export function engineFake(overrides: Partial<EngineReader> = {}): EngineReader 
     costSummary: async () => read("engine", costSummary),
     costProjections: async () => read("engine", [jobCost]),
     reconciliation: async () => read("engine", reconciliation()),
+    jobs: async () => read("engine", [job]),
     job: async () => read("engine", job),
     jobCost: async () => read("engine", jobCost),
     ...overrides,

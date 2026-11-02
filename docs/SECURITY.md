@@ -37,7 +37,8 @@
 
 | Credential | Where | Notes |
 | --- | --- | --- |
-| Engine admin key (`lpk_`) | `deploy/.env` `CONSOLE_ENGINE_ADMIN_TOKEN` | Printed once by `lpb bootstrap-admin`; revoke with `POST /v1/admin/keys/{id}/revoke` |
+| Engine admin key (`lpk_`) | `deploy/.env` `CONSOLE_ENGINE_ADMIN_TOKEN` | Printed once by `lpb bootstrap-admin`, for operators (Operator actions, curl). Blanked for the console container, which never holds it; revoke with `POST /v1/admin/keys/{id}/revoke` |
+| Engine reader key (`lpk_`, auditor) | `deploy/.env` `CONSOLE_ENGINE_READER_TOKEN` | Issued by `first-run.sh` with the admin key; the engine lets it only read (builder-core D46), so the console's reads cannot write even if its code tried (gap G8, closed) |
 | Session secret | `deploy/.env` `CONSOLE_SESSION_SECRET` | Seals sign-ins; written by `first-run.sh`; changing it signs everyone out |
 | Signed-in keys | the area's sealed cookie only | Never stored on the server or written to a log |
 | Batteries `console-reader` | `deploy/secrets/console-reader-token`, `deploy/.env` | `*.read` only |

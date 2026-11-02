@@ -37,11 +37,14 @@ The orchestrators to discover are in `deploy/config/orchestrators.txt`.
 ```sh
 cp deploy/.env.example deploy/.env && chmod 600 deploy/.env
 make images            # all five images; Batteries, the signer and the engine build from GitHub at their pins
-deploy/first-run.sh    # fills LPB_* tokens, CONSOLE_BATTERIES_TOKEN, LPB_SECRET_KEY, the engine admin key and CONSOLE_SESSION_SECRET
+deploy/first-run.sh    # fills LPB_* tokens, CONSOLE_BATTERIES_TOKEN, LPB_SECRET_KEY, the engine admin key, the console's reader key and CONSOLE_SESSION_SECRET
 ```
 
 `first-run.sh` keeps values that are already set and never starts the signer. The engine admin key is
-printed once by the engine and written only to `deploy/.env`.
+printed once by the engine and written only to `deploy/.env`; it is for operators, and the console never
+gets it. The console reads with an auditor key, `CONSOLE_ENGINE_READER_TOKEN`, that `first-run.sh` issues
+with the admin key (it starts the engine alone for that). **An existing stack** set up before 2 November:
+run `deploy/first-run.sh` again to add the reader key, then `make up`.
 
 ## Operating
 

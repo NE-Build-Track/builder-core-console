@@ -7,7 +7,9 @@ Every route is a GET (decision D1).
 ## Engine
 
 The stock builder-core REST service at `CONSOLE_ENGINE_URL` (`http://engine:8080` in compose), read
-with `CONSOLE_ENGINE_ADMIN_TOKEN`, an `lpk_` admin key from `lpb bootstrap-admin`. Types come from
+with `CONSOLE_ENGINE_READER_TOKEN`, an `lpk_` auditor key (read-only: the engine refuses its writes,
+builder-core D46) that `first-run.sh` issues; with `CONSOLE_AUTH=oidc`, with the reader's client-credentials
+token. The console never holds the engine admin key. Types come from
 `openapi/engine.openapi.json`, the spec of the pinned engine (D12).
 
 | Route | Page | Notes |
@@ -15,18 +17,19 @@ with `CONSOLE_ENGINE_ADMIN_TOKEN`, an `lpk_` admin key from `lpb bootstrap-admin
 | `GET /readyz` | Health, Network, footer | No auth. Answers 503 with the same `EngineHealth` body when not ready; the console reads that as an unready engine, not a failure. Gives discovery freshness, cost-sync time and error, running jobs, allocation mode, version. |
 | `GET /v1/offerings` | Network | Apps on offer, runner counts, rate range. |
 | `GET /v1/runners` | Network | Per app (`?app=`): runner URL, orchestrator, capacity, GPU, price, version. |
-| `GET /v1/admin/grants` | Money | The engine's view of Batteries grants (through its grant-desk credential). Admin only: the auditor reader never asks (builder-core #69), and the Money page says so. |
+| `GET /v1/admin/grants` | Money (not read) | The engine's view of Batteries grants (through its grant-desk credential). Admin only: the auditor reader never asks (builder-core #69), and the Money page says so; the Operator page reads it with the signed-in admin key. |
 | `GET /v1/admin/keys` | Users | Every access key: actor, application, kind, permissions, revoked. The Users and Operator pages add these to `GET /v1/admin/actors`, for key holders the engine does not list yet. |
-| `GET /v1/allowance` | Users | `?actor_id=`: the actor's allocation, granted, spent, available. Scoped to the admin key's application (gap G9). |
+| `GET /v1/allowance` | Users | `?actor_id=`: the actor's allocation, granted, spent, available. Scoped to the reader key's application (gap G9). |
 | `GET /v1/costs/summary` | Users, Usage | Spend by cost class over a window, optionally per actor (gap G9). |
 | `GET /v1/costs/projections` | Jobs | The 25 newest job costs (gap G3). |
 | `GET /v1/admin/reconciliation` | Health, Users | Batteries spend against engine attribution, per application or actor: `balanced`, `unattributed`. Per application answers 404 in per_actor mode (gap G10). |
-| `GET /v1/jobs/{job_id}` | Jobs | Any job by id, with attempts and signed sessions. The Jobs page does not use the engine's job list (`GET /v1/jobs`, paged with `before`) yet (gap G1). |
+| `GET /v1/jobs` | Jobs | Every actor's jobs in the reader's application (builder-core D44), newest first, 50 at a time; the next page asks `before` the oldest job's `created_at` (D59). No filters (gap G15). |
+| `GET /v1/jobs/{job_id}` | Jobs | Any job by id, with attempts and signed sessions. |
 | `GET /v1/jobs/{job_id}/cost` | Jobs | The job's cost by attempt and cost class. |
 
 ### With a signed-in key (Operator actions and Builder, D15–D18)
 
-These calls use the key the person signed in with, not the console's admin key, and are never cached.
+These calls use the key the person signed in with, not the console's reader key, and are never cached.
 The Builder also reads `GET /v1/offerings`, `GET /v1/runners`, `GET /v1/allowance`, `GET /v1/costs/summary` (`by_class`, and `by_app` per app and class since builder-core D60)
 and `GET /v1/jobs/{job_id}` (and `/cost`) with its actor key; the Operator page reads `GET /v1/admin/grants`,
 `GET /v1/admin/keys` and each actor's `GET /v1/allowance` with the admin key.

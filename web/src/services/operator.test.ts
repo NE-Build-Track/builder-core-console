@@ -118,6 +118,11 @@ describe("operator actions", () => {
     expect(replayed.secret).toEqual({ token: null, keyId: "k2", actorId: "acme", kind: "actor" });
   });
 
+  it("never lists the console's own read-only auditor key as an actor (gap G8)", () => {
+    const actors = actorsFromKeys([ACME_KEY, { ...ACME_KEY, key_id: "r1", actor_id: "console-reader", kind: "auditor" }]);
+    expect(actors).toEqual([{ applicationId: "default", actorId: "acme", activeKeys: 1, revokedKeys: 0 }]);
+  });
+
   it("lists actors from their keys, never admin keys", () => {
     const actors = actorsFromKeys([
       ACME_KEY,

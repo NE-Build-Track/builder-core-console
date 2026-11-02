@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { broken, fakeSources, job } from "../../tests/support/fixtures";
+import { broken, fakeSources, job, read } from "../../tests/support/fixtures";
 
-import { isJobId, jobs, manifestsOf } from "./jobs";
+import { isJobId, JOB_PAGE, jobs, manifestsOf } from "./jobs";
 
 describe("jobs", () => {
   it("recognises job ids", () => {
@@ -29,6 +29,30 @@ describe("jobs", () => {
     const view = await jobs(fakeSources({ engine: { job: lookup } }), "not-a-job");
     expect(view).toMatchObject({ invalidId: true, lookup: null });
     expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("lists the application's jobs from the engine, newest first, with who ran each (gap G1)", async () => {
+    const list = vi.fn(async () => read("engine", [job]));
+    const view = await jobs(fakeSources({ engine: { jobs: list } }), null);
+    expect(list).toHaveBeenCalledWith({ limit: JOB_PAGE });
+    expect(view.list.rows.ok && view.list.rows.value.map((row) => [row.id, row.actorId, row.app, row.state])).toEqual([[job.id, job.actor_id, job.app, job.state]]);
+    expect(view.list.older).toBeNull();
+  });
+
+  it("offers the next older page from the oldest job on a full page, and pages with before", async () => {
+    const page = Array.from({ length: JOB_PAGE }, (_, index) => ({ ...job, id: `${index}`.padStart(8, "0") + job.id.slice(8), created_at: new Date(Date.UTC(2026, 10, 2, 12, 0, JOB_PAGE - index)).toISOString() }));
+    const list = vi.fn(async () => read("engine", page));
+    const view = await jobs(fakeSources({ engine: { jobs: list } }), null, "2026-11-02T13:00:00Z");
+    expect(list).toHaveBeenCalledWith({ limit: JOB_PAGE, before: "2026-11-02T13:00:00Z" });
+    expect(view.list.before).toBe("2026-11-02T13:00:00Z");
+    expect(view.list.older).toBe(page.at(-1)!.created_at);
+  });
+
+  it("does not ask the engine for a page before a time with no offset, which it refuses (builder-core D59)", async () => {
+    const list = vi.fn(async () => read("engine", [job]));
+    const view = await jobs(fakeSources({ engine: { jobs: list } }), null, "2026-11-02T13:00:00");
+    expect(view.list.invalidBefore).toBe(true);
+    expect(list).toHaveBeenCalledWith({ limit: JOB_PAGE });
   });
 
   it("skips cost and provider reads when the job cannot be read", async () => {

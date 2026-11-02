@@ -43,6 +43,13 @@ describe("the catalog's rates since builder-core D62 (ISS-10)", () => {
     expect(catalogEntry(offering({ rate_low: null, rate_high: null, rate_status: "missing" }), NOW).source).toBeNull();
   });
 
+  it("shows the orchestrator's own USD price beside the wei rate when it advertises one (gap G14)", () => {
+    const priced = offering({ rate_high: { ...offering({}).rate_high!, amount: "122910217418", price_usd: "0.000277777777777777777777777777777778", observed_by: "orchestrator" } });
+    const entry = catalogEntry(priced, NOW);
+    expect(entry.high.known && entry.high.text).toBe("0.000000122910217418 ETH per second (122910217418 wei), advertised as 0.00028 USD per second");
+    expect(entry.low.known && entry.low.text).toBe("0.000000004492197255 ETH per second (4492197255 wei)");
+  });
+
   it("trusts the engine when it says a rate is stale, even after a recent read", () => {
     const entry = catalogEntry(offering({ stale: true }), NOW);
     expect(entry.stale).toBe(true);

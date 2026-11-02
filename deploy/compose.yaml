@@ -108,6 +108,12 @@ services:
       - path: .env
         required: true
     environment:
+      # The console reads with its auditor key and Batteries' read-only token. The engine's own secrets in
+      # .env are blanked here, so it holds no credential that can write (docs/references/gaps.md#closed, G8).
+      CONSOLE_ENGINE_ADMIN_TOKEN: ""
+      LPB_BATTERIES_TOKEN: ""
+      LPB_BATTERIES_OPERATOR_TOKEN: ""
+      LPB_SECRET_KEY: ""
       CONSOLE_ENGINE_URL: http://engine:8080
       CONSOLE_BATTERIES_URL: http://clearinghouse:8081
       CONSOLE_SIGNER_URL: http://clearinghouse:8937

@@ -15,12 +15,13 @@ import { windowBounds } from "@/utils/time";
 
 export type ActorKeys = { readonly applicationId: string; readonly actorId: string; readonly keys: readonly AccessKey[] };
 
-/** Group non-admin keys by (application, actor), newest key first; admins are listed separately. */
+/** Group actor keys by (application, actor), newest key first. Admin and auditor keys (the console's own reader
+ * among them) belong to no actor, so they are listed separately. */
 export function groupKeys(keys: readonly AccessKey[]): { readonly actors: ActorKeys[]; readonly admins: AccessKey[] } {
   const actors = new Map<string, ActorKeys>();
   const admins: AccessKey[] = [];
   for (const key of keys) {
-    if (key.kind === "admin") {
+    if (key.kind === "admin" || key.kind === "auditor") {
       admins.push(key);
       continue;
     }

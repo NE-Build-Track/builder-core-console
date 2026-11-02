@@ -167,11 +167,12 @@ async function Users() {
         )}
       </Section>
 
-      <Section id="h-admins" title="Admin keys" end={<GapChip id="G8" />}>
-        {view.admins.length === 0 ? <Empty>No admin keys listed.</Empty> : null}
+      <Section id="h-admins" title="Admin and auditor keys" description="Keys that belong to no actor. An auditor key only reads; the console reads with one.">
+        {view.admins.length === 0 ? <Empty>No admin or auditor keys listed.</Empty> : null}
         {view.admins.map((key) => (
           <div key={key.key_id} className="panel admin-row">
             <Id value={key.key_id} />
+            <span className="chip">{key.kind}</span>
             <span className="chip">application {key.application_id}</span>
             {key.revoked_at ? <Pill state="bad">Revoked</Pill> : <Pill state="ok">Active</Pill>}
             <span className="muted">

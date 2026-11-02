@@ -241,7 +241,30 @@ export type JobLookup = {
   readonly providerEvents: Reading<readonly UsageEvent[]> | null;
 };
 
+/** One row of the Jobs page's list: a job as the engine records it, and who ran it. */
+export type JobListRow = {
+  readonly id: string;
+  readonly actorId: string;
+  readonly app: string;
+  readonly state: Job["state"];
+  readonly createdAt: string;
+  readonly attempts: number;
+  readonly paid: boolean;
+  readonly failure: { readonly title: string; readonly code: string } | null;
+};
+
+export type JobList = {
+  readonly rows: Reading<readonly JobListRow[]>;
+  /** The page asked for: jobs created before this time, or the newest when null. */
+  readonly before: string | null;
+  /** `before` for the next older page, when this one was full. */
+  readonly older: string | null;
+  /** The `before` given had no offset, which the engine refuses (builder-core D59), so the newest page is shown. */
+  readonly invalidBefore: boolean;
+};
+
 export type JobsView = {
+  readonly list: JobList;
   readonly projections: Reading<readonly JobCost[]>;
   readonly lookup: JobLookup | null;
   /** The id given was not a job id (a UUID). */
