@@ -7,7 +7,7 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 | --- | --- | --- |
 | `clearinghouse` | `livepeer/clearinghouse-batteries`, `examples/compose/Dockerfile` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
 | `signer` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
-| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `9e447ce8da4b78c4d155b470da1228d1c766f180` (the top of the open PR stack #78 → #81 → #82 → #83 on `releases/m3`, branch `tasks/mz/iss-23-verification`: payment failure reasons, D58; paged job history and a 16 MiB request limit, D59; cost per app and class, the events feed held, D60; repeat-safe revokes, D61. No new migrations since `a6ed9b5`, the merge of PR #76 (D57). Re-pin to the merge commit once the PRs merge) |
+| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `15142129ebbf51103658f8ad48fd5adae052c56d` (`releases/m3` after PRs #78, #81, #82, #83 and #77 merged, 2 November: payment failure reasons, D58; paged job history and a 16 MiB request limit, D59; cost per app and class, the events feed held, D60; repeat-safe revokes, D61; network rates with their source and age, D62; and, from #90, where each runner call's time went. Migration `0011` adds the attempt timings: the stack's `engine-data` volume upgrades from `0010` on start) |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relay only (D10) |
 | `console` | this repository, `deploy/console/Dockerfile` | — |
 

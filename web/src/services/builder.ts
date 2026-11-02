@@ -33,12 +33,16 @@ export function rateText(amount: string, currency: string, unit: string): string
 }
 
 export type CatalogEntry = {
+  /** One app is listed once per currency and unit, plus once for its runners with no rate (builder-core D62). */
+  readonly key: string;
   readonly app: string;
   readonly modes: readonly string[];
   readonly runners: number;
   readonly ready: number;
   readonly low: RateView;
   readonly high: RateView;
+  /** Whose price it is: every rate the engine serves is the orchestrator's own advertisement. */
+  readonly source: string | null;
   readonly observedAt: string | null;
   readonly ageSeconds: number | null;
   readonly stale: boolean;
@@ -59,24 +63,48 @@ export function catalogEntry(offering: Offering, now: Date): CatalogEntry {
   const age = ageSeconds(offering.observed_at ?? null, now);
   const low = rateOf(offering.rate_low);
   const high = rateOf(offering.rate_high);
-  const stale = age === null || age > STALE_AFTER_S;
+  // the engine says so itself since builder-core D62; an old read is stale here too
+  const stale = offering.stale || age === null || age > STALE_AFTER_S;
+  const rate = offering.rate_low ?? offering.rate_high;
   const notes = [
     ...(offering.ready_count === 0 ? ["No runner is ready right now."] : []),
     ...(!low.known && !high.known ? ["No rate advertised."] : []),
     ...(stale ? ["Read too long ago to trust."] : []),
   ];
   return {
+    key: [offering.app, offering.rate_status, rate?.currency ?? "", rate?.unit ?? ""].join("|"),
     app: offering.app,
     modes: offering.modes,
     runners: offering.runner_count,
     ready: offering.ready_count,
     low,
     high,
+    source: rate ? `advertised by the ${rate.source}` : null,
     observedAt: offering.observed_at ?? null,
     ageSeconds: age,
     stale,
     notes,
   };
+}
+
+/** "0.0000000045 ETH per second (4492197255 wei)", or the range low to high. */
+export function rangeText(entry: CatalogEntry): string {
+  const text = (rate: RateView) => (rate.known ? rate.text : "no rate");
+  if (!entry.low.known && !entry.high.known) return "no rate advertised";
+  if (entry.low.known && entry.high.known && entry.low.amount === entry.high.amount) return text(entry.low);
+  return `${text(entry.low)} to ${text(entry.high)}`;
+}
+
+export type RunChoice = { readonly app: string; readonly label: string };
+
+/** Each app once, labelled from its group with the most ready runners: a job names the app, not a group. */
+export function runChoices(entries: readonly CatalogEntry[]): readonly RunChoice[] {
+  const best = new Map<string, CatalogEntry>();
+  for (const entry of entries) {
+    const seen = best.get(entry.app);
+    if (!seen || entry.ready > seen.ready) best.set(entry.app, entry);
+  }
+  return [...best.values()].map((entry) => ({ app: entry.app, label: `${entry.app} · ${entry.ready}/${entry.runners} ready · ${rangeText(entry)}` }));
 }
 
 export function catalog(offerings: Reading<readonly Offering[]>, discovery: Reading<EngineHealth>, now: Date): CatalogView {

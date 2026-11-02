@@ -41,7 +41,7 @@ built by `deploy/compose.yaml`); `web/tests/structure/pins.test.ts` fails when t
 
 | Component | Repository | Commit |
 | --- | --- | --- |
-| Engine | `NE-Build-Track/livepeer-builder-core` | `9e447ce8da4b78c4d155b470da1228d1c766f180` (the top of open PRs #78 → #81 → #82 → #83; re-pin to their merge). The live checks of 30 October ran on `9676260`, a local integration of the same stack with PR #77 |
+| Engine | `NE-Build-Track/livepeer-builder-core` | `15142129ebbf51103658f8ad48fd5adae052c56d` (`releases/m3` with PRs #78 → #81 → #82 → #83 and #77 merged). The live checks of 30 October ran on `9676260`, a local integration of the same PRs |
 | Batteries | `livepeer/clearinghouse-batteries` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
 | Node signer | `livepeer/node` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
 

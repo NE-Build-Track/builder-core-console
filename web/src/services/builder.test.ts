@@ -5,15 +5,17 @@ import type { Allowance, CostSummary, Fees, Job, JobCost, Offering } from "@/dom
 import type { Reading } from "@/domain/reading";
 import { broken, NOW, read } from "../../tests/support/fixtures";
 
-import { allocationNotice, catalogEntry, jobRow, jobState, parseRun, rateText, unitWords, usage } from "./builder";
+import { allocationNotice, catalogEntry, jobRow, jobState, parseRun, rateText, runChoices, unitWords, usage } from "./builder";
 
 const offering = (overrides: Partial<Offering>): Offering => ({
   app: "blueclaw/chat/qwen3.8-27b",
   modes: ["immediate"],
   runner_count: 2,
   ready_count: 2,
-  rate_low: { amount: "4492197255", currency: "wei", unit: "seconds" },
-  rate_high: { amount: "4492197255", currency: "wei", unit: "seconds" },
+  rate_low: { amount: "4492197255", currency: "wei", unit: "seconds", source: "orchestrator", observed_at: new Date(NOW.getTime() - 20_000).toISOString(), observed_by: "engine" },
+  rate_high: { amount: "4492197255", currency: "wei", unit: "seconds", source: "orchestrator", observed_at: new Date(NOW.getTime() - 20_000).toISOString(), observed_by: "engine" },
+  rate_status: "available",
+  stale: false,
   observed_at: new Date(NOW.getTime() - 20_000).toISOString(),
   ...overrides,
 });
@@ -32,6 +34,39 @@ describe("builder catalog", () => {
     const old = catalogEntry(offering({ ready_count: 0, rate_low: null, rate_high: null, observed_at: new Date(NOW.getTime() - 3_600_000).toISOString() }), NOW);
     expect(old.stale).toBe(true);
     expect(old.notes).toEqual(["No runner is ready right now.", "No rate advertised.", "Read too long ago to trust."]);
+  });
+});
+
+describe("the catalog's rates since builder-core D62 (ISS-10)", () => {
+  it("names where a rate came from: the orchestrator advertised it", () => {
+    expect(catalogEntry(offering({}), NOW).source).toBe("advertised by the orchestrator");
+    expect(catalogEntry(offering({ rate_low: null, rate_high: null, rate_status: "missing" }), NOW).source).toBeNull();
+  });
+
+  it("trusts the engine when it says a rate is stale, even after a recent read", () => {
+    const entry = catalogEntry(offering({ stale: true }), NOW);
+    expect(entry.stale).toBe(true);
+    expect(entry.notes).toContain("Read too long ago to trust.");
+  });
+
+  it("says no rate for the group of runners the engine lists with no payable rate", () => {
+    const missing = catalogEntry(offering({ rate_low: null, rate_high: null, rate_status: "missing" }), NOW);
+    expect(missing.notes).toContain("No rate advertised.");
+  });
+
+  it("tells apart one app's groups: one per currency and unit, and the runners with no rate", () => {
+    const wei = catalogEntry(offering({}), NOW);
+    const usd = catalogEntry(offering({ rate_low: { ...offering({}).rate_low!, amount: "0.002", currency: "usd", unit: "fixed" }, rate_high: { ...offering({}).rate_high!, amount: "0.002", currency: "usd", unit: "fixed" } }), NOW);
+    const missing = catalogEntry(offering({ rate_low: null, rate_high: null, rate_status: "missing" }), NOW);
+    expect(new Set([wei.key, usd.key, missing.key]).size).toBe(3);
+  });
+
+  it("offers each app once to run, from its group with the most ready runners", () => {
+    const busy = catalogEntry(offering({ ready_count: 2 }), NOW);
+    const missing = catalogEntry(offering({ ready_count: 0, rate_low: null, rate_high: null, rate_status: "missing" }), NOW);
+    const other = catalogEntry(offering({ app: "blueclaw/image/flux-schnell", ready_count: 1 }), NOW);
+    expect(runChoices([missing, busy, other]).map((choice) => choice.app)).toEqual(["blueclaw/chat/qwen3.8-27b", "blueclaw/image/flux-schnell"]);
+    expect(runChoices([missing, busy, other])[0]?.label).toContain("2/2 ready");
   });
 });
 

@@ -4,7 +4,7 @@ The environment the M3 journey runs in, until a deployment on real infrastructur
 repository's stack, the M3 dev stack ([decision record](https://github.com/Cloud-SPE/Network-Engineering-SPE/blob/main/docs/decisions/2026-10-21-m3-reference-app-and-scope.md),
 decision 5). It is builder-core's engine, Clearinghouse Batteries and the node remote signer at the
 commits in [payment-stack.md](payment-stack.md), plus the console, run with Docker Compose on one
-machine. Recorded 21 October 2026; refreshed 30 October for the engine at `9e447ce` (builder-core D57–D61).
+machine. Recorded 21 October 2026; refreshed 2 November for the engine at `1514212` (builder-core D57–D62, merged).
 
 ## Endpoints
 
@@ -67,9 +67,8 @@ own allowance and wholesale cost, through the engine.
 
 ## What the engine promises at this pin (D57–D61)
 
-The engine is builder-core `9e447ce`, the top of open PRs #78–#83 on `releases/m3`; it moves to their
-merge commit when they merge. Its REST walkthrough is builder-core's
-[`docs/guides/rest-builder.md`](https://github.com/NE-Build-Track/livepeer-builder-core/blob/9e447ce8da4b78c4d155b470da1228d1c766f180/docs/guides/rest-builder.md);
+The engine is builder-core `1514212`, `releases/m3` with PRs #78–#83 and #77 merged. Its REST walkthrough is builder-core's
+[`docs/guides/rest-builder.md`](https://github.com/NE-Build-Track/livepeer-builder-core/blob/15142129ebbf51103658f8ad48fd5adae052c56d/docs/guides/rest-builder.md);
 every operation the journey uses, and where the console sends it, is in
 [m3-rest-operations.md](m3-rest-operations.md) (ISS-20).
 

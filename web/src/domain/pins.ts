@@ -6,8 +6,8 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "9e447ce8da4b78c4d155b470da1228d1c766f180",
-    note: "tasks/mz/iss-23-verification (top of open PRs #78, #81, #82, #83 on releases/m3 after #76): payment failure reasons, paged history and a request limit, cost per app, repeat-safe revokes (D58–D61)",
+    commit: "15142129ebbf51103658f8ad48fd5adae052c56d",
+    note: "releases/m3 with PRs #78, #81, #82, #83 and #77 merged: payment failure reasons, paged history and a request limit, cost per app, repeat-safe revokes, rates with source and age (D58–D62)",
   },
   batteries: {
     repository: "livepeer/clearinghouse-batteries",

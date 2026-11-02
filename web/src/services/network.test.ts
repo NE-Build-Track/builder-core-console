@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { broken, fakeSources, NOW, orchestrator } from "../../tests/support/fixtures";
+import { broken, fakeSources, NOW, orchestrator, read } from "../../tests/support/fixtures";
 
 import { network, offeringStats, orchestratorViews } from "./network";
 
@@ -26,7 +26,7 @@ describe("network", () => {
 
   it("summarises an offering's runners: orchestrators, slots and price range", async () => {
     const runners = await fakeSources().engine.runners("blueclaw/chat/qwen3.8-27b");
-    const second = runners.ok ? { ...runners.value[0]!, url: "u2", orchestrator_url: "https://b:1", capacity: 4, capacity_available: 0, rate: { amount: "9000000000", currency: "wei", unit: "seconds" } } : null;
+    const second = runners.ok ? { ...runners.value[0]!, url: "u2", orchestrator_url: "https://b:1", capacity: 4, capacity_available: 0, rate: { amount: "9000000000", currency: "wei", unit: "seconds", source: "orchestrator" as const } } : null;
     const stats = offeringStats(runners.ok && second ? [...runners.value, second] : []);
     expect(stats).toEqual({ runners: 2, orchestrators: 2, free: 6, total: 12, priceLow: "4534062178", priceHigh: "9000000000", priceUnit: "wei/seconds" });
   });
@@ -34,6 +34,25 @@ describe("network", () => {
   it("reads runners for every offered app", async () => {
     const view = await network(fakeSources());
     expect(view.apps.ok && view.apps.value.map((row) => [row.offering.app, row.runners.ok])).toEqual([["blueclaw/chat/qwen3.8-27b", true]]);
+    expect(view.totals).toEqual({ apps: 1, orchestrators: 1, freshOrchestrators: 0, runners: 1, free: 6, slots: 8 });
+  });
+
+  it("shows an app once when the engine lists it per currency and unit, reading its runners once (builder-core D62)", async () => {
+    const sources = fakeSources();
+    const listed = await sources.engine.offerings();
+    const group = listed.ok ? listed.value[0]! : null;
+    let reads = 0;
+    const engine = {
+      ...sources.engine,
+      offerings: async () => read("engine", group ? [group, { ...group, ready_count: 0, runner_count: 1, rate_low: null, rate_high: null, rate_status: "missing" as const, modes: ["streaming"] }] : []),
+      runners: async (app: string) => {
+        reads += 1;
+        return sources.engine.runners(app);
+      },
+    };
+    const view = await network({ ...sources, engine });
+    expect(view.apps.ok && view.apps.value.map((row) => [row.offering.app, row.offering.runner_count, row.offering.ready_count, row.offering.modes])).toEqual([["blueclaw/chat/qwen3.8-27b", 2, 1, ["single-shot", "streaming"]]]);
+    expect(reads).toBe(1);
     expect(view.totals).toEqual({ apps: 1, orchestrators: 1, freshOrchestrators: 0, runners: 1, free: 6, slots: 8 });
   });
 

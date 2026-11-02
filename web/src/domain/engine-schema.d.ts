@@ -555,6 +555,7 @@ export interface components {
             started_at: string;
             /** Status Code */
             status_code: number | null;
+            timings?: components["schemas"]["CallTimings"] | null;
         };
         /** AttemptCost */
         AttemptCost: {
@@ -566,6 +567,19 @@ export interface components {
              */
             cost_class: "delivered" | "failed_after_payment" | "uncertain" | "pending";
             fees: components["schemas"]["Fees"];
+        };
+        /**
+         * CallTimings
+         * @description Where one runner call's time went before the runner answered, in milliseconds (#89). A step the
+         *     call never reached is ``None``, and each step adds up its repeats.
+         */
+        CallTimings: {
+            /** Challenge Ms */
+            challenge_ms?: number | null;
+            /** Response Ms */
+            response_ms?: number | null;
+            /** Signing Ms */
+            signing_ms?: number | null;
         };
         /**
          * CostSummary
@@ -992,19 +1006,58 @@ export interface components {
         };
         /**
          * NetworkRate
-         * @description A rate as the orchestrator advertises it (wholesale network price, not retail).
+         * @description A rate exactly as advertised: a wholesale network price per unit, not a job quote or a retail price.
          */
         NetworkRate: {
             /** Amount */
             amount: string;
             /** Currency */
             currency: string;
+            /** Price Usd */
+            price_usd?: string | null;
+            /**
+             * Source
+             * @default orchestrator
+             * @constant
+             */
+            source: "orchestrator";
+            /** Unit */
+            unit: string;
+        };
+        /**
+         * ObservedRate
+         * @description A rate as the catalog serves it: when it was last known, and whose clock says so.
+         */
+        ObservedRate: {
+            /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /**
+             * Observed By
+             * @enum {string}
+             */
+            observed_by: "orchestrator" | "engine";
+            /** Price Usd */
+            price_usd?: string | null;
+            /**
+             * Source
+             * @default orchestrator
+             * @constant
+             */
+            source: "orchestrator";
             /** Unit */
             unit: string;
         };
         /**
          * Offering
-         * @description One runner app, as a builder sees it.
+         * @description One runner app in one (currency, unit), as a builder sees it. An app's runners with no rate are one
+         *     more offering with no range: they still serve jobs, so the catalog lists them.
          */
         Offering: {
             /** App */
@@ -1016,12 +1069,19 @@ export interface components {
              * Format: date-time
              */
             observed_at: string;
-            rate_high: components["schemas"]["NetworkRate"] | null;
-            rate_low: components["schemas"]["NetworkRate"] | null;
+            rate_high: components["schemas"]["ObservedRate"] | null;
+            rate_low: components["schemas"]["ObservedRate"] | null;
+            /**
+             * Rate Status
+             * @enum {string}
+             */
+            rate_status: "available" | "missing";
             /** Ready Count */
             ready_count: number;
             /** Runner Count */
             runner_count: number;
+            /** Stale */
+            stale: boolean;
         };
         /** ProvisionBody */
         ProvisionBody: {
@@ -1142,9 +1202,13 @@ export interface components {
             metadata?: string | null;
             /** Mode */
             mode: string | null;
+            /** Observed At */
+            observed_at?: string | null;
             /** Orchestrator Url */
             orchestrator_url: string | null;
             rate: components["schemas"]["NetworkRate"] | null;
+            /** Rate Error */
+            rate_error?: string | null;
             /** Runner Id */
             runner_id: string | null;
             /** Url */

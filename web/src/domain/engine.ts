@@ -7,7 +7,9 @@
  * outcome and the native HTTP request fields. a6ed9b5 (builder-core PR #76, D57) makes `operation_ref` required on
  * provision, both funds, create grant, both rotations and issue key, and adds `IssuedKey.replayed` with a nullable token.
  * 9e447ce (builder-core PRs #78, #81, #82, #83: D58–D61) adds `Failure.reason`, `CostSummary.by_app` and `before` on
- * GET /v1/jobs.
+ * GET /v1/jobs. 1514212 (releases/m3, the merge of those PRs and #77, D62) serves each rate with its `source`,
+ * `observed_at` and `observed_by`, gives each offering a `rate_status` and `stale`, lists an app once per currency and
+ * unit plus once for its runners with no rate, and adds `timings` on each attempt (#90).
  * Regenerate with `pnpm gen:api`; never edit engine-schema.d.ts by hand.
  */
 import type { components } from "./engine-schema";

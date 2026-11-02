@@ -2,7 +2,7 @@
  * The network as this stack sees it: what the engine offers per app, the runners behind each offer, and
  * the orchestrators the discovery service serves (docs/product-specs/console.md#network).
  */
-import type { Runner } from "@/domain/engine";
+import type { Offering, Runner } from "@/domain/engine";
 import { ok, type Reading } from "@/domain/reading";
 import type { DiscoveredOrchestrator } from "@/domain/discovery";
 import type { AppNetwork, NetworkView, OfferingStats, OrchestratorView } from "@/domain/views";
@@ -58,6 +58,27 @@ export function offeringStats(runners: readonly Runner[]): OfferingStats {
   };
 }
 
+/** One offering per app: the engine lists an app once per currency and unit, plus its runners with no rate
+ * (builder-core D62), but the network view counts an app's runners, which the engine reads by app. */
+function byApp(offerings: readonly Offering[]): Offering[] {
+  const apps = new Map<string, Offering>();
+  for (const offering of offerings) {
+    const seen = apps.get(offering.app);
+    apps.set(
+      offering.app,
+      seen
+        ? {
+            ...seen,
+            runner_count: seen.runner_count + offering.runner_count,
+            ready_count: seen.ready_count + offering.ready_count,
+            modes: [...new Set([...seen.modes, ...offering.modes])],
+          }
+        : offering,
+    );
+  }
+  return [...apps.values()];
+}
+
 export async function network(sources: Sources): Promise<NetworkView> {
   const [offerings, discovery, health] = await Promise.all([
     sources.engine.offerings(),
@@ -67,7 +88,7 @@ export async function network(sources: Sources): Promise<NetworkView> {
   const now = sources.now();
   let apps: Reading<readonly AppNetwork[]>;
   if (offerings.ok) {
-    const sorted = [...offerings.value].sort((left, right) => left.app.localeCompare(right.app));
+    const sorted = byApp(offerings.value).sort((left, right) => left.app.localeCompare(right.app));
     const rows = await mapLimited(sorted, 4, async (offering) => {
       const runners = await sources.engine.runners(offering.app);
       return { offering, runners, stats: offeringStats(runners.ok ? runners.value : []) };
