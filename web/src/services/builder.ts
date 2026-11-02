@@ -7,7 +7,7 @@ import { isFinalState, type JobState, type RunInput } from "@/domain/builder";
 import { failureAdvice } from "@/domain/failures";
 import { invalid, parsed, wholeNumber, type Parsed } from "@/domain/forms";
 import { mapReading, type Reading } from "@/domain/reading";
-import { compareDecimals, sumDecimals, weiToEth } from "@/utils/decimal";
+import { compareDecimals, roundForDisplay, sumDecimals, weiToEth } from "@/utils/decimal";
 import { ageSeconds } from "@/utils/time";
 
 /** An offering read longer ago than this is marked stale, whatever the engine's overall freshness says. */
@@ -24,8 +24,8 @@ export function unitWords(unit: string): string {
 }
 
 /**
- * A rate exactly as advertised, readable: wei shown as ETH with the wei beside it. The engine gives no
- * USD rate (gap G14); a USD figure would need an ETH price with its source and time.
+ * A rate exactly as advertised, readable: wei shown as ETH with the wei beside it. The engine converts
+ * nothing to USD (gap G14); a runner's own `price_usd` is shown beside it when it advertises one.
  */
 export function rateText(amount: string, currency: string, unit: string): string {
   const per = unitWords(unit);
@@ -56,7 +56,12 @@ export type CatalogView = {
 };
 
 function rateOf(rate: NetworkRate | null | undefined): RateView {
-  return rate ? { known: true, amount: String(rate.amount), currency: rate.currency, unit: rate.unit, text: rateText(String(rate.amount), rate.currency, rate.unit) } : { known: false };
+  if (!rate) return { known: false };
+  const text = rateText(String(rate.amount), rate.currency, rate.unit);
+  // the orchestrator's own figure, passed on unconverted (builder-core D62); most send none (gap G14)
+  const shown = rate.price_usd ? roundForDisplay(String(rate.price_usd).replace(/^(-?\d+\.\d{18})\d+$/, "$1"), 4) : null; // exact to 18 places, for display
+  const usd = shown ? `, advertised as ${shown} USD ${unitWords(rate.unit)}` : "";
+  return { known: true, amount: String(rate.amount), currency: rate.currency, unit: rate.unit, text: text + usd };
 }
 
 export function catalogEntry(offering: Offering, now: Date): CatalogEntry {

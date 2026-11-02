@@ -11,6 +11,12 @@ services:
       context: https://github.com/livepeer/clearinghouse-batteries.git#ca09e47c067682fb48c3f15425546fb6aa5b6659
       dockerfile: examples/compose/Dockerfile
     command: [serve, --config-file, /etc/clearinghouse.toml]
+    environment:
+      # The on-chain listener reports the payer's deposit and reserve (Money, payer escrow; gap G7, closed).
+      # It opens with a getSenderInfo snapshot, so it needs no start block; first-run.sh fills PAYER_ADDRESS.
+      CLEARINGHOUSE_ENABLE_ONCHAIN_LISTENER: ${BATTERIES_ONCHAIN_LISTENER:-false}
+      CLEARINGHOUSE_SIGNER_ADDRESSES: ${PAYER_ADDRESS:-}
+      CLEARINGHOUSE_RPC_URL_FILE: /run/secrets/rpc-url
     volumes:
       - paid-state:/data
       - ./config/clearinghouse.toml:/etc/clearinghouse.toml:ro
@@ -108,6 +114,12 @@ services:
       - path: .env
         required: true
     environment:
+      # The console reads with its auditor key and Batteries' read-only token. The engine's own secrets in
+      # .env are blanked here, so it holds no credential that can write (docs/references/gaps.md#closed, G8).
+      CONSOLE_ENGINE_ADMIN_TOKEN: ""
+      LPB_BATTERIES_TOKEN: ""
+      LPB_BATTERIES_OPERATOR_TOKEN: ""
+      LPB_SECRET_KEY: ""
       CONSOLE_ENGINE_URL: http://engine:8080
       CONSOLE_BATTERIES_URL: http://clearinghouse:8081
       CONSOLE_SIGNER_URL: http://clearinghouse:8937

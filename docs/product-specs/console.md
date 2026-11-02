@@ -66,8 +66,10 @@ Totals are marked partial when a list hit the row cap (gap G6).
 
 A job id lookup (a GET form inside `<search>`). A found job shows its app, actor, mode, times, failure,
 measured usage and cost; each attempt with its orchestrator, outcome, payment, cost class and signed
-sessions; and the Batteries usage events for those sessions' manifests. Below: the 25 newest costed
-jobs (gaps G1, G3).
+sessions; and the Batteries usage events for those sessions' manifests. Below: every job in the
+application, newest first, 50 at a time, with its state, app, actor, payment, attempts and why it failed;
+**Older jobs** pages back with `before` (builder-core D59), and the engine takes no filters (gap G15).
+Then the 25 newest costed jobs (gap G3).
 
 ## Sources and gaps
 

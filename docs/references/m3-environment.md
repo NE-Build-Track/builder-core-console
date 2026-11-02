@@ -25,7 +25,8 @@ the same file. Restarting `clearinghouse` needs the signer recreated with it (`m
 
 | Credential | Scope | Holder |
 | --- | --- | --- |
-| Engine admin key (`lpk_`) | Everything on the engine | The operator; one is in `deploy/.env` for the console's reads |
+| Engine admin key (`lpk_`) | Everything on the engine | The operator; one is in `deploy/.env` (`CONSOLE_ENGINE_ADMIN_TOKEN`), never given to the console |
+| Engine auditor key (`lpk_`) | Read only, every actor of one application | The console's reads (`CONSOLE_ENGINE_READER_TOKEN`, from `first-run.sh`) |
 | Engine actor key (`lpk_`) | One actor: discover, run, read its own jobs and costs | The builder. Issued in Operator actions, shown once |
 | Batteries `builder-engine` | Fund grants, create and fund allocations, gateway keys, usage | The engine (`LPB_BATTERIES_TOKEN`) |
 | Batteries `grant-desk` | Create, read and fund grants | The engine (`LPB_BATTERIES_OPERATOR_TOKEN`) |

@@ -18,14 +18,6 @@ export type Gap = {
 
 export const GAPS = [
   {
-    id: "G1",
-    title: "The Jobs page lists projections, not jobs",
-    impact:
-      "builder-core lists every actor's jobs to an admin or auditor (GET /v1/jobs, its D44) and pages that list with before (its D59, PR #81, in review), but the Jobs page still shows the newest cost projections and looks jobs up by id. The list has no filters (actor, app, state, time) yet.",
-    fix: "List jobs from GET /v1/jobs with the reader's credential, paging with before; ask builder-core for filters (actor, app, state, time).",
-    owner: "this repository",
-  },
-  {
     id: "G3",
     title: "Cost projections capped at 25",
     impact: "GET /v1/costs/projections returns at most the 25 newest projections and has no paging.",
@@ -55,22 +47,6 @@ export const GAPS = [
       "Batteries /v1/usage pages oldest-first with no time filter, so usage over a window means walking the whole feed. The console stops at a row cap and marks totals as partial when it does.",
     fix: "A since/until filter (or newest-first order) on /v1/usage and /v1/sessions.",
     owner: "batteries",
-  },
-  {
-    id: "G7",
-    title: "Payer deposit and reserve not shown",
-    impact:
-      "The signer's /readyz says only ready or not. Deposit and reserve amounts appear in Batteries' escrow report only when its on-chain listener runs, which this stack (like ChatLPT's) does not enable.",
-    fix: "Enable the Batteries on-chain listener with the payer address, or read TicketBroker directly.",
-    owner: "this repository",
-  },
-  {
-    id: "G8",
-    title: "The keys-mode reader holds an admin key",
-    impact:
-      "builder-core has a read-only auditor credential (its #69), and the OIDC reader uses one, so the engine refuses its writes. With CONSOLE_AUTH=keys the reader still holds an engine admin key, which can do everything; the console stays read-only there only because its code makes GET requests alone (tests/structure/writes.test.ts).",
-    fix: "Issue the keys-mode reader an auditor key (kind auditor) instead of an admin key; the Money page then shows the engine's grants as not available, as in OIDC mode.",
-    owner: "this repository",
   },
   {
     id: "G9",
@@ -108,8 +84,16 @@ export const GAPS = [
     id: "G14",
     title: "Rates are in wei only",
     impact:
-      "Offerings carry the orchestrators' rates in wei per their own unit, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries. builder-core PR #77 (its D62, in review) adds price_usd to each rate, but it is the runner's own figure, passed on unconverted, and the live orchestrators send none (checked 30 October), so the gap stays open in practice.",
-    fix: "A USD rate beside the advertised one, with the ETH price, its source and its time (ISS-10): orchestrators that advertise price_usd, or a conversion in the engine.",
+      "Offerings carry the orchestrators' rates in their own currency and unit, mostly wei, so a builder sees ETH, not dollars, before running a job; the cost afterwards is in USD from Batteries. Since builder-core D62 (PR #77, merged) a rate carries the runner's own price_usd when it advertises one, and the catalog shows it beside the wei rate, but it is the runner's figure, passed on unconverted, and most orchestrators send none (on 2 November, one of the three the stack's discovery reached did).",
+    fix: "A USD rate for every runner, with the ETH price, its source and its time (ISS-10): a conversion in the engine, or orchestrators that all advertise price_usd.",
+    owner: "builder-core",
+  },
+  {
+    id: "G15",
+    title: "The job list has no filters",
+    impact:
+      "The Jobs page lists every actor's jobs newest first (GET /v1/jobs, paged with before), but the engine takes no filter, so finding one actor's, one app's or one state's jobs means paging through the rest.",
+    fix: "Filters on GET /v1/jobs: actor_id, app, state and a time window (builder-core's ISS-29 REST guide proposes the paging cursor, not the filters).",
     owner: "builder-core",
   },
 ] as const satisfies readonly Gap[];
