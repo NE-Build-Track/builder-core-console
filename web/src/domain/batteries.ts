@@ -95,15 +95,18 @@ export const ledgerRowSchema = z.looseObject({
 });
 export type LedgerRow = z.infer<typeof ledgerRowSchema>;
 
-/** Present only when Batteries runs its on-chain listener (docs/references/gaps.md#g7). */
+/**
+ * The payer's TicketBroker balances, present when Batteries runs its on-chain listener (deploy/compose.yaml).
+ * The API serves the store's *_wei amounts as *_eth decimals (Batteries internal/app/presentation.go).
+ */
 export const escrowRowSchema = z.looseObject({
   chain_id: z.string(),
   contract_address: z.string(),
   sender: z.string(),
   confirmed_through_block: z.string(),
-  deposit_balance_wei: z.string(),
-  reserve_balance_wei: z.string(),
-  total_balance_wei: z.string(),
+  deposit_balance_eth: decimal,
+  reserve_balance_eth: decimal,
+  total_balance_eth: decimal,
 });
 export type EscrowRow = z.infer<typeof escrowRowSchema>;
 

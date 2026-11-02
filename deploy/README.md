@@ -48,6 +48,12 @@ run `deploy/first-run.sh` again to add the reader key, then `make up`.
 
 ## Operating
 
+**Payer escrow.** With `BATTERIES_ONCHAIN_LISTENER=true` and `PAYER_ADDRESS` in `deploy/.env`, Batteries
+reads the payer's TicketBroker deposit and reserve from the signer's RPC (every 30 s) and the Money page
+shows them. An existing stack: run `deploy/first-run.sh` again (it fills `PAYER_ADDRESS`), add
+`BATTERIES_ONCHAIN_LISTENER=true`, then recreate Batteries and the two services in its network namespace:
+`docker compose up -d --force-recreate clearinghouse signer signer-metrics`.
+
 ```sh
 make up        # stop ChatLPT's stack first: one signer per payer account
 make logs

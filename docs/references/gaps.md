@@ -10,7 +10,6 @@ fails when the two disagree. The console works within these today; nothing here 
 | [G4](#g4-no-engine-metrics-or-events) | builder-core | Job rates, latency and failure trends over time; live updates instead of polling. |
 | [G5](#g5-signer-metrics-are-loopback-only) | signer | Drop the relay container. |
 | [G6](#g6-usage-feed-has-no-time-filter) | batteries | Usage over a window without walking the whole history; no partial totals. |
-| [G7](#g7-payer-deposit-and-reserve-not-shown) | this repository | Payer runway: deposit and reserve against the burn rate. |
 | [G9](#g9-admin-reads-are-scoped-to-one-application) | builder-core | Per-actor money across every application. |
 | [G10](#g10-no-application-wide-reconciliation-in-per_actor-mode) | builder-core | One reconciliation read for the Health page instead of one per actor. |
 | [G11](#g11-reconciliation-flags-normal-sync-lag-as-unbalanced) | builder-core | An engine flag that only goes false on real money gaps, so it can drive alerts. |
@@ -49,14 +48,6 @@ fails when the two disagree. The console works within these today; nothing here 
 **Fix.** A since/until filter (or newest-first order) on /v1/usage and /v1/sessions.
 
 **Owner.** batteries. **Unlocks:** Usage over a window without walking the whole history; no partial totals.
-
-## G7: Payer deposit and reserve not shown
-
-**Impact.** The signer's /readyz says only ready or not. Deposit and reserve amounts appear in Batteries' escrow report only when its on-chain listener runs, which this stack (like ChatLPT's) does not enable.
-
-**Fix.** Enable the Batteries on-chain listener with the payer address, or read TicketBroker directly.
-
-**Owner.** this repository. **Unlocks:** Payer runway: deposit and reserve against the burn rate.
 
 ## G9: Admin reads are scoped to one application
 
@@ -117,6 +108,11 @@ credentials and still uses the CLI.
 
 ## Closed
 
+- **G7, payer deposit and reserve were not shown** (closed 2 November). The stack runs Batteries' on-chain
+  listener (`BATTERIES_ONCHAIN_LISTENER`, `PAYER_ADDRESS` in `deploy/.env`; it polls the signer's RPC every
+  30 s and opens with a `getSenderInfo` snapshot, so no start block is needed). The Money page shows the
+  payer's TicketBroker deposit and reserve from `GET /v1/escrow/report`, which serves ETH decimals
+  (`deposit_balance_eth`, not the store's wei: the console's schema expected wei until it was seen live).
 - **G8, the keys-mode reader held an admin key** (closed 2 November). With `CONSOLE_AUTH=keys` the
   console now reads with `CONSOLE_ENGINE_READER_TOKEN`, an auditor key `first-run.sh` issues, which the
   engine lets only read (builder-core D46), as the OIDC reader already did; `deploy/compose.yaml` blanks

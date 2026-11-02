@@ -35,6 +35,12 @@ The same files ChatLPT uses: `keystore.json`, `keystore-password` (payer account
 `grants.read`, `allocations.read`, `api_keys.read`, `sessions.read`, `settlements.read`, `usage.read`,
 `ledger.read` and `escrow.read`.
 
+**Batteries' on-chain listener** reports the payer's TicketBroker deposit and reserve (Money, payer escrow).
+`deploy/compose.yaml` turns it on from `deploy/.env`: `BATTERIES_ONCHAIN_LISTENER=true` and `PAYER_ADDRESS`
+(`first-run.sh` reads it from `keystore.json`), with the signer's `rpc-url`. It opens with a `getSenderInfo`
+snapshot at a recent block, so it needs no start block, then polls every 30 s (`config/clearinghouse.toml`).
+ChatLPT's Batteries does not run it; two listeners on one payer only read.
+
 `init-secrets.py` either creates all of them in an empty folder, or, when the folder already holds a
 `clearinghouse.toml` (copied from ChatLPT to use the same values), appends only the reader and adds
 `grants.fund` to this stack's grant desk, so a grant can be created with an amount through the engine

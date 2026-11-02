@@ -11,6 +11,12 @@ services:
       context: https://github.com/livepeer/clearinghouse-batteries.git#ca09e47c067682fb48c3f15425546fb6aa5b6659
       dockerfile: examples/compose/Dockerfile
     command: [serve, --config-file, /etc/clearinghouse.toml]
+    environment:
+      # The on-chain listener reports the payer's deposit and reserve (Money, payer escrow; gap G7, closed).
+      # It opens with a getSenderInfo snapshot, so it needs no start block; first-run.sh fills PAYER_ADDRESS.
+      CLEARINGHOUSE_ENABLE_ONCHAIN_LISTENER: ${BATTERIES_ONCHAIN_LISTENER:-false}
+      CLEARINGHOUSE_SIGNER_ADDRESSES: ${PAYER_ADDRESS:-}
+      CLEARINGHOUSE_RPC_URL_FILE: /run/secrets/rpc-url
     volumes:
       - paid-state:/data
       - ./config/clearinghouse.toml:/etc/clearinghouse.toml:ro

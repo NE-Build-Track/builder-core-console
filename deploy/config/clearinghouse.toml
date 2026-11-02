@@ -9,3 +9,6 @@ EnableKafka = true
 EnableAccounting = true
 KafkaBind = "127.0.0.1:9092"
 KafkaTopic = "livepeer-signing"
+# The on-chain listener (on when deploy/.env sets BATTERIES_ONCHAIN_LISTENER and PAYER_ADDRESS) polls the
+# signer's RPC; deposit and reserve change rarely, so every 30 s instead of the default 5 s.
+PollInterval = "30s"

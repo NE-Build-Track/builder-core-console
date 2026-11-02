@@ -93,6 +93,14 @@ describe("batteries adapter", () => {
     expect(reading).toMatchObject({ ok: true, value: { truncated: true } });
   });
 
+  it("reads the escrow report as the API serves it: ETH decimals, not wei (seen live at ca09e47, gap G7)", async () => {
+    // Batteries' API rewrites each store-native *_wei field as an *_eth decimal (internal/app/presentation.go)
+    const row = { chain_id: "42161", confirmed_through_block: "520662913", contract_address: "0xa8bb618b1520e284046f3dfc448851a1ff26e41b", deposit_balance_eth: "0.18051204", reserve_balance_eth: "0.3366", sender: "0x5ae4e42db3671370a0c25aff451e7482aaec3d0b", total_balance_eth: "0.51711204" };
+    vi.stubGlobal("fetch", vi.fn(async () => respond(200, [row])));
+    const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).escrow();
+    expect(reading.ok && reading.value.map((item) => [item.deposit_balance_eth, item.reserve_balance_eth, item.total_balance_eth])).toEqual([["0.18051204", "0.3366", "0.51711204"]]);
+  });
+
   it("rejects a body that does not match the pinned shape, naming the field", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => respond(200, { items: [{ id: "g1" }], next_cursor: "" })));
     const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).grants();

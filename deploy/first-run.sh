@@ -6,6 +6,7 @@
 #   CONSOLE_ENGINE_ADMIN_TOKEN                         from `lpb bootstrap-admin` (printed once by the engine)
 #   CONSOLE_ENGINE_READER_TOKEN                        an auditor key (read-only) the admin key issues for the console
 #   CONSOLE_SESSION_SECRET                             random, seals the Operator and Builder sign-ins (D16)
+#   PAYER_ADDRESS                                      the payer address in deploy/secrets/keystore.json (Batteries' listener)
 # Values that are already set are kept. It never starts the signer, so it is safe while ChatLPT runs (D3).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -34,6 +35,9 @@ fill_from LPB_BATTERIES_TOKEN engine-token
 fill_from LPB_BATTERIES_OPERATOR_TOKEN grant-desk-token
 fill_from CONSOLE_BATTERIES_TOKEN console-reader-token
 chmod 600 "$ENV_FILE"
+if [ -z "$(current PAYER_ADDRESS)" ] && [ -f secrets/keystore.json ]; then
+  put PAYER_ADDRESS "0x$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["address"].lower().removeprefix("0x"))' secrets/keystore.json)"
+fi
 
 engine() { docker compose run --rm --no-deps -T engine "$@"; }
 if [ -z "$(current LPB_SECRET_KEY)" ]; then

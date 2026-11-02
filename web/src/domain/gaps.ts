@@ -49,14 +49,6 @@ export const GAPS = [
     owner: "batteries",
   },
   {
-    id: "G7",
-    title: "Payer deposit and reserve not shown",
-    impact:
-      "The signer's /readyz says only ready or not. Deposit and reserve amounts appear in Batteries' escrow report only when its on-chain listener runs, which this stack (like ChatLPT's) does not enable.",
-    fix: "Enable the Batteries on-chain listener with the payer address, or read TicketBroker directly.",
-    owner: "this repository",
-  },
-  {
     id: "G9",
     title: "Admin reads are scoped to one application",
     impact:

@@ -67,7 +67,7 @@ with no time filter (gap G6). Shapes: `web/src/domain/batteries.ts`.
 | `GET /v1/sessions` | Usage | Payment sessions: `app`, `orchestrator` (ticket recipient), allocation, key. Joins usage to app and orchestrator. |
 | `GET /v1/usage` | Usage, Jobs | Every applied or quarantined `create_signed_ticket` event: `computed_fee_usd`, `computed_fee_eth`, `manifest_id`, `payment_session_id`. Jobs filters by `manifest_id`. |
 | `GET /v1/ledger/report` | Money | Double-entry balances per account (`allocation_available`, `allocation_spent`, `grant_funding_source`, `grant_unallocated`). |
-| `GET /v1/escrow/report` | Money | Payer deposit and reserve in wei, only with the on-chain listener (gap G7). |
+| `GET /v1/escrow/report` | Money | The payer's TicketBroker deposit and reserve, as ETH decimals (`deposit_balance_eth`, `reserve_balance_eth`, `total_balance_eth`; the API rewrites the store's wei), with the block they are confirmed through. Filled by Batteries' on-chain listener, which this stack runs (`BATTERIES_ONCHAIN_LISTENER`, `PAYER_ADDRESS`). |
 
 Available but not yet read: `GET /v1/settlements` (empty without the on-chain listener) and
 `GET /v1/escrow/activity`.
