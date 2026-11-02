@@ -69,5 +69,5 @@ RFC 9068 tokens with an engine audience. The separate reader client has no admin
 Signup grants the builder role and no allocation. The first-login flow refuses existing-email
 collisions rather than linking accounts. No demo human identities, default operator or password
 signup are imported. The public edge denies the master realm and administrative endpoints.
-Provisioning stores secrets in ignored files with private modes; Ansible uses Vault inputs and
-`no_log` for secret tasks. Do not publish generated env files, inventories, database dumps or key files.
+Provisioning stores secrets in ignored files with private modes; deployment settings are supplied
+externally and secret tasks use `no_log`. Do not publish generated env files, inventories, database dumps or key files.

@@ -34,45 +34,25 @@ live but the app stays 503 until the full stack is configured. Keep
 `validate_public_endpoints: true` for a completed rollout; setting it false allows a staged private
 installation, which must not be reported as publicly verified.
 
-## Inventory from a MobaXterm session
+## External deployment inputs
 
-The `.moba` bookmark supplies an SSH address, port, username and a reference to a key. It is data,
-not a deployment script, and does not contain the referenced key. Keep it outside the repository.
-Convert a PuTTY `.ppk` to OpenSSH using PuTTYgen's **Conversions → Export OpenSSH key**, preserving
-its passphrase. Store the key outside the checkout with restrictive permissions, or use an SSH agent.
-
-```sh
-mkdir -p .local/ansible
-python3 deploy/ansible/inventory_from_moba.py /private/SmokePing.moba \
-  --identity-file /private/frankfurt-openssh-key \
-  --output .local/ansible/inventory.json
-```
-
-The importer copies only host, user and port, sets strict host-key checking, and refuses to overwrite
-an existing inventory. It never extracts saved passwords. Alternatively copy
-[inventory.example.yml](inventory.example.yml) into the ignored `.local/ansible` directory.
-On the controller, verify the SSH host key against the provider's console before adding it to
-`known_hosts`; do not disable host-key checking to make the first connection work.
-
-## Configure private deployment variables
-
-Copy [vars.example.yml](vars.example.yml) to `.local/ansible/vars.yml`. Supply the two DNS names,
-stable audience, ACME email and Google OAuth credentials. Encrypt that file with `ansible-vault
-encrypt`; use `--ask-vault-pass` or your existing Vault password manager. Ansible's provisioning and
-secret-copy tasks use `no_log`. Avoid debug mode/diffs and do not print resolved Compose config.
+Provide an existing inventory with a `builder` group and settings from outside this checkout.
+This repository does not generate host inventories or manage access keys. Use
+[vars.example.yml](vars.example.yml) only as an option reference; keep actual credentials,
+connection details and private settings outside version control. Provisioning and secret-copy tasks
+use `no_log`. Avoid debug mode/diffs and do not print resolved Compose config.
 
 Archive the reviewed commit on the controller, then set `source_archive` to its absolute path and
 `release_revision` to that full commit SHA. Archive committed source only, never a working directory
 containing secrets or `node_modules`:
 
 ```sh
-git archive --format=tar.gz --output=.local/ansible/source.tar.gz HEAD
+git archive --format=tar.gz --output="$SOURCE_ARCHIVE" HEAD
 git rev-parse HEAD
-ansible-playbook -i .local/ansible/inventory.json deploy/ansible/deploy.yml \
-  -e @.local/ansible/vars.yml --ask-vault-pass --syntax-check
-ansible builder -i .local/ansible/inventory.json -m ansible.builtin.ping
-ansible-playbook -i .local/ansible/inventory.json deploy/ansible/deploy.yml \
-  -e @.local/ansible/vars.yml --ask-vault-pass
+ansible-playbook -i "$INVENTORY" deploy/ansible/deploy.yml \
+  -e "@$SETTINGS_FILE" --syntax-check
+ansible-playbook -i "$INVENTORY" deploy/ansible/deploy.yml \
+  -e "@$SETTINGS_FILE"
 ```
 
 `--check` can inspect existing hosts but cannot simulate installing Docker and starting containers.
@@ -130,7 +110,7 @@ Files live under `/opt/builder-console` by default:
 
 Reruns preserve generated credentials. Host/Google changes are refused by the initial-config script
 rather than silently changing identity. Apply the production guide's live rotation procedure first
-and update the shared config and Vault values together. Existing realms are never deleted or
+and update the shared configuration and external settings together. Existing realms are never deleted or
 overwritten by startup import. Each new source revision must use a new `release_revision` and archive.
 
 Before upgrades, take encrypted off-host database and secret backups and verify restore. Rolling back

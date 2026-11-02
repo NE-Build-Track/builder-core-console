@@ -62,7 +62,7 @@ python3 deploy/keycloak/production/configure.py init \
 ```
 
 Enter the Google secret at the hidden prompt. Automation can supply `GOOGLE_CLIENT_SECRET` through
-its environment or Ansible Vault; never put it on the command line. The script creates:
+its environment or externally supplied private settings; never put it on the command line. The script creates:
 
 - `production/.env`: generated database, bootstrap-admin, two client and session secrets plus your
   Google credentials, mode 0600. Back it up encrypted. Windows users must also restrict its ACL.
@@ -157,7 +157,7 @@ python3 deploy/keycloak/production/configure.py admin -- get users/KEYCLOAK_UUID
 Keycloak skips startup import when `livepeer` already exists. Re-rendering the JSON or redeploying
 does **not** update live clients, roles or Google secrets. Apply reviewed changes through `admin --`
 or an explicit migration; never delete/reimport a live realm. Google secret rotation requires updating
-`identity-provider/instances/google` in the live realm, then updating the stored env/Vault secret and
+`identity-provider/instances/google` in the live realm, then updating the external secret source and
 recreating Keycloak. For client-secret rotation, update the live client and its consumer together.
 Changing the console session secret signs everyone out. Changing only a PostgreSQL env password
 does not rotate an existing database user's password; rotate it in PostgreSQL as well.

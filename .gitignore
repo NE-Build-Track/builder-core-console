@@ -21,6 +21,20 @@ deploy/secrets/
 deploy/keycloak/production/runtime/
 deploy/config/pinned-certs/
 
+# Deployment access files are supplied outside version control.
+*.moba
+*.ppk
+*.key
+*.pem
+*.p12
+*.pfx
+**/id_rsa
+**/id_ed25519
+**/id_ecdsa
+AKIA*.txt
+*.apps.googleusercontent.com.txt
+client_secret_*.json
+
 # Editors
 .idea/
 .vscode/
