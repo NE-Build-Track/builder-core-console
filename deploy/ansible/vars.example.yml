@@ -1,0 +1,24 @@
+# Encrypt the real copy with ansible-vault; never commit it.
+auth_host: auth.example.com
+console_host: console.example.com
+engine_audience: https://engine.example.com
+acme_email: ops@example.com
+google_client_id: replace-me.apps.googleusercontent.com
+google_client_secret: replace-me
+
+# Default starts only Keycloak, PostgreSQL and HTTPS. No payment services or engine jobs.
+deployment_mode: identity
+install_docker: false
+deployment_root: /opt/builder-console
+
+# Controller-side git archive of the reviewed revision. No server-side GitHub credentials.
+source_archive: /path/to/builder-console.tar.gz
+release_revision: replace-with-full-commit-sha
+
+# For deployment_mode: full, supply a completed deploy/.env and the directory containing
+# the payer keystore, RPC URL and Batteries credentials described in deploy/README.md.
+# Values are copied privately; the playbook never provisions allocations or runs paid jobs.
+# builder_stack_env: |
+#   LPB_BATTERIES_TOKEN='...'
+#   ...
+# builder_secrets_directory: /path/to/private/deploy/secrets/

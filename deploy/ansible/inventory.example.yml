@@ -1,0 +1,11 @@
+all:
+  children:
+    builder:
+      hosts:
+        builder_host:
+          ansible_host: 203.0.113.10
+          ansible_user: root
+          ansible_port: 22
+          # Convert a PuTTY .ppk to OpenSSH outside this repository before using it.
+          ansible_ssh_private_key_file: /path/to/private/openssh-key
+          ansible_ssh_common_args: -o StrictHostKeyChecking=yes

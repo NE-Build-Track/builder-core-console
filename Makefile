@@ -1,4 +1,4 @@
-.PHONY: install check typecheck lint test build dev gen-api images up down logs compose-config restart-payments
+.PHONY: install check typecheck lint test provisioning-test build dev gen-api images up down logs compose-config restart-payments
 
 COMPOSE := docker compose -f deploy/compose.yaml
 
@@ -14,11 +14,15 @@ lint:
 test:
 	cd web && pnpm test
 
+provisioning-test:
+	python3 -m unittest discover -s deploy/keycloak/production -v
+	python3 -m unittest discover -s deploy/ansible -v
+
 compose-config:
 	$(COMPOSE) config -q
 	touch deploy/keycloak/.env && docker compose -f deploy/keycloak/compose.yaml config -q
 
-check: typecheck lint test compose-config
+check: typecheck lint test provisioning-test compose-config
 
 build:
 	cd web && pnpm build

@@ -3,7 +3,7 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 
 import { ENDED_MESSAGES, isEndReason, type Area, type EndReason, type Session } from "@/domain/session";
-import { COOKIE_NAMES, ENDED_COOKIE_NAMES, ENDED_MAX_AGE_S, ID_COOKIE_NAMES, openSession, SESSION_MAX_AGE_S } from "@/runtime/session";
+import { COOKIE_NAMES, ENDED_COOKIE_NAMES, ENDED_MAX_AGE_S, ID_COOKIE_NAMES, openSession, operatorReadAccess, SESSION_MAX_AGE_S } from "@/runtime/session";
 
 /**
  * The writing areas' cookies (decision D16): httpOnly, SameSite=Strict, sealed by the runtime. Read at
@@ -12,6 +12,11 @@ import { COOKIE_NAMES, ENDED_COOKIE_NAMES, ENDED_MAX_AGE_S, ID_COOKIE_NAMES, ope
 
 export async function sessionFor(area: Area): Promise<Session | null> {
   return openSession(area, (await cookies()).get(COOKIE_NAMES[area])?.value);
+}
+
+/** Used by every shared-layout read; a builder or anonymous visitor never sees operator aggregates. */
+export async function mayReadStack(): Promise<boolean> {
+  return operatorReadAccess((await cookies()).get(COOKIE_NAMES.operator)?.value);
 }
 
 /** Why the area's last session ended (ISS-21), for a signed-out page to say; null when it was not ended for it. */
