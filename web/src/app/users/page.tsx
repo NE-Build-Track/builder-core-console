@@ -189,7 +189,7 @@ function ActorRow({ actor, maxSpent, keysOn }: { readonly actor: ActorView; read
   const spent = approximate(actor.spentUsd ?? "0");
   return (
     <tr>
-      <th scope="row">
+      <th scope="row" className="cell-wrap-narrow cell-wrap-readable">
         {actor.label ? (
           <>
             <bdi>{actor.label}</bdi>
@@ -202,12 +202,12 @@ function ActorRow({ actor, maxSpent, keysOn }: { readonly actor: ActorView; read
         <bdi>{actor.applicationId}</bdi>
       </td>
       {keysOn ? (
-        <td className="r num">
+        <td className="r num cell-wrap-narrow">
           {actor.activeKeys}
           {actor.keys.length > actor.activeKeys ? <span className="muted"> +{actor.keys.length - actor.activeKeys} revoked</span> : null}
         </td>
       ) : null}
-      <td className="mono">
+      <td className="mono cell-wrap-narrow">
         {actor.allowance === null ? (
           <span className="muted">not readable (G9)</span>
         ) : actor.allowance.ok ? (
