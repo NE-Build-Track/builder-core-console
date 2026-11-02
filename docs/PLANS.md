@@ -22,6 +22,6 @@ When every acceptance item is evidenced and Mike has reviewed it, move the plan 
 
 | Plan | State |
 | --- | --- |
-| [active/keycloak-production.md](exec-plans/active/keycloak-production.md) | Live Google sign-in verified; removing direct remote Batteries access; awaiting review |
+| [active/keycloak-production.md](exec-plans/active/keycloak-production.md) | Live Google sign-in and reader-free deployment verified; awaiting review |
 | [active/console-v1.md](exec-plans/active/console-v1.md) | Scaffolded; awaiting review |
-| [active/console-m3.md](exec-plans/active/console-m3.md) | Phases 0–4 built 21 October; awaiting review; dry run and final run to come |
+| [active/console-m3.md](exec-plans/active/console-m3.md) | Phases 0â€“4 built 21 October; awaiting review; dry run and final run to come |

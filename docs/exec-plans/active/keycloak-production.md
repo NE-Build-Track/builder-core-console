@@ -2,7 +2,7 @@
 
 ## Status
 
-Live Google sign-in and Builder origin correction verified; removing direct remote Batteries access. Awaiting review.
+Live Google sign-in and Builder origin correction verified; direct remote Batteries access removed. Awaiting review.
 
 ## Goal
 
@@ -45,6 +45,9 @@ and credentials externally; no host inventory or access keys belong in this chan
   payment reads. Restored the original Batteries deployment and removed its console-only token/public
   domain and the host's retired connection settings. All 249 web tests, eight provisioning tests and
   remote Compose checks pass; legacy remote Batteries settings are overridden to empty values.
+- 2026-11-02: Reader-free console deployed. Live checks confirm no Batteries/payment credential in the
+  running console, engine reader authorization 200, rejected invalid/anonymous access, protected-page
+  redirects, healthy public routes and the Google authorization redirect.
 
 ## Decision log
 
