@@ -1,0 +1,106 @@
+# Standalone app/identity deployment. Engine, Batteries and their database stay remote.
+# Use configure.py stack with STACK_MODE=remote; no payer credentials are loaded on this host.
+name: builder-console
+
+services:
+  keycloak-db:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Run configure.py init}
+    volumes: [keycloak-db:/var/lib/postgresql/data]
+    networks: [identity-db]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+
+  keycloak:
+    image: builder-console/keycloak:26.8.1-production
+    build:
+      context: .
+    command: [start, --optimized, --import-realm]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME: https://${AUTH_HOST:?Run configure.py init}
+      KC_HOSTNAME_STRICT: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_CACHE: local
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:?Run configure.py init}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?Run configure.py init}
+      BUILDER_CONSOLE_CLIENT_SECRET: ${BUILDER_CONSOLE_CLIENT_SECRET}
+      CONSOLE_READER_CLIENT_SECRET: ${CONSOLE_READER_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Run configure.py init}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?Run configure.py init}
+    volumes:
+      - ./runtime/livepeer-realm.json:/opt/keycloak/data/import/livepeer-realm.json:ro
+    ports: ["127.0.0.1:18081:8080"]
+    networks: [identity, identity-db]
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+        restart: true
+    healthcheck:
+      test: [CMD-SHELL, "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9000; printf \"GET /health/ready HTTP/1.0\\r\\n\\r\\n\" >&3; grep -q \"200 OK\" <&3'"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+    mem_limit: 1g
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+  console:
+    image: builder-console/console:production
+    build:
+      context: ../../..
+      dockerfile: deploy/console/Dockerfile
+    # This file contains only console connection settings; no Batteries credentials.
+    env_file: [./runtime/remote-console.env]
+    environment:
+      # Remote mode reads through the engine; direct Batteries management access stays disabled.
+      CONSOLE_BATTERIES_URL: ""
+      CONSOLE_BATTERIES_TOKEN: ""
+      CONSOLE_AUTH: oidc
+      CONSOLE_PROTECT_READS: "true"
+      CONSOLE_OIDC_ISSUER: https://${AUTH_HOST}/realms/livepeer
+      CONSOLE_OIDC_CLIENT_ID: builder-console
+      CONSOLE_OIDC_CLIENT_SECRET: ${BUILDER_CONSOLE_CLIENT_SECRET}
+      CONSOLE_OIDC_REDIRECT_URL: https://${CONSOLE_HOST}/auth/callback
+      CONSOLE_OIDC_ALLOW_HTTP: "false"
+      CONSOLE_READER_CLIENT_ID: console-reader
+      CONSOLE_READER_CLIENT_SECRET: ${CONSOLE_READER_CLIENT_SECRET}
+      CONSOLE_READER_SCOPE: livepeer:read
+      CONSOLE_SESSION_SECRET: ${CONSOLE_SESSION_SECRET}
+    ports: ["127.0.0.1:3060:3000"]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/livez').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      start_period: 20s
+      retries: 6
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+networks:
+  identity:
+  identity-db:
+    internal: true
+
+volumes:
+  keycloak-db:

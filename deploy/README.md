@@ -17,6 +17,10 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 Testing sign-in through an identity provider instead of keys: [keycloak/README.md](keycloak/README.md), a
 separate compose project with Keycloak, a JWT-only engine and the console (`CONSOLE_AUTH=oidc`).
 
+For a production host, use [Keycloak with Google](keycloak/production/README.md) and the
+[Ansible deployment](ansible/README.md). PostgreSQL and HTTPS run on your host; no hosted identity
+subscription or managed database is required. The local Keycloak test stack is not a production configuration.
+
 ## Secrets
 
 Either reuse ChatLPT's values (D3):

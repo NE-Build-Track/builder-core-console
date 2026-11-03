@@ -40,6 +40,8 @@ export type SignerSettings = { readonly url: string; readonly metricsUrl: string
 export type DiscoverySettings = { readonly url: string };
 
 export type ConsoleConfig = {
+  /** Public deployments require a live operator session for stack-wide reads. */
+  readonly protectReads: boolean;
   /** How people sign in to the writing areas: pasted engine keys (default), or the identity provider. */
   readonly auth: AuthSettings;
   readonly engine: SourceSettings<EngineSettings>;
@@ -153,6 +155,7 @@ function auth(env: Env): AuthSettings {
 export function readConfig(env: Env = process.env): ConsoleConfig {
   const signIn = auth(env);
   return {
+    protectReads: text(env, "CONSOLE_PROTECT_READS") === "true",
     auth: signIn,
     engine:
       signIn.mode === "oidc"
