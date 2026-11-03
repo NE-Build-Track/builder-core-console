@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { JobState, RunInput } from "@/domain/builder";
+import type { CapabilityProfile } from "@/domain/engine";
 import { mapReading, type Reading } from "@/domain/reading";
 import type { Session } from "@/domain/session";
 import type { RunStarted } from "@/ports/keyed";
@@ -22,6 +23,12 @@ export async function loadCatalog(session: Session): Promise<CatalogView> {
   if (!engine) return missingEngine();
   const [offerings, health] = await Promise.all([engine.offerings(), sharedSources().engine.health()]);
   return catalog(offerings, health, new Date());
+}
+
+export async function loadCapabilityProfiles(session: Session): Promise<Reading<readonly CapabilityProfile[]>> {
+  const engine = keyed(session.token);
+  if (!engine) return missingEngine();
+  return engine.capabilities();
 }
 
 /** Null when the builder's actor can pay, or its allowance could not be read for another reason. */

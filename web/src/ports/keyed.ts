@@ -5,6 +5,7 @@
  * ports with write methods (tests/structure/writes.test.ts).
  */
 import type { RunInput } from "@/domain/builder";
+import type { CapabilityProfile } from "@/domain/engine";
 import type { AccessKey, Allowance, CostSummary, EngineGrant, Job, JobCost, Offering, KnownActor, Runner } from "@/domain/engine";
 import type { Exchange } from "@/domain/exchange";
 import type { PlannedCall } from "@/domain/operator";
@@ -46,6 +47,7 @@ export interface KeyedEngine {
   /** Admin or auditor: every known actor, provisioned or only signed in (GET /v1/admin/actors, builder-core D48). */
   adminActors(limit: number): Promise<Reading<readonly KnownActor[]>>;
   offerings(): Promise<Reading<readonly Offering[]>>;
+  capabilities(): Promise<Reading<readonly CapabilityProfile[]>>;
   runners(app: string): Promise<Reading<readonly Runner[]>>;
   job(id: string): Promise<Reading<Job>>;
   jobCost(id: string): Promise<Reading<JobCost>>;

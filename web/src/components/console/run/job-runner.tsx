@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { jobRequestOf, PRESETS, RUN_HEADERS, type JobMethod, type JobState, type Preset, type RunInput } from "@/domain/builder";
+import { capabilityInput } from "@/domain/capability-input";
+import type { CapabilityProfile } from "@/domain/engine";
 import { fillPath } from "@/domain/exchange";
 import { refusalOf, type Refusal } from "@/domain/failures";
 import { outputKind } from "@/domain/output";
@@ -36,20 +38,24 @@ export function JobRunner({
   offerings,
   initialApp,
   actorId = null,
+  profiles = [],
 }: {
   readonly offerings: readonly OfferingChoice[];
   readonly initialApp: string | null;
   /** Named in a payment refusal, so the builder can pass it to an operator. */
   readonly actorId?: string | null;
+  readonly profiles?: readonly CapabilityProfile[];
 }) {
   const firstPreset = presetFor(initialApp && initialApp === presetFor("image").app ? "image" : "chat");
   const startApp = initialApp ?? (offerings.some((item) => item.app === firstPreset.app) ? firstPreset.app : offerings[0]?.app) ?? "";
+  const initialCapability = capabilityInput(startApp, profiles);
+  const initialPreset = PRESETS.find((entry) => entry.app === startApp) ?? presetFor("empty");
   const [presetId, setPresetId] = useState<Preset["id"]>(firstPreset.id);
   const [app, setApp] = useState(startApp);
-  const [path, setPath] = useState(firstPreset.path);
-  const [method, setMethod] = useState<JobMethod>(firstPreset.method);
-  const [inputText, setInputText] = useState(JSON.stringify(firstPreset.input, null, 2));
-  const [stream, setStream] = useState(firstPreset.stream);
+  const [path, setPath] = useState(initialCapability?.path ?? initialPreset.path);
+  const [method, setMethod] = useState<JobMethod>(initialCapability?.method ?? initialPreset.method);
+  const [inputText, setInputText] = useState(JSON.stringify(initialCapability?.input ?? initialPreset.input, null, 2));
+  const [stream, setStream] = useState(initialCapability?.stream ?? initialPreset.stream);
   const [timeoutS, setTimeoutS] = useState(120);
   const [maxAttempts, setMaxAttempts] = useState(2);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +64,18 @@ export function JobRunner({
   const [runs, setRuns] = useState(0);
   const [jobState, setJobState] = useState<JobState | null>(null);
   const abort = useRef<AbortController | null>(null);
+
+  function chooseApp(value: string): void {
+    const choice = capabilityInput(value, profiles);
+    const preset = PRESETS.find((entry) => entry.app === value) ?? presetFor("empty");
+    setApp(value);
+    setPath(choice?.path ?? preset.path);
+    setMethod(choice?.method ?? preset.method);
+    setStream(choice?.stream ?? preset.stream);
+    setInputText(JSON.stringify(choice?.input ?? preset.input, null, 2));
+    setPresetId(preset.id);
+    setError(null);
+  }
 
   function choosePreset(preset: Preset): void {
     setPresetId(preset.id);
@@ -181,7 +199,7 @@ export function JobRunner({
         <div className="run-row">
           <div className="field">
             <label htmlFor="run-app">Offering</label>
-            <select id="run-app" value={app} onChange={(event) => setApp(event.target.value)}>
+            <select id="run-app" value={app} onChange={(event) => chooseApp(event.target.value)}>
               {offerings.map((offering) => (
                 <option key={offering.app} value={offering.app}>
                   {offering.label}
@@ -204,6 +222,7 @@ export function JobRunner({
         <div className="field">
           <label htmlFor="run-input">Input (JSON, sent to the runner as the request body)</label>
           <textarea id="run-input" value={inputText} onChange={(event) => setInputText(event.target.value)} spellCheck={false} />
+          {capabilityInput(app, profiles) ? <details><summary>Input schema from the engine</summary><pre>{JSON.stringify(capabilityInput(app, profiles)?.profile.input_schema, null, 2)}</pre></details> : null}
         </div>
         <div className="run-options">
           <label>
