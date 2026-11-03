@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { capabilityInput } from "./capability-input";
+import { capabilityInput, capabilityInputIssues } from "./capability-input";
 import type { CapabilityProfile } from "./engine";
 
 const image: CapabilityProfile = {
@@ -12,6 +12,20 @@ const image: CapabilityProfile = {
 };
 
 describe("capability request initialization", () => {
+  it.each([
+    ["flux", "prompt", "A red teapot", { type: "string", minLength: 1 }],
+    ["music", "prompt", "Acoustic guitar", { type: "string", minLength: 1 }],
+    ["birefnet", "image", "data:image/png;base64,aW1hZ2U=", { type: "string", pattern: "^data:image/[^,]+;base64," }],
+    ["triposr", "image", "data:image/png;base64,aW1hZ2U=", { type: "string", pattern: "^data:image/[^,]+;base64," }],
+    ["whisper", "file", "data:audio/wav;base64,YXVkaW8=", { type: "string", pattern: "^data:audio/[^,]+;base64," }],
+  ])("shows and validates required input for %s", (name, field, valid, fieldSchema) => {
+    const profile: CapabilityProfile = { ...image, app: String(name), schema_digest: `test-${String(name)}`, defaults: { model: image.model }, input_schema: { type: "object", properties: { model: { const: image.model }, [String(field)]: fieldSchema }, required: ["model", field], additionalProperties: false } };
+    const selected = capabilityInput(String(name), [profile])!;
+    expect(selected.input[String(field)]).toBe("");
+    expect(capabilityInputIssues(profile, selected.input).length).toBeGreaterThan(0);
+    expect(capabilityInputIssues(profile, { ...selected.input, [String(field)]: valid })).toEqual([]);
+    expect(capabilityInputIssues(profile, { ...selected.input, [String(field)]: valid, unknown: true }).length).toBeGreaterThan(0);
+  });
   it("loads the selected path and false/zero defaults without fabricating prompt or media", () => {
     const selected = capabilityInput("image", [image]);
     expect(selected?.path).toBe("/v1/images/generations");

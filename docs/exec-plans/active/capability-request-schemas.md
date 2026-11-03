@@ -23,6 +23,14 @@ defaults, while keeping required prompt/media inputs unfilled for the builder.
 
 ## Progress
 
+- 2026-11-03: Required fields without defaults now appear as empty placeholders in
+  the request template. Client and server schema validation reject incomplete input,
+  wrong model/path/method, unsupported parameters and streaming before a paid job opens.
+  The five native models require prompt, image or file values supplied by the builder.
+  Image response envelopes render previews; audio has a player and mesh/audio/image
+  assets have downloads. Raw responses remain available without truncation.
+  New console changes require human review before committing or publishing.
+
 - 2026-11-02: Added typed schema reads and isolated input initialization. Engine-provided
   paths replace the fixed chat/image assumption. Unit and structural tests pass.
 

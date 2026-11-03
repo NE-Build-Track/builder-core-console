@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { jobRequestOf, PRESETS, RUN_HEADERS, type JobMethod, type JobState, type Preset, type RunInput } from "@/domain/builder";
-import { capabilityInput } from "@/domain/capability-input";
+import { capabilityInput, capabilityInputIssues, capabilityRequiredFields } from "@/domain/capability-input";
 import type { CapabilityProfile } from "@/domain/engine";
 import { fillPath } from "@/domain/exchange";
 import { refusalOf, type Refusal } from "@/domain/failures";
@@ -134,6 +134,12 @@ export function JobRunner({
     }
     if (!payload) return setError("The input must be a JSON object, like {}.");
     if (!app) return setError("Choose an offering.");
+    const capability = capabilityInput(app, profiles);
+    if (capability) {
+      const issues = capabilityInputIssues(capability.profile, payload);
+      if (issues.length) return setError(`Complete the required model input before running: ${issues.join("; ")}`);
+      if (path !== capability.path || method !== capability.method || stream) return setError("Use the selected capability's path, method and synchronous response mode.");
+    }
     const input: RunInput = { app, path, method, payload, stream, timeoutS, maxAttempts, operationRef: `console-run-${crypto.randomUUID()}` };
     const call: ShownCall = { method: "POST", path: fillPath("/v1/jobs", {}, { stream: String(stream) }), body: jobRequestOf(input) };
     setJobState(null);
@@ -222,6 +228,7 @@ export function JobRunner({
         <div className="field">
           <label htmlFor="run-input">Input (JSON, sent to the runner as the request body)</label>
           <textarea id="run-input" value={inputText} onChange={(event) => setInputText(event.target.value)} spellCheck={false} />
+          {capabilityInput(app, profiles) ? <p className="provenance">Required fields: {capabilityRequiredFields(capabilityInput(app, profiles)!.profile).join(", ")}. Fill empty placeholders before running. Media inputs take an inline base64 data URL.</p> : null}
           {capabilityInput(app, profiles) ? <details><summary>Input schema from the engine</summary><pre>{JSON.stringify(capabilityInput(app, profiles)?.profile.input_schema, null, 2)}</pre></details> : null}
         </div>
         <div className="run-options">

@@ -1,7 +1,7 @@
 import { RUN_HEADERS } from "@/domain/builder";
 import { hideSecrets } from "@/domain/exchange";
 import { describeProblem, failed } from "@/domain/reading";
-import { startRun } from "@/runtime/builder";
+import { startRun, validateCapabilityRun } from "@/runtime/builder";
 import { parseRun } from "@/services/builder";
 import { standing } from "@/services/signin";
 
@@ -28,6 +28,8 @@ export async function POST(request: Request): Promise<Response> {
   }
   const input = parseRun(body);
   if (!input.ok) return Response.json({ problem: input.message, field: input.field }, { status: 400 });
+  const schemaProblem = await validateCapabilityRun(session, input.value);
+  if (schemaProblem) return Response.json({ problem: schemaProblem }, { status: 400 });
   const started = await startRun(session, input.value, request.signal);
   if (!started) return Response.json({ problem: "The console has no engine URL (CONSOLE_ENGINE_URL)." }, { status: 503 });
   if (started.ok) {

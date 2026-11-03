@@ -82,8 +82,26 @@ export function renderChat(events: readonly SseEvent[]): ChatRender {
 
 const IMAGE_URL = /^(https?:\/\/\S+|data:image\/[a-z+.-]+;base64,[A-Za-z0-9+/=]+)$/i;
 
+export type InlineMedia = { readonly url: string; readonly mime: string; readonly filename: string };
+
+/** Only inert media types are previewed/downloaded; never render returned HTML or SVG. */
+export function inlineMedia(value: unknown): readonly InlineMedia[] {
+  const body = record(value);
+  if (!Array.isArray(body?.data)) return [];
+  return body.data.slice(0, 16).flatMap((item, index) => {
+    const entry = record(item);
+    const data = entry?.b64_json;
+    const mime = typeof entry?.media_type === "string" ? entry.media_type : "image/png";
+    const extensions: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "audio/wav": "wav", "audio/mpeg": "mp3", "model/obj": "obj", "text/plain": "obj", "application/octet-stream": "bin" };
+    const extension = extensions[mime];
+    if (typeof data !== "string" || !data || !/^[A-Za-z0-9+/]+={0,2}$/.test(data) || !extension) return [];
+    return [{ url: `data:${mime};base64,${data}`, mime, filename: `output-${index + 1}.${extension}` }];
+  });
+}
+
 /** Every image URL in a JSON value: `url` fields, and any string that is an image link or data URL. */
 export function imageUrls(value: unknown, found: string[] = []): string[] {
+  for (const media of inlineMedia(value)) if (media.mime.startsWith("image/") && !found.includes(media.url)) found.push(media.url);
   if (typeof value === "string") {
     const looksLikeImage = /^data:image\//i.test(value) || /\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(value);
     if (looksLikeImage && IMAGE_URL.test(value) && !found.includes(value)) found.push(value);
@@ -109,7 +127,7 @@ const DATA_URI = /"(data:[a-z]+\/[a-z0-9+.-]+;base64,)([A-Za-z0-9+/=]+)"/gi;
  * every byte, so the JSON view stays readable.
  */
 export function shortenDataUris(text: string): string {
-  return text.replace(DATA_URI, (_, prefix: string, data: string) => {
+  return text.replace(/("b64_json"\s*:\s*")([A-Za-z0-9+/=]+)"/g, (_, prefix: string, data: string) => `${prefix}… (${formatBytes(Math.floor(data.length * 3 / 4))} encoded media; Raw has all of it)"`).replace(DATA_URI, (_, prefix: string, data: string) => {
     const bytes = Math.floor((data.length * 3) / 4) - (data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0);
     return `"${prefix}… (${formatBytes(bytes)} inline, shown above; Raw has all of it)"`;
   });
