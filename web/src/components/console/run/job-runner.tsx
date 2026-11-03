@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { jobRequestOf, PRESETS, RUN_HEADERS, type JobMethod, type JobState, type Preset, type RunInput } from "@/domain/builder";
-import { capabilityInput, capabilityInputIssues, capabilityRequiredFields } from "@/domain/capability-input";
-import type { CapabilityProfile } from "@/domain/engine";
+import { capabilityInput, capabilityInputIssues, capabilityRequiredFields, type CapabilityRequestProfile } from "@/domain/capability-input";
+import { parseFalRequestProfile } from "@/domain/fal-capability";
 import { fillPath } from "@/domain/exchange";
 import { refusalOf, type Refusal } from "@/domain/failures";
 import { outputKind } from "@/domain/output";
@@ -44,7 +44,7 @@ export function JobRunner({
   readonly initialApp: string | null;
   /** Named in a payment refusal, so the builder can pass it to an operator. */
   readonly actorId?: string | null;
-  readonly profiles?: readonly CapabilityProfile[];
+  readonly profiles?: readonly CapabilityRequestProfile[];
 }) {
   const firstPreset = presetFor(initialApp && initialApp === presetFor("image").app ? "image" : "chat");
   const startApp = initialApp ?? (offerings.some((item) => item.app === firstPreset.app) ? firstPreset.app : offerings[0]?.app) ?? "";
@@ -59,6 +59,10 @@ export function JobRunner({
   const [timeoutS, setTimeoutS] = useState(120);
   const [maxAttempts, setMaxAttempts] = useState(2);
   const [error, setError] = useState<string | null>(null);
+  const [requestProfiles, setRequestProfiles] = useState(profiles);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const schemaSequence = useRef(0);
   const [run, setRun] = useState<Run | null>(null);
   /** Each run gets fresh output views: a tab chosen for the last response may not exist for this one. */
   const [runs, setRuns] = useState(0);
@@ -66,7 +70,8 @@ export function JobRunner({
   const abort = useRef<AbortController | null>(null);
 
   function chooseApp(value: string): void {
-    const choice = capabilityInput(value, profiles);
+    const sequence = ++schemaSequence.current;
+    const choice = capabilityInput(value, requestProfiles);
     const preset = PRESETS.find((entry) => entry.app === value) ?? presetFor("empty");
     setApp(value);
     setPath(choice?.path ?? preset.path);
@@ -75,6 +80,28 @@ export function JobRunner({
     setInputText(JSON.stringify(choice?.input ?? preset.input, null, 2));
     setPresetId(preset.id);
     setError(null);
+    setSchemaLoading(false);
+    if (value.startsWith("fal-") && !choice) {
+      setSchemaLoading(true);
+      void (async () => {
+        try {
+          const response = await fetch(`/builder/api/capabilities?app=${encodeURIComponent(value)}`, { cache: "no-store" });
+          const data: unknown = await response.json();
+          const profile = response.ok && Array.isArray(data) && data.length === 1 ? parseFalRequestProfile(data[0]) : null;
+          if (sequence !== schemaSequence.current) return;
+          if (!profile || profile.app !== value) { setError("No reviewed input schema matches this FAL runner. No job can be sent."); return; }
+          const next = [...requestProfiles.filter(item => item.app !== value), profile];
+          const selected = capabilityInput(value, next)!;
+          setRequestProfiles(next);
+          setPath(selected.path); setMethod(selected.method); setStream(false);
+          setInputText(JSON.stringify(selected.input, null, 2));
+        } catch {
+          if (sequence === schemaSequence.current) setError("The FAL input schema could not be loaded. No job can be sent.");
+        } finally {
+          if (sequence === schemaSequence.current) setSchemaLoading(false);
+        }
+      })();
+    }
   }
 
   function choosePreset(preset: Preset): void {
@@ -124,6 +151,7 @@ export function JobRunner({
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (submitting || schemaLoading || run?.phase === "running") return;
     setError(null);
     let payload: Record<string, unknown> | null = null;
     try {
@@ -134,7 +162,8 @@ export function JobRunner({
     }
     if (!payload) return setError("The input must be a JSON object, like {}.");
     if (!app) return setError("Choose an offering.");
-    const capability = capabilityInput(app, profiles);
+    const capability = capabilityInput(app, requestProfiles);
+    if (app.startsWith("fal-") && !capability) return setError("Load a verified FAL request schema before running.");
     if (capability) {
       const issues = capabilityInputIssues(capability.profile, payload);
       if (issues.length) return setError(`Complete the required model input before running: ${issues.join("; ")}`);
@@ -147,14 +176,17 @@ export function JobRunner({
     setRuns((count) => count + 1);
     abort.current = new AbortController();
     const started = Date.now();
+    setSubmitting(true);
     let response: Response;
     try {
       response = await fetch("/builder/run", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input), signal: abort.current.signal });
     } catch (problem) {
+      setSubmitting(false);
       const message = problem instanceof Error ? problem.message : "network error";
       setRun({ phase: "refused", call: { ...call, status: null, problem: "the console did not answer" }, jobId: null, refusal: refusalOf(null, undefined, undefined, message) });
       return;
     }
+    setSubmitting(false);
     if (!response.ok) {
       const data = record(await response.json().catch(() => null));
       const exchange = record(data?.exchange) as ShownCall | null;
@@ -228,8 +260,9 @@ export function JobRunner({
         <div className="field">
           <label htmlFor="run-input">Input (JSON, sent to the runner as the request body)</label>
           <textarea id="run-input" value={inputText} onChange={(event) => setInputText(event.target.value)} spellCheck={false} />
-          {capabilityInput(app, profiles) ? <p className="provenance">Required fields: {capabilityRequiredFields(capabilityInput(app, profiles)!.profile).join(", ")}. Fill empty placeholders before running. Media inputs take an inline base64 data URL.</p> : null}
-          {capabilityInput(app, profiles) ? <details><summary>Input schema from the engine</summary><pre>{JSON.stringify(capabilityInput(app, profiles)?.profile.input_schema, null, 2)}</pre></details> : null}
+          {schemaLoading ? <p role="status">Loading the verified operation schema…</p> : null}
+          {capabilityInput(app, requestProfiles) ? <p className="provenance">Required fields: {capabilityRequiredFields(capabilityInput(app, requestProfiles)!.profile).join(", ") || "none"}. Fill empty placeholders before running. {app.startsWith("fal-") ? "Use this provider's native parameters." : "Media inputs take an inline base64 data URL."}</p> : null}
+          {capabilityInput(app, requestProfiles) ? <details><summary>Verified input schema</summary><pre>{JSON.stringify(capabilityInput(app, requestProfiles)?.profile.input_schema, null, 2)}</pre></details> : null}
         </div>
         <div className="run-options">
           <label>
@@ -254,7 +287,7 @@ export function JobRunner({
               Stop
             </button>
           ) : null}
-          <button type="submit" className="btn primary" disabled={running || offerings.length === 0}>
+          <button type="submit" className="btn primary" disabled={running || submitting || schemaLoading || offerings.length === 0}>
             {running ? "Running…" : "Run (paid)"}
           </button>
         </div>

@@ -37,11 +37,11 @@ async function Builder({ searchParams }: { readonly searchParams: Search }) {
   const search = await searchParams;
   const session = await sessionFor("builder");
   if (!session) return <BuilderSignIn message={first(search.signin) ?? (await endedMessage("builder"))} />;
-  const [view, jobs, profiles] = await Promise.all([loadCatalog(session), loadMyJobs(session), loadCapabilityProfiles(session)]);
+  const asked = first(search.app);
+  const [view, jobs, profiles] = await Promise.all([loadCatalog(session), loadMyJobs(session), loadCapabilityProfiles(session, asked)]);
   const notice = await loadAllocationNotice(session, jobs.actorId);
   const entries = view.entries.ok ? view.entries.value : [];
   const choices = runChoices(entries);
-  const asked = first(search.app);
   return (
     <>
       <BuilderBar session={session} actorId={jobs.actorId} current="/builder" />

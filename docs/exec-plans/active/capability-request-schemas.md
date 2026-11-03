@@ -23,6 +23,13 @@ defaults, while keeping required prompt/media inputs unfilled for the builder.
 
 ## Progress
 
+- 2026-11-03: FAL remains enabled following the user's revised deployment instruction.
+  Restore its native root path and provider JSON using 73 reviewed contract snapshots,
+  verified against Engine runner metadata on selection and before dispatch. The native
+  five-model catalog keeps its standard media paths. API consolidation into offerings
+  or runners is deferred to the upstream issue discussion. Further paid tests were
+  cancelled by the user after FLUX succeeded; no earlier uncertain operation is replayed.
+
 - 2026-11-03: Required fields without defaults now appear as empty placeholders in
   the request template. Client and server schema validation reject incomplete input,
   wrong model/path/method, unsupported parameters and streaming before a paid job opens.

@@ -2,6 +2,9 @@
 import Ajv2020 from "ajv/dist/2020.js";
 import type { ValidateFunction } from "ajv";
 import type { CapabilityProfile } from "./engine";
+import type { FalRequestProfile } from "./fal-capability";
+
+export type CapabilityRequestProfile = CapabilityProfile | FalRequestProfile;
 
 const validator = new Ajv2020({ allErrors: true, strict: false, validateFormats: false, addUsedSchema: false });
 const compiled = new Map<string, ValidateFunction>();
@@ -21,8 +24,11 @@ function template(schema: Record<string, unknown>, defaults: Record<string, unkn
   return result;
 }
 
-export function capabilityInputIssues(profile: CapabilityProfile, input: unknown): readonly string[] {
+export function capabilityInputIssues(profile: CapabilityRequestProfile, input: unknown): readonly string[] {
   try {
+    const value = record(input);
+    const empty = capabilityRequiredFields(profile).filter(key => typeof value?.[key] === "string" && !(value[key] as string).trim());
+    if (empty.length) return empty.map(key => `${key}: fill this required field`);
     let check = compiled.get(profile.schema_digest);
     if (!check) {
       if (compiled.size >= 64) { compiled.clear(); validator.removeSchema(); }
@@ -35,14 +41,14 @@ export function capabilityInputIssues(profile: CapabilityProfile, input: unknown
   }
 }
 
-export function capabilityRequiredFields(profile: CapabilityProfile): readonly string[] {
+export function capabilityRequiredFields(profile: CapabilityRequestProfile): readonly string[] {
   const required = profile.input_schema.required;
   return Array.isArray(required) ? required.filter((value): value is string => typeof value === "string") : [];
 }
 
-export function capabilityInput(app: string, profiles: readonly CapabilityProfile[]): {
+export function capabilityInput(app: string, profiles: readonly CapabilityRequestProfile[]): {
   readonly path: string; readonly method: CapabilityProfile["method"]; readonly stream: false;
-  readonly input: Record<string, unknown>; readonly profile: CapabilityProfile;
+  readonly input: Record<string, unknown>; readonly profile: CapabilityRequestProfile;
 } | null {
   const profile = profiles.find((entry) => entry.app === app && entry.content_type === "application/json");
   if (!profile) return null;
