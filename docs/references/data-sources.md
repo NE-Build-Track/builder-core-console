@@ -1,5 +1,19 @@
 # Data sources
 
+FAL selections retain provider-native JSON. The console's authenticated, read-only
+`GET /builder/api/capabilities?app=...` combines Core profiles with an operator-reviewed
+FAL contract matched against `GET /v1/runners?app=...` metadata: provider, endpoint ID
+and exact schema hash must agree. The runner is registered at `/fal/<capability>`,
+so the relative job path is `/`; no chat or image-route substitution is applied.
+The console never fetches runner-advertised schema URLs. Regenerate the bundled
+contracts with `scripts/import_fal_request_schemas.py` from the reviewed runner catalog.
+
+The Builder also reads authenticated `GET /v1/capabilities` from Core. It returns
+operator-installed OpenAPI request schemas, explicit defaults and constants, and
+operation paths matched to current model/deployment metadata. Changing an offering
+replaces the previous input; required media or prompts without defaults stay unfilled.
+An older engine reports schema discovery unavailable and retains manual entry.
+
 Every upstream route the console reads. `web/src/domain/catalog.ts` holds the same list, and
 `web/tests/structure/docs.test.ts` fails when the adapters, the catalog and this page disagree.
 Every route is a GET (decision D1).

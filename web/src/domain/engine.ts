@@ -18,6 +18,7 @@ type Schemas = components["schemas"];
 
 export type EngineHealth = Schemas["EngineHealth"];
 export type Offering = Schemas["Offering"];
+export type CapabilityProfile = Schemas["CapabilityProfile"];
 export type Runner = Schemas["Runner"];
 export type NetworkRate = Schemas["NetworkRate"];
 export type EngineGrant = Schemas["GrantRecord"];

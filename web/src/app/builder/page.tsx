@@ -6,7 +6,7 @@ import { PageView, Streamed } from "@/components/console/page-view";
 import { Empty, GapChip, PageHead, ReadFrom, Section, Unreadable } from "@/components/console/primitives";
 import { JobRunner } from "@/components/console/run/job-runner";
 import { Ago, Pill } from "@/components/console/values";
-import { loadAllocationNotice, loadCatalog, loadMyJobs } from "@/runtime/builder";
+import { loadAllocationNotice, loadCapabilityProfiles, loadCatalog, loadMyJobs } from "@/runtime/builder";
 import { rangeText, runChoices } from "@/services/builder";
 
 import { endedMessage, sessionFor } from "../session-cookies";
@@ -37,11 +37,11 @@ async function Builder({ searchParams }: { readonly searchParams: Search }) {
   const search = await searchParams;
   const session = await sessionFor("builder");
   if (!session) return <BuilderSignIn message={first(search.signin) ?? (await endedMessage("builder"))} />;
-  const [view, jobs] = await Promise.all([loadCatalog(session), loadMyJobs(session)]);
+  const asked = first(search.app);
+  const [view, jobs, profiles] = await Promise.all([loadCatalog(session), loadMyJobs(session), loadCapabilityProfiles(session, asked)]);
   const notice = await loadAllocationNotice(session, jobs.actorId);
   const entries = view.entries.ok ? view.entries.value : [];
   const choices = runChoices(entries);
-  const asked = first(search.app);
   return (
     <>
       <BuilderBar session={session} actorId={jobs.actorId} current="/builder" />
@@ -110,11 +110,13 @@ async function Builder({ searchParams }: { readonly searchParams: Search }) {
         <ExchangePanel call={{ method: "GET", path: "/v1/offerings" }} title="How this list is read" />
       </Section>
       <Section id="run" title="Run a job" description="Pick an offering, give the runner its input, and run it. The job is paid from your allocation; you hold no crypto.">
+        <Unreadable reading={profiles} what="Capability schemas" />
         <JobRunner
           key={asked ?? "default"}
           offerings={choices}
           initialApp={asked && choices.some((choice) => choice.app === asked) ? asked : null}
           actorId={jobs.actorId}
+          profiles={profiles.ok ? profiles.value : []}
         />
       </Section>
     </>

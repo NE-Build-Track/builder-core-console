@@ -25,8 +25,8 @@ const under = (file: string, prefixes: readonly string[]) =>
 const WRITE_ADAPTERS = ["adapters/engine/writer.ts", "adapters/engine/keyed.ts"];
 /** Where writes may be started from: the two areas, their components, and the one server-action file. */
 const WRITE_AREAS = ["app/operator/", "app/builder/", "app/actions.ts", "components/console/act/", "components/console/run/"];
-/** Plans and presets name a method without sending anything. */
-const NAMES_METHODS = ["domain/operator.ts", "domain/builder.ts"];
+/** Plans, presets and verified runner request profiles name a method without sending anything. */
+const NAMES_METHODS = ["domain/operator.ts", "domain/builder.ts", "domain/fal-capability.ts"];
 const READ_ONLY_PAGES = ["app/page.tsx", "app/network/", "app/money/", "app/users/", "app/usage/", "app/jobs/", "app/sources/"];
 
 describe("writes", () => {
