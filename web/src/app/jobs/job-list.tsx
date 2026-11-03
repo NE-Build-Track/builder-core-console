@@ -65,15 +65,15 @@ export function JobListSection({ list }: { readonly list: JobList }) {
                   <td>
                     <Pill state={JOB_STATES[row.state]}>{row.state}</Pill>
                   </td>
-                  <td className="mono table-cell-wrap">
+                  <td className="mono cell-wrap-narrow">
                     <bdi>{row.app}</bdi>
                   </td>
-                  <td className="mono">
+                  <td className="mono cell-wrap-narrow">
                     <bdi>{row.actorId}</bdi>
                   </td>
                   <td>{row.paid ? "yes" : "no"}</td>
                   <td className="r num">{row.attempts}</td>
-                  <td>{row.failure ? <>{row.failure.title} (<code>{row.failure.code}</code>)</> : "—"}</td>
+                  <td className="cell-wrap-narrow">{row.failure ? <>{row.failure.title} (<code>{row.failure.code}</code>)</> : "—"}</td>
                   <td>
                     <Ago iso={row.createdAt} />
                   </td>

@@ -94,7 +94,7 @@ async function Money() {
         <Unreadable reading={view.engineGrants} what="The engine's grants" />
         {view.grants.ok && view.grants.value.length === 0 ? <Empty>Batteries has no grants yet. Create one from Operator actions, or with the Batteries CLI (deploy/README.md).</Empty> : null}
         {view.grants.ok && view.grants.value.length > 0 ? (
-          <Grid min="min(28rem, 100%)" start>
+          <Grid min="min(28rem, 100%)">
             {view.grants.value.map((grant) => (
               <GrantCard key={grant.grant.id} view={grant} />
             ))}
@@ -115,103 +115,101 @@ async function Money() {
         {view.grants.ok ? <ReadFrom reading={view.grants} /> : null}
       </Section>
 
-      <Grid min="min(40rem, 100%)" start stagger={false}>
-        <Section id="h-ledger" title="Ledger" reveal end={view.ledgerSum !== null ? <Pill state={balanced ? "ok" : "bad"}>{balanced ? "Balances to zero" : "Out of balance"}</Pill> : null}>
-          <Unreadable reading={view.ledger} what="The ledger report" />
-          {view.ledger.ok && view.ledger.value.length === 0 ? <Empty>The ledger has no accounts yet.</Empty> : null}
-          {view.ledger.ok && view.ledger.value.length > 0 ? (
-            <div className="table-scroll">
-              <table className="data">
-                <caption>GET /v1/ledger/report, balances in USD</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Account</th>
-                    <th scope="col">Type</th>
-                    <th scope="col" className="r">
-                      Balance
+      <Section id="h-escrow" title="Payer escrow" reveal>
+        <Unreadable reading={view.escrow} what="The escrow report" />
+        {view.escrow.ok && view.escrow.value.length === 0 ? (
+          <div className="panel">
+            <p className="note">
+              <Icon name="gap" />
+              <span>
+                Deposit and reserve appear here when Batteries runs its on-chain listener: set <code>BATTERIES_ONCHAIN_LISTENER=true</code> and{" "}
+                <code>PAYER_ADDRESS</code> in <code>deploy/.env</code> (<code>first-run.sh</code> fills the address).
+              </span>
+            </p>
+          </div>
+        ) : null}
+        {view.escrow.ok
+          ? view.escrow.value.map((row) => {
+              const deposit = row.deposit_balance_eth;
+              const reserve = row.reserve_balance_eth;
+              const total = row.total_balance_eth;
+              return (
+                <div key={`${row.chain_id}-${row.sender}`} className="panel">
+                  <div className="escrow-head">
+                    <Ring
+                      fraction={share(reserve, total)}
+                      inner={share(deposit, total)}
+                      size={92}
+                      label={roundForDisplay(total, 3)}
+                      sub="ETH total"
+                      description={`Deposit ${deposit} ETH, reserve ${reserve} ETH`}
+                    />
+                    <div className="stack-figs">
+                      <span className="label">Deposit</span>
+                      <span className="figure">{roundForDisplay(deposit, 4)} ETH</span>
+                      <span className="label">Reserve</span>
+                      <span className="figure">{roundForDisplay(reserve, 4)} ETH</span>
+                    </div>
+                  </div>
+                  <dl className="facts">
+                    <dt>Chain</dt>
+                    <dd>{row.chain_id}</dd>
+                    <dt>TicketBroker</dt>
+                    <dd className="id">{row.contract_address}</dd>
+                    <dt>Payer</dt>
+                    <dd className="id">{row.sender}</dd>
+                    <dt>Confirmed through</dt>
+                    <dd className="mono">block {row.confirmed_through_block}</dd>
+                  </dl>
+                </div>
+              );
+            })
+          : null}
+      </Section>
+
+      <Section id="h-ledger" title="Ledger" reveal end={view.ledgerSum !== null ? <Pill state={balanced ? "ok" : "bad"}>{balanced ? "Balances to zero" : "Out of balance"}</Pill> : null}>
+        <Unreadable reading={view.ledger} what="The ledger report" />
+        {view.ledger.ok && view.ledger.value.length === 0 ? <Empty>The ledger has no accounts yet.</Empty> : null}
+        {view.ledger.ok && view.ledger.value.length > 0 ? (
+          <div className="table-scroll scroll-box ledger-box" tabIndex={0} role="region" aria-label="Ledger accounts (scrolls)">
+            <table className="data">
+              <caption>GET /v1/ledger/report, balances in USD</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Account</th>
+                  <th scope="col">Type</th>
+                  <th scope="col" className="r">
+                    Balance
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.ledger.value.map((row) => (
+                  <tr key={`${row.account_id}-${row.account_type}`}>
+                    <th scope="row" className="mono cell-wrap-narrow">
+                      {row.account_id}
                     </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {view.ledger.value.map((row) => (
-                    <tr key={`${row.account_id}-${row.account_type}`}>
-                      <th scope="row" className="mono">
-                        {row.account_id}
-                      </th>
-                      <td className="mono">{row.account_type}</td>
-                      <td className="r">
-                        <Amount value={row.balance_usd ?? row.balance_eth} currency={row.balance_usd !== undefined ? "USD" : "ETH"} head={6} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <th scope="row" colSpan={2}>
-                      Sum of all accounts
-                    </th>
+                    <td className="mono cell-wrap-narrow">{row.account_type}</td>
                     <td className="r">
-                      <Amount value={view.ledgerSum} head={6} />
+                      <Amount value={row.balance_usd ?? row.balance_eth} currency={row.balance_usd !== undefined ? "USD" : "ETH"} head={6} />
                     </td>
                   </tr>
-                </tfoot>
-              </table>
-            </div>
-          ) : null}
-        </Section>
-
-        <Section id="h-escrow" title="Payer escrow" reveal>
-          <Unreadable reading={view.escrow} what="The escrow report" />
-          {view.escrow.ok && view.escrow.value.length === 0 ? (
-            <div className="panel">
-              <p className="note">
-                <Icon name="gap" />
-                <span>
-                  Deposit and reserve appear here when Batteries runs its on-chain listener: set <code>BATTERIES_ONCHAIN_LISTENER=true</code> and{" "}
-                  <code>PAYER_ADDRESS</code> in <code>deploy/.env</code> (<code>first-run.sh</code> fills the address).
-                </span>
-              </p>
-            </div>
-          ) : null}
-          {view.escrow.ok
-            ? view.escrow.value.map((row) => {
-                const deposit = row.deposit_balance_eth;
-                const reserve = row.reserve_balance_eth;
-                const total = row.total_balance_eth;
-                return (
-                  <div key={`${row.chain_id}-${row.sender}`} className="panel">
-                    <div className="escrow-head">
-                      <Ring
-                        fraction={share(reserve, total)}
-                        inner={share(deposit, total)}
-                        size={92}
-                        label={roundForDisplay(total, 3)}
-                        sub="ETH total"
-                        description={`Deposit ${deposit} ETH, reserve ${reserve} ETH`}
-                      />
-                      <div className="stack-figs">
-                        <span className="label">Deposit</span>
-                        <span className="figure">{roundForDisplay(deposit, 4)} ETH</span>
-                        <span className="label">Reserve</span>
-                        <span className="figure">{roundForDisplay(reserve, 4)} ETH</span>
-                      </div>
-                    </div>
-                    <dl className="facts">
-                      <dt>Chain</dt>
-                      <dd>{row.chain_id}</dd>
-                      <dt>TicketBroker</dt>
-                      <dd className="id">{row.contract_address}</dd>
-                      <dt>Payer</dt>
-                      <dd className="id">{row.sender}</dd>
-                      <dt>Confirmed through</dt>
-                      <dd className="mono">block {row.confirmed_through_block}</dd>
-                    </dl>
-                  </div>
-                );
-              })
-            : null}
-        </Section>
-      </Grid>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row" colSpan={2}>
+                    Sum of all accounts
+                  </th>
+                  <td className="r">
+                    <Amount value={view.ledgerSum} head={6} />
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        ) : null}
+      </Section>
     </>
   );
 }
@@ -226,7 +224,7 @@ function GrantCard({ view }: { readonly view: GrantView }) {
   const spent = share(view.spent, view.total);
   const allocated = share(view.allocated, view.total);
   return (
-    <article className="panel grant lift" aria-labelledby={`g-${grant.id}`}>
+    <article className="panel grant grant-card lift" aria-labelledby={`g-${grant.id}`}>
       <div className="grant-top">
         <Ring
           fraction={spent}
@@ -258,15 +256,17 @@ function GrantCard({ view }: { readonly view: GrantView }) {
           </div>
         </div>
       </div>
-      {view.allocations.length > 0 ? (
-        <ul className="alloc-list" role="list" aria-label={`Allocations from ${grant.name}`}>
-          {view.allocations.map((allocation) => (
-            <AllocationItem key={allocation.allocation.id} view={allocation} currency={grant.currency} />
-          ))}
-        </ul>
-      ) : (
-        <Empty>No allocations from this grant yet.</Empty>
-      )}
+      <div className="scroll-box grant-body" tabIndex={0} role="region" aria-label={`Allocations from ${grant.name} (scrolls)`}>
+        {view.allocations.length > 0 ? (
+          <ul className="alloc-list" role="list" aria-label={`Allocations from ${grant.name}`}>
+            {view.allocations.map((allocation) => (
+              <AllocationItem key={allocation.allocation.id} view={allocation} currency={grant.currency} />
+            ))}
+          </ul>
+        ) : (
+          <Empty>No allocations from this grant yet.</Empty>
+        )}
+      </div>
     </article>
   );
 }
