@@ -164,23 +164,29 @@ async function Usage({ searchParams }: Props) {
       </section>
 
       <Grid min="min(22rem, 100%)">
-        <section className="panel lift" aria-labelledby="h-by-app">
+        <section className="panel lift breakdown" aria-labelledby="h-by-app">
           <div className="panel-head">
             <h2 id="h-by-app">By app</h2>
           </div>
-          <Bars rows={view.byApp} total={view.feeUsd} mono emptyText="No usage in this window." />
+          <div className="scroll-box" tabIndex={0} role="region" aria-label="By app (scrolls)">
+            <Bars rows={view.byApp} total={view.feeUsd} mono emptyText="No usage in this window." />
+          </div>
         </section>
-        <section className="panel lift" aria-labelledby="h-by-orch">
+        <section className="panel lift breakdown" aria-labelledby="h-by-orch">
           <div className="panel-head">
             <h2 id="h-by-orch">By orchestrator</h2>
           </div>
-          <Bars rows={view.byOrchestrator} total={view.feeUsd} mono emptyText="No usage in this window." />
+          <div className="scroll-box" tabIndex={0} role="region" aria-label="By orchestrator (scrolls)">
+            <Bars rows={view.byOrchestrator} total={view.feeUsd} mono emptyText="No usage in this window." />
+          </div>
         </section>
-        <section className="panel lift" aria-labelledby="h-by-alloc">
+        <section className="panel lift breakdown" aria-labelledby="h-by-alloc">
           <div className="panel-head">
             <h2 id="h-by-alloc">By allocation</h2>
           </div>
-          <Bars rows={view.byAllocation} total={view.feeUsd} emptyText="No usage in this window." />
+          <div className="scroll-box" tabIndex={0} role="region" aria-label="By allocation (scrolls)">
+            <Bars rows={view.byAllocation} total={view.feeUsd} emptyText="No usage in this window." />
+          </div>
         </section>
       </Grid>
 
@@ -212,9 +218,9 @@ async function Usage({ searchParams }: Props) {
                     <td>
                       <Ago iso={item.at} />
                     </td>
-                    <td className="mono">{item.app}</td>
-                    <td className="mono">{item.orchestrator}</td>
-                    <td className="mono">{item.allocation}</td>
+                    <td className="mono cell-wrap-narrow">{item.app}</td>
+                    <td className="mono cell-wrap-narrow">{item.orchestrator}</td>
+                    <td className="mono cell-wrap-narrow">{item.allocation}</td>
                     <td className="r">
                       <Amount value={item.feeUsd} head={6} />
                     </td>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Fragment } from "react";
 
 import { GapOpener } from "@/components/console/ambient";
 import { PageView } from "@/components/console/page-view";
@@ -44,13 +45,25 @@ export default function SourcesPage() {
             </thead>
             <tbody>
               {CATALOG.map((entry) => (
-                <tr key={`${entry.source} ${entry.route}`}>
+                <tr key={`${entry.source} ${entry.route} ${entry.credential}`}>
                   <th scope="row">{SOURCE_TITLES[entry.source]}</th>
-                  <td>
-                    <code translate="no">{entry.route}</code>
+                  <td className="cell-wrap-narrow">
+                    {/* a long route breaks after a slash, never mid-word */}
+                    <code translate="no">
+                      {entry.route.split("/").map((part, index) => (
+                        <Fragment key={index}>
+                          {index > 0 ? (
+                            <>
+                              /<wbr />
+                            </>
+                          ) : null}
+                          {part}
+                        </Fragment>
+                      ))}
+                    </code>
                   </td>
-                  <td>{entry.credential}</td>
-                  <td className="table-cell-wrap">{entry.usedFor}</td>
+                  <td className="cell-wrap-narrow">{entry.credential}</td>
+                  <td className="cell-wrap-narrow">{entry.usedFor}</td>
                 </tr>
               ))}
             </tbody>
