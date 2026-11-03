@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { KnownActor } from "@/domain/engine";
 import { PINS, shortCommit } from "@/domain/pins";
+import type { ErrorSample } from "@/ports/sources";
 
-import { broken, engineHealth, fakeSources, healthyMetrics, read, reconciliation } from "../../tests/support/fixtures";
+import { broken, engineHealth, fakeSources, healthyMetrics, NOW, read, reconciliation } from "../../tests/support/fixtures";
 
 import { stackHealth, worst } from "./stack-health";
 
@@ -66,6 +67,59 @@ describe("stack health", () => {
       });
     expect(await stateOf(backlog(20), "signer.outbox")).toMatchObject({ state: "warn", summary: "3 events waiting for Batteries, oldest 20 s" });
     expect(await stateOf(backlog(900), "signer.outbox")).toMatchObject({ state: "bad" });
+  });
+
+  describe("delivery errors", () => {
+    const minutesAgo = (minutes: number) => NOW.getTime() - minutes * 60_000;
+    /** The signer now reports `total` errors; `earlier` is what this console read before. */
+    const errors = (total: number, earlier: readonly ErrorSample[]) =>
+      fakeSources({
+        signer: {
+          metrics: async () =>
+            read("signer", { ...healthyMetrics, livepeer_signer_kafka_publish_errors_total: total - 1, livepeer_signer_kafka_enqueue_errors_total: 1 }),
+        },
+        signerErrors: { record: (sample) => [...earlier, sample] },
+      });
+
+    it("passes when the signer has had none", async () => {
+      expect(await stateOf(fakeSources(), "signer.errors")).toMatchObject({ state: "ok", summary: "None since the signer started" });
+    });
+
+    it("warns on errors new in the last hour, and says how many came before", async () => {
+      expect(await stateOf(errors(4, [{ atMs: minutesAgo(70), total: 2 }]), "signer.errors")).toMatchObject({
+        state: "warn",
+        summary: "2 new in the last 1 h (4 since the signer started)",
+      });
+    });
+
+    it("passes once an hour has gone by with no new error", async () => {
+      expect(await stateOf(errors(4, [{ atMs: minutesAgo(70), total: 4 }]), "signer.errors")).toMatchObject({
+        state: "ok",
+        summary: "None new in the last 1 h; 4 earlier, since the signer started",
+      });
+    });
+
+    it("keeps warning about errors it has not watched for an hour, since it cannot tell when they happened", async () => {
+      expect(await stateOf(errors(4, [{ atMs: minutesAgo(10), total: 4 }]), "signer.errors")).toMatchObject({
+        state: "warn",
+        summary: "4 since the signer started; none new in the 10 min this console has watched",
+      });
+      expect(await stateOf(errors(4, []), "signer.errors")).toMatchObject({
+        state: "warn",
+        summary: "4 since the signer started, before this console began watching",
+      });
+    });
+
+    it("counts from zero again after the signer restarts", async () => {
+      const restarted = [
+        { atMs: minutesAgo(70), total: 4 },
+        { atMs: minutesAgo(30), total: 0 },
+      ];
+      expect(await stateOf(errors(1, restarted), "signer.errors")).toMatchObject({
+        state: "warn",
+        summary: "1 new in the last 1 h (1 since the signer started)",
+      });
+    });
   });
 
   it("in per_actor mode, sums every actor's reconciliation", async () => {

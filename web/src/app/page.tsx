@@ -135,7 +135,13 @@ async function Health() {
         reveal
       >
         <Unreadable reading={health.signerMetrics} what="Signer metrics" />
-        {health.signerMetrics.ok ? <SignerMetricTiles metrics={health.signerMetrics.value} readAt={health.signerMetrics.readAt} /> : null}
+        {health.signerMetrics.ok ? (
+          <SignerMetricTiles
+            metrics={health.signerMetrics.value}
+            readAt={health.signerMetrics.readAt}
+            errors={health.components.flatMap((component) => component.checks).find((check) => check.id === "signer.errors")}
+          />
+        ) : null}
       </Section>
 
       <Section id="h-ticker" title="Latest signed tickets" description="Applied by Batteries from the signer's outbox. Hover or focus to pause.">

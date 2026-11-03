@@ -29,7 +29,7 @@ opened) and a ticker of the newest signed tickets.
 | Batteries | Engine agrees with Batteries | every allocation balanced: the application in per_application mode, each actor in per_actor mode (gap G10); no allocation yet reads Unknown |
 | Signer | Ready to pay | signer `/readyz` 200; a 503 shows the signer's reason |
 | Signer | Accounting outbox | healthy and empty; a backlog older than 300 s is Down |
-| Signer | Delivery errors | no publish, enqueue or storage errors since start |
+| Signer | Delivery errors | none new in the last hour (D22); errors since start that the console cannot date yet read Warning |
 
 ## Network
 
