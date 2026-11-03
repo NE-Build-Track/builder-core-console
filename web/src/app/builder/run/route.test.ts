@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Session } from "@/domain/session";
 
-const calls = vi.hoisted(() => ({ session: vi.fn(), run: vi.fn(), ended: vi.fn() }));
+const calls = vi.hoisted(() => ({ session: vi.fn(), run: vi.fn(), ended: vi.fn(), validate: vi.fn() }));
 vi.mock("@/app/session-cookies", () => ({ sessionFor: calls.session, endedBy: calls.ended }));
-vi.mock("@/runtime/builder", () => ({ startRun: calls.run }));
+vi.mock("@/runtime/builder", () => ({ startRun: calls.run, validateCapabilityRun: calls.validate }));
 
 import { POST } from "./route";
 
@@ -25,6 +25,7 @@ beforeEach(() => {
   vi.stubEnv("CONSOLE_OIDC_CLIENT_SECRET", "fixture-secret");
   vi.stubEnv("CONSOLE_OIDC_REDIRECT_URL", publicOrigin + "/auth/callback");
   calls.session.mockResolvedValue(null);
+  calls.validate.mockResolvedValue(null);
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.resetAllMocks(); });
 
@@ -56,6 +57,14 @@ describe("Builder run origin behind HTTPS termination", () => {
     expect(await response.json()).toEqual({ fixture: true });
     expect(response.headers.get("x-job-id")).toBe("fixture-job");
     expect(calls.run).toHaveBeenCalledWith(session, good, expect.any(AbortSignal));
+  });
+
+  it("refuses schema-invalid input before calling the paid engine adapter", async () => {
+    calls.session.mockResolvedValue({ token: "fixture" });
+    calls.validate.mockResolvedValue("Invalid model input: prompt is required");
+    const response = await POST(request(publicOrigin));
+    expect(response.status).toBe(400);
+    expect(calls.run).not.toHaveBeenCalled();
   });
 
   it("keeps direct local key-mode requests working", async () => {

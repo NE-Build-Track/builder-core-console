@@ -1,6 +1,8 @@
 import "server-only";
 
 import type { JobState, RunInput } from "@/domain/builder";
+import type { CapabilityProfile } from "@/domain/engine";
+import { capabilityInputIssues } from "@/domain/capability-input";
 import { mapReading, type Reading } from "@/domain/reading";
 import type { Session } from "@/domain/session";
 import type { RunStarted } from "@/ports/keyed";
@@ -22,6 +24,24 @@ export async function loadCatalog(session: Session): Promise<CatalogView> {
   if (!engine) return missingEngine();
   const [offerings, health] = await Promise.all([engine.offerings(), sharedSources().engine.health()]);
   return catalog(offerings, health, new Date());
+}
+
+export async function loadCapabilityProfiles(session: Session): Promise<Reading<readonly CapabilityProfile[]>> {
+  const engine = keyed(session.token);
+  if (!engine) return missingEngine();
+  return engine.capabilities();
+}
+
+/** Revalidate on the server before opening any paid connection, even when browser checks are bypassed. */
+export async function validateCapabilityRun(session: Session, input: RunInput): Promise<string | null> {
+  const profiles = await loadCapabilityProfiles(session);
+  if (!profiles.ok) return "Capability schemas could not be read. No job was sent.";
+  const candidates = profiles.value.filter(profile => profile.app === input.app);
+  if (!candidates.length) return null;
+  const profile = candidates.find(profile => profile.path === input.path && profile.method === input.method && profile.content_type === "application/json");
+  if (!profile || input.stream) return "The selected capability does not support that path, method or streaming mode.";
+  const issues = capabilityInputIssues(profile, input.payload);
+  return issues.length ? `Invalid model input: ${issues.join("; ")}` : null;
 }
 
 /** Null when the builder's actor can pay, or its allowance could not be read for another reason. */

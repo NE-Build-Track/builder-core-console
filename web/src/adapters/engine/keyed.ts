@@ -82,6 +82,7 @@ export function keyedEngine(baseUrl: string, token: string, options: Options): K
     myJobs: (limit) => call(() => client.GET("/v1/jobs", { params: { query: { limit } }, signal: signal() })),
     adminActors: (limit) => call(() => client.GET("/v1/admin/actors", { params: { query: { limit } }, signal: signal() })),
     offerings: () => call(() => client.GET("/v1/offerings", { signal: signal() })),
+    capabilities: () => call(() => client.GET("/v1/capabilities", { signal: signal() })),
     runners: (app) => call(() => client.GET("/v1/runners", { params: { query: { app } }, signal: signal() })),
     job: (id) => call(() => client.GET("/v1/jobs/{job_id}", { params: { path: { job_id: id } }, signal: signal() })),
     jobCost: (id) => call(() => client.GET("/v1/jobs/{job_id}/cost", { params: { path: { job_id: id } }, signal: signal() })),

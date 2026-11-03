@@ -23,5 +23,6 @@ When every acceptance item is evidenced and Mike has reviewed it, move the plan 
 | Plan | State |
 | --- | --- |
 | [active/keycloak-production.md](exec-plans/active/keycloak-production.md) | Live Google sign-in and reader-free deployment verified; awaiting review |
+| [active/capability-request-schemas.md](exec-plans/active/capability-request-schemas.md) | Candidate Core schema API and console input initialization; review pending |
 | [active/console-v1.md](exec-plans/active/console-v1.md) | Scaffolded; awaiting review |
 | [active/console-m3.md](exec-plans/active/console-m3.md) | Phases 0â€“4 built 21 October; awaiting review; dry run and final run to come |
