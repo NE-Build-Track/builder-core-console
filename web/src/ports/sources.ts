@@ -66,6 +66,18 @@ export interface DiscoveryReader {
   inventory(): Promise<Reading<readonly DiscoveredOrchestrator[]>>;
 }
 
+/** One reading of the signer's delivery errors: publish, enqueue and storage, summed. */
+export type ErrorSample = { readonly atMs: number; readonly total: number };
+
+/**
+ * The signer's error totals as this console process has read them (decision D22). The signer only
+ * counts since it started, so without these an error from hours ago looks the same as one just now.
+ */
+export interface ErrorHistory {
+  /** Keep this reading; return the readings inside the window, after the last one before it, oldest first. */
+  record(sample: ErrorSample): readonly ErrorSample[];
+}
+
 export type Sources = {
   readonly engine: EngineReader;
   readonly batteries: BatteriesReader;
@@ -74,4 +86,5 @@ export type Sources = {
   /** The engine application the admin key reads (CONSOLE_APPLICATION_ID, gap G9). */
   readonly applicationId: string;
   readonly now: () => Date;
+  readonly signerErrors: ErrorHistory;
 };

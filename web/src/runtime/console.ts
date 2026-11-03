@@ -11,11 +11,12 @@ import { jobs } from "@/services/jobs";
 import { money } from "@/services/money";
 import { navCounts } from "@/services/nav";
 import { network } from "@/services/network";
-import { stackHealth } from "@/services/stack-health";
+import { ERROR_WINDOW_S, stackHealth } from "@/services/stack-health";
 import { usage } from "@/services/usage";
 import { users } from "@/services/users";
 import type { WindowName } from "@/utils/time";
 
+import { errorHistory } from "./error-history";
 import { cached, ttlCache, type TtlCache } from "./ttl-cache";
 
 /**
@@ -41,6 +42,7 @@ function build(): Sources {
     discovery: cached("discovery", discoveryReader(config.discovery, options), cache),
     applicationId: config.applicationId,
     now,
+    signerErrors: errorHistory(ERROR_WINDOW_S * 1000),
   };
 }
 

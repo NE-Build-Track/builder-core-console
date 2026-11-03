@@ -8,7 +8,7 @@ import { failed, ok, type Problem, type Reading, type SourceName } from "@/domai
 import { PINS, shortCommit } from "@/domain/pins";
 import type { DiscoveredOrchestrator } from "@/domain/discovery";
 import type { SignerMetrics, SignerReadiness } from "@/domain/signer";
-import type { BatteriesReader, DiscoveryReader, EngineReader, SignerReader, Sources } from "@/ports/sources";
+import type { BatteriesReader, DiscoveryReader, EngineReader, ErrorHistory, SignerReader, Sources } from "@/ports/sources";
 
 export const NOW = new Date("2026-10-20T18:00:00.000Z");
 const AT = NOW.toISOString();
@@ -309,6 +309,7 @@ export function fakeSources(
     batteries?: Partial<BatteriesReader>;
     signer?: Partial<SignerReader>;
     discovery?: Partial<DiscoveryReader>;
+    signerErrors?: ErrorHistory;
   } = {},
 ): Sources {
   return {
@@ -318,5 +319,7 @@ export function fakeSources(
     discovery: discoveryFake(overrides.discovery),
     applicationId: "default",
     now: () => NOW,
+    // No earlier readings: the console has only just started watching.
+    signerErrors: overrides.signerErrors ?? { record: (sample) => [sample] },
   };
 }

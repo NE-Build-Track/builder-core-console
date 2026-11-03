@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { SignerMetrics } from "@/domain/signer";
+import type { Check } from "@/domain/views";
 
 import { Spark } from "./primitives";
 import { Pill } from "./values";
@@ -11,9 +12,10 @@ type Sample = { readonly at: string; readonly pending: number; readonly oldest: 
 
 /**
  * The signer's outbox metrics as tiles. The stack keeps no history (decision D6), so the sparklines are
- * the samples this page has seen since it opened: one per refresh, the newest 40.
+ * the samples this page has seen since it opened: one per refresh, the newest 40. `errors` is the
+ * Delivery errors check, so the error tile's pill agrees with it (D22).
  */
-export function SignerMetricTiles({ metrics, readAt }: { readonly metrics: SignerMetrics; readonly readAt: string }) {
+export function SignerMetricTiles({ metrics, readAt, errors: errorsCheck }: { readonly metrics: SignerMetrics; readonly readAt: string; readonly errors?: Check | undefined }) {
   const pending = metrics.livepeer_signer_kafka_pending_events;
   const oldest = metrics.livepeer_signer_kafka_oldest_event_age_seconds;
   const [samples, setSamples] = useState<readonly Sample[]>(() => [{ at: readAt, pending: pending ?? 0, oldest: oldest ?? 0 }]);
@@ -49,7 +51,15 @@ export function SignerMetricTiles({ metrics, readAt }: { readonly metrics: Signe
           {errors ?? "—"}
         </span>
         <span className="s">
-          {errors === undefined ? <Pill state="unknown">not reported</Pill> : errors === 0 ? <Pill state="ok">none since start</Pill> : <Pill state="warn">since the signer started</Pill>}
+          {errors === undefined ? (
+            <Pill state="unknown">not reported</Pill>
+          ) : errors === 0 ? (
+            <Pill state="ok">none since start</Pill>
+          ) : errorsCheck?.state === "ok" ? (
+            <Pill state="ok">none new in the last hour</Pill>
+          ) : (
+            <Pill state="warn">since the signer started</Pill>
+          )}
         </span>
       </div>
       <div className="tile metric lift">

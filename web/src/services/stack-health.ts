@@ -8,7 +8,7 @@ import { describeProblem, mapReading, type Reading } from "@/domain/reading";
 import type { DiscoveredOrchestrator } from "@/domain/discovery";
 import type { SignerMetrics, SignerReadiness } from "@/domain/signer";
 import type { Check, ComponentHealth, StackHealth, State, Topology, Verdict } from "@/domain/views";
-import type { Sources } from "@/ports/sources";
+import type { ErrorSample, Sources } from "@/ports/sources";
 import { mapLimited } from "@/utils/concurrency";
 import { sumDecimals } from "@/utils/decimal";
 
@@ -21,6 +21,8 @@ import { ageSeconds, formatAge } from "@/utils/time";
 export const COST_SYNC_STALE_S = 150;
 /** The signer delivers accounting events at least once; an event older than this is stuck. */
 export const OUTBOX_STUCK_S = 300;
+/** A delivery error warns for this long after the console last saw the signer's total rise (D22). */
+export const ERROR_WINDOW_S = 3600;
 
 const RANK: Record<State, number> = { ok: 0, unknown: 1, warn: 2, bad: 3 };
 
@@ -141,7 +143,11 @@ export function reconciliationCheck(readings: readonly Reading<Reconciliation>[]
   };
 }
 
-export function signerChecks(readiness: Reading<SignerReadiness>, metrics: Reading<SignerMetrics>): Check[] {
+export function signerChecks(
+  readiness: Reading<SignerReadiness>,
+  metrics: Reading<SignerMetrics>,
+  history: (total: number) => readonly ErrorSample[],
+): Check[] {
   const checks: Check[] = [
     readiness.ok
       ? {
@@ -179,13 +185,36 @@ export function signerChecks(readiness: Reading<SignerReadiness>, metrics: Readi
     (m.livepeer_signer_kafka_publish_errors_total ?? 0) +
     (m.livepeer_signer_kafka_enqueue_errors_total ?? 0) +
     (m.livepeer_signer_kafka_storage_errors_total ?? 0);
-  checks.push({
-    id: "signer.errors",
-    label: "Delivery errors",
-    state: errors === 0 ? "ok" : "warn",
-    summary: errors === 0 ? "None since the signer started" : `${errors} publish, enqueue or storage errors since the signer started`,
-  });
+  checks.push(deliveryErrorsCheck(history(errors)));
   return checks;
+}
+
+/**
+ * The signer counts publish, enqueue and storage errors since it started, so the total alone cannot say
+ * whether an error is new. Compare it with this console's earlier readings: warn while the total has risen
+ * in the last hour, or while the console has not yet watched an hour and cannot date the errors (D22).
+ */
+export function deliveryErrorsCheck(samples: readonly ErrorSample[]): Check {
+  const check = (state: State, summary: string): Check => ({ id: "signer.errors", label: "Delivery errors", state, summary });
+  const first = samples[0];
+  const last = samples.at(-1);
+  if (!first || !last || last.total === 0) return check("ok", "None since the signer started");
+  if (samples.length === 1) return check("warn", `${last.total} since the signer started, before this console began watching`);
+  const watched = formatAge(Math.round((last.atMs - first.atMs) / 1000));
+  const fresh = increase(samples);
+  if (fresh > 0) return check("warn", `${fresh} new in the last ${watched} (${last.total} since the signer started)`);
+  if (last.atMs - first.atMs < ERROR_WINDOW_S * 1000) {
+    return check("warn", `${last.total} since the signer started; none new in the ${watched} this console has watched`);
+  }
+  return check("ok", `None new in the last ${watched}; ${last.total} earlier, since the signer started`);
+}
+
+/** How much a counter rose across readings; a drop means the signer restarted and counts from zero. */
+function increase(samples: readonly ErrorSample[]): number {
+  return samples.slice(1).reduce((sum, sample, i) => {
+    const before = samples[i]!.total;
+    return sum + (sample.total >= before ? sample.total - before : sample.total);
+  }, 0);
 }
 
 /** Reconciliation for the console's application, per allocation mode (see reconciliationCheck). */
@@ -298,7 +327,7 @@ export async function stackHealth(sources: Sources): Promise<StackHealth> {
   const components = [
     component("engine", "Engine", engineChecks(engine, now)),
     component("batteries", "Batteries", [...batteriesChecks(batteriesReady), reconciliationCheck(reconciliations)]),
-    component("signer", "Signer", signerChecks(readiness, metrics)),
+    component("signer", "Signer", signerChecks(readiness, metrics, (total) => sources.signerErrors.record({ atMs: now.getTime(), total }))),
   ];
   const verdict = verdictOf(components);
   return {
