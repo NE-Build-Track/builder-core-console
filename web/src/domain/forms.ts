@@ -27,7 +27,7 @@ export function usd(form: FormData, name: string, label = "Amount"): Parsed<stri
 export function ident(form: FormData, name: string, label: string): Parsed<string> {
   const raw = text(form, name);
   if (!raw) return invalid(name, `${label} is required.`);
-  if (!/^[A-Za-z0-9._:@-]{1,128}$/.test(raw)) return invalid(name, `${label} may use letters, digits and . _ : @ - (at most 128).`);
+  if (!/^[A-Za-z0-9._:@|-]{1,128}$/.test(raw)) return invalid(name, `${label} may use letters, digits and . _ : @ | - (at most 128).`);
   return parsed(raw);
 }
 

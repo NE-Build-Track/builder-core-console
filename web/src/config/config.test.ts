@@ -28,6 +28,30 @@ describe("config", () => {
     expect(config.discovery).toEqual({ ok: false, missing: "CONSOLE_DISCOVERY_URL" });
   });
 
+  it("creates Auth0 users without an operator role id, and reads one when it is set", () => {
+    const directory = {
+      CONSOLE_AUTH0_DOMAIN: "tenant.example.auth0.com",
+      CONSOLE_AUTH0_MGMT_CLIENT_ID: "mgmt",
+      CONSOLE_AUTH0_MGMT_CLIENT_SECRET: "secret",
+      CONSOLE_AUTH0_BUILDER_ROLE_ID: "rol_builder",
+    };
+    expect(readConfig(directory).directory).toEqual({
+      ok: true,
+      value: {
+        domain: "tenant.example.auth0.com",
+        clientId: "mgmt",
+        clientSecret: "secret",
+        connection: "Username-Password-Authentication",
+        builderRoleId: "rol_builder",
+        operatorRoleId: null,
+      },
+    });
+    expect(readConfig({ ...directory, CONSOLE_AUTH0_OPERATOR_ROLE_ID: "rol_operator" }).directory).toMatchObject({
+      ok: true,
+      value: { operatorRoleId: "rol_operator", builderRoleId: "rol_builder" },
+    });
+  });
+
   it("never reads with the engine admin key, even when the environment holds one (gap G8)", () => {
     const config = readConfig({ CONSOLE_ENGINE_URL: "http://engine:8080", CONSOLE_ENGINE_ADMIN_TOKEN: "lpk_admin" });
     expect(config.engine).toEqual({ ok: false, missing: "CONSOLE_ENGINE_READER_TOKEN" });
@@ -66,10 +90,26 @@ describe("config", () => {
             operatorScope: "livepeer:admin",
             builderScopes: ["discover", "jobs.run", "jobs.read", "costs.read", "events.read"],
             allowHttp: true,
+            offlineAccess: false,
+            audience: null,
           },
         },
         reader: { ok: true, value: { clientId: "console-reader", clientSecret: "s2", scope: "livepeer:read" } },
       });
+    });
+
+    it("sends an audience only when one is configured", () => {
+      const off = readConfig(oidc);
+      expect(off.auth.mode === "oidc" && off.auth.oidc.ok && off.auth.oidc.value.audience).toBeNull();
+      const on = readConfig({ ...oidc, CONSOLE_OIDC_AUDIENCE: "https://engine-preview.up.railway.app" });
+      expect(on.auth.mode === "oidc" && on.auth.oidc.ok && on.auth.oidc.value.audience).toBe("https://engine-preview.up.railway.app");
+    });
+
+    it("asks for a refresh token only when Auth0 is told to, and never otherwise", () => {
+      const off = readConfig(oidc);
+      expect(off.auth.mode === "oidc" && off.auth.oidc.ok && off.auth.oidc.value.offlineAccess).toBe(false);
+      const on = readConfig({ ...oidc, CONSOLE_OIDC_OFFLINE_ACCESS: "true" });
+      expect(on.auth.mode === "oidc" && on.auth.oidc.ok && on.auth.oidc.value.offlineAccess).toBe(true);
     });
 
     it("keeps the issuer exactly as given: it must match the token's iss", () => {

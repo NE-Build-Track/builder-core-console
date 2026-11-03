@@ -7,7 +7,8 @@ WORKDIR /build/web
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable && corepack prepare pnpm@10.33.2 --activate
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+# No cache mount: Railway's Dockerfile frontend rejects BuildKit cache ids.
+RUN pnpm install --frozen-lockfile
 COPY web/ ./
 COPY openapi/ /build/openapi/
 RUN pnpm build

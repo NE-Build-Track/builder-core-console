@@ -21,6 +21,8 @@ import { describeProblem, type Reading } from "@/domain/reading";
 import type { Written } from "@/ports/keyed";
 import { fromUnits, toUnits } from "@/utils/decimal";
 
+import { operatorReview, provisionOperatorOf, SUBJECT } from "./operator-directory";
+
 const ACTION_NAMES = Object.keys(ACTIONS) as OperatorAction[];
 
 function all<T extends object>(parts: { [K in keyof T]: Parsed<T[K]> }): Parsed<T> {
@@ -30,6 +32,42 @@ function all<T extends object>(parts: { [K in keyof T]: Parsed<T[K]> }): Parsed<
     out[key] = part.value;
   }
   return parsed(out as T);
+}
+
+function provisionOf(form: FormData, application: () => Parsed<string>, actor: () => Parsed<string>): Parsed<ActionInput> {
+  const grantId = ident(form, "grant_id", "Grant");
+  const amount = usd(form, "amount", "Allocation");
+  const label = parsed(optionalLabel(form, "label"));
+  const operation = operationRef(form);
+  const applicationId = application();
+  const subjectRaw = text(form, "subject");
+  if (subjectRaw) {
+    if (!SUBJECT.test(subjectRaw)) return invalid("subject", "Subject name starts with a letter and may use letters, digits and . _ -.");
+    const email = text(form, "email");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return invalid("email", "Give an email address. Auth0 needs one to create the user.");
+    return all({
+      action: parsed("provision" as const),
+      applicationId,
+      actorId: parsed(`auth0|${subjectRaw}`),
+      subject: parsed(subjectRaw),
+      email: parsed(email),
+      grantId,
+      amount,
+      label,
+      operationRef: operation,
+    });
+  }
+  return all({
+    action: parsed("provision" as const),
+    applicationId,
+    actorId: actor(),
+    subject: parsed(null),
+    email: parsed(null),
+    grantId,
+    amount,
+    label,
+    operationRef: operation,
+  });
 }
 
 /** FormData from an action form → one action, or the first field that is wrong. */
@@ -48,15 +86,7 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
     case "fundGrant":
       return all({ action: parsed("fundGrant" as const), grantId: ident(form, "grant_id", "Grant"), amount: usd(form, "amount"), operationRef: operationRef(form) });
     case "provision":
-      return all({
-        action: parsed("provision" as const),
-        applicationId: application(),
-        actorId: actor(),
-        grantId: ident(form, "grant_id", "Grant"),
-        amount: usd(form, "amount", "Allocation"),
-        label: parsed(optionalLabel(form, "label")),
-        operationRef: operationRef(form),
-      });
+      return provisionOf(form, application, actor);
     case "fundAllocation":
       return all({
         action: parsed("fundAllocation" as const),
@@ -85,6 +115,8 @@ export function parseAction(form: FormData): Parsed<ActionInput> {
       return all({ action: parsed("rotateKey" as const), keyId: ident(form, "key_id", "Key"), label: parsed(optionalLabel(form, "label")), operationRef: operationRef(form) });
     case "revokeKey":
       return all({ action: parsed("revokeKey" as const), keyId: ident(form, "key_id", "Key") });
+    case "provisionOperator":
+      return provisionOperatorOf(form);
   }
 }
 
@@ -156,6 +188,7 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
       return {
         ...base,
         lines: [
+          ...(input.subject ? [{ label: "Identity", value: `Auth0 user ${input.actorId} is created first, then the allocation` }] : []),
           { label: "Actor", value: `${input.actorId} in ${input.applicationId}`, mono: true },
           { label: "From grant", value: grantName(context, input.grantId), mono: true },
           ...grant.lines,
@@ -251,6 +284,8 @@ export function reviewOf(input: ActionInput, context: ReviewContext): Review {
         button: "Revoke the key",
       };
     }
+    case "provisionOperator":
+      return operatorReview(input, base);
   }
 }
 
@@ -315,6 +350,8 @@ export function resultOf(input: ActionInput, value: unknown): { readonly lines: 
       return { lines: [{ label: "Grant", value: input.grantId, mono: true }, { label: "Added", value: dollars(input.amount) }], secret: null };
     case "revokeKey":
       return { lines: [{ label: "Key", value: input.keyId, mono: true }], secret: null };
+    case "provisionOperator":
+      return { lines: [{ label: "Operator", value: input.userId, mono: true }], secret: null };
   }
 }
 

@@ -17,6 +17,8 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 Testing sign-in through an identity provider instead of keys: [keycloak/README.md](keycloak/README.md), a
 separate compose project with Keycloak, a JWT-only engine and the console (`CONSOLE_AUTH=oidc`).
 
+The Railway preview copy signs in through Auth0 and reads the preview engine: [railway/README.md](railway/README.md).
+
 ## Secrets
 
 Either reuse ChatLPT's values (D3):

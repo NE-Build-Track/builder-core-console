@@ -15,6 +15,18 @@ const PENDING_MINUTES = 10;
 const PKCE_METHOD = "S256";
 
 /**
+ * What the authorization request asks for. `profile` puts the person's name on the ID token.
+ * `offline_access` is how Auth0 is asked for a refresh token; leave it off for a provider that
+ * issues one without being asked.
+ */
+export function authorizationScopes(areaScopes: readonly string[], offlineAccess: boolean): string {
+  const scopes = ["openid", "profile"];
+  if (offlineAccess) scopes.push("offline_access");
+  scopes.push(...areaScopes);
+  return scopes.join(" ");
+}
+
+/**
  * The identity provider through openid-client (OpenID-certified; confined to this folder). Discovery is
  * read once and kept; a failed discovery is tried again on the next call. Errors become Readings with the
  * provider's `error` and `error_description`, never a token.
@@ -82,7 +94,8 @@ export function identityProvider(settings: OidcSettings, options: Options): Iden
         };
         const url = oidc.buildAuthorizationUrl(c, {
           redirect_uri: settings.redirectUrl,
-          scope: ["openid", ...scopes].join(" "),
+          scope: authorizationScopes(scopes, settings.offlineAccess),
+          ...(settings.audience ? { audience: settings.audience } : {}),
           code_challenge: await oidc.calculatePKCECodeChallenge(verifier),
           code_challenge_method: PKCE_METHOD,
           state: pending.state,
@@ -107,7 +120,13 @@ export function identityProvider(settings: OidcSettings, options: Options): Iden
         });
         return tokensOf(response, options.now());
       }),
-    refresh: (refreshToken) => attempt(async (c) => tokensOf(await oidc.refreshTokenGrant(c, refreshToken), options.now())),
+    refresh: (refreshToken) =>
+      attempt(async (c) =>
+        tokensOf(
+          await oidc.refreshTokenGrant(c, refreshToken, settings.audience ? { audience: settings.audience } : undefined),
+          options.now(),
+        ),
+      ),
     logoutUrl: async (after, idTokenHint) => {
       try {
         const c = await config();
@@ -126,7 +145,13 @@ export function identityProvider(settings: OidcSettings, options: Options): Iden
  * The console's own read-only token (client credentials), kept until a minute before it expires and
  * shared by concurrent reads, so a page of reads asks the provider once.
  */
-export function readerTokens(issuer: string, settings: ReaderSettings, allowHttp: boolean, options: Options): TokenSource {
+export function readerTokens(
+  issuer: string,
+  settings: ReaderSettings,
+  allowHttp: boolean,
+  options: Options,
+  audience: string | null = null,
+): TokenSource {
   const config = configuration(issuer, settings.clientId, settings.clientSecret, allowHttp, options);
   let held: { readonly token: string; readonly until: number } | null = null;
   let inFlight: Promise<Reading<string>> | null = null;
@@ -134,7 +159,10 @@ export function readerTokens(issuer: string, settings: ReaderSettings, allowHttp
 
   async function fetchToken(): Promise<Reading<string>> {
     try {
-      const response = await oidc.clientCredentialsGrant(await config(), { scope: settings.scope });
+      const response = await oidc.clientCredentialsGrant(await config(), {
+        scope: settings.scope,
+        ...(audience ? { audience } : {}),
+      });
       const lifetime = response.expiresIn() ?? 60;
       held = { token: response.access_token, until: options.now().getTime() + Math.max(0, lifetime - 60) * 1000 };
       return ok("identity", response.access_token, at());

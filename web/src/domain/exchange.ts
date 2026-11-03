@@ -16,6 +16,8 @@ export type Exchange = {
   readonly response?: unknown;
   /** Why there was no usable response, in a few words. */
   readonly problem?: string;
+  /** Auth0's management API. Absent means the engine. */
+  readonly host?: "auth0";
   readonly at: string;
   readonly ms: number;
 };
@@ -44,11 +46,13 @@ function shellQuote(text: string): string {
 }
 
 /**
- * The call as a curl command a builder can run against their own engine. The key is `$LPB_KEY` and the
- * engine `$ENGINE_URL`, so nothing secret is ever on the page to copy.
+ * The call as a curl command. An engine call uses `$LPB_KEY` and `$ENGINE_URL`. An Auth0 management
+ * call uses `$AUTH0_MGMT_TOKEN` and `$AUTH0_DOMAIN`. Nothing secret is ever on the page to copy.
  */
-export function curlOf(exchange: Pick<Exchange, "method" | "path" | "body">): string {
-  const lines = [`curl -sS -X ${exchange.method} "$ENGINE_URL${exchange.path}"`, `  -H "Authorization: Bearer $LPB_KEY"`];
+export function curlOf(exchange: Pick<Exchange, "method" | "path" | "body" | "host">): string {
+  const target = exchange.host === "auth0" ? `https://$AUTH0_DOMAIN${exchange.path}` : `$ENGINE_URL${exchange.path}`;
+  const credential = exchange.host === "auth0" ? "$AUTH0_MGMT_TOKEN" : "$LPB_KEY";
+  const lines = [`curl -sS -X ${exchange.method} "${target}"`, `  -H "Authorization: Bearer ${credential}"`];
   if (exchange.body !== undefined) {
     lines.push(`  -H 'content-type: application/json'`, `  -d ${shellQuote(JSON.stringify(hideSecrets(exchange.body)))}`);
   }

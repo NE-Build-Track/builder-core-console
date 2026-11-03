@@ -30,7 +30,17 @@ describe("operator actions", () => {
     expect(parseAction(form({ action: "fundGrant", grant_id: "g1", amount: "0", operation_ref: REF }))).toMatchObject({ ok: false, field: "amount" });
     expect(parseAction(form({ action: "fundGrant", grant_id: "g1", amount: "1", operation_ref: "" }))).toMatchObject({ ok: false, field: "operation_ref" });
     expect(parseAction(form({ action: "provision", application_id: "default", actor_id: "a/b", grant_id: "g1", amount: "1" }))).toMatchObject({ ok: false, field: "actor_id" });
+    expect(parseAction(form({ action: "provision", application_id: "default", subject: "carol", email: "carol@example.com", grant_id: "g1", amount: "1", label: "Carol", operation_ref: REF }))).toMatchObject({
+      ok: true,
+      value: { action: "provision", actorId: "auth0|carol", subject: "carol", email: "carol@example.com" },
+    });
     expect(parseAction(form({ action: "deleteEverything" }))).toMatchObject({ ok: false, field: "action" });
+    expect(parseAction(form({ action: "provisionOperator", subject: "ada", email: "ada@example.com", label: "Ada" }))).toMatchObject({
+      ok: true,
+      value: { action: "provisionOperator", subject: "ada", email: "ada@example.com", userId: "auth0|ada", label: "Ada" },
+    });
+    expect(parseAction(form({ action: "provisionOperator", subject: "ada", email: "not-an-email" }))).toMatchObject({ ok: false, field: "email" });
+    expect(parseAction(form({ action: "provisionOperator", subject: "1ada", email: "ada@example.com" }))).toMatchObject({ ok: false, field: "subject" });
   });
 
   it("plans the exact engine call the review shows and the writer sends", () => {
@@ -70,6 +80,25 @@ describe("operator actions", () => {
       { action: "rotateKey", key_id: "k1" },
     ];
     for (const values of forms) expect(parseAction(form(values)), values.action).toMatchObject({ ok: false, field: "operation_ref" });
+  });
+
+  it("reviews an added operator as an Auth0 user, with no grant and no amount", () => {
+    const review = reviewOf(
+      { action: "provisionOperator", subject: "ada", email: "ada@example.com", userId: "auth0|ada", label: "", roleId: "rol_operator" },
+      context,
+    );
+    expect(review.lines).toContainEqual({ label: "Operator", value: "auth0|ada", mono: true });
+    expect(review.lines.map((line) => line.value ?? "").join(" ")).toContain("operator");
+    expect(review.lines.map((line) => line.label)).not.toContain("From grant");
+    expect(review.lines.map((line) => line.label)).not.toContain("Allocation");
+    expect(review.call).toEqual({
+      method: "POST",
+      template: "/api/v2/users/{user_id}/roles",
+      path: "/api/v2/users/auth0%7Cada/roles",
+      body: { roles: ["rol_operator"] },
+      host: "auth0",
+    });
+    expect(review.button).toBe("Add the operator");
   });
 
   it("shows money moves as before → after", () => {
@@ -197,10 +226,10 @@ describe("operator actions", () => {
 
 describe("drawing on a grant", () => {
   it("shows the grant's unallocated balance and warns before the engine would refuse", () => {
-    const fits = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.25", label: "", operationRef: REF }, context);
+    const fits = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", subject: null, email: null, grantId: "g1", amount: "0.25", label: "", operationRef: REF }, context);
     expect(fits.lines).toContainEqual({ label: "Grant unallocated", before: "$0.30", after: "$0.05" });
     expect(fits.warnings.join(" ")).not.toContain("refuse");
-    const short = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", grantId: "g1", amount: "0.5", label: "", operationRef: REF }, context);
+    const short = reviewOf({ action: "provision", applicationId: "default", actorId: "acme", subject: null, email: null, grantId: "g1", amount: "0.5", label: "", operationRef: REF }, context);
     expect(short.warnings.join(" ")).toContain("will refuse this (409)");
   });
 });

@@ -6,7 +6,7 @@ import { curlOf, showBody, type Exchange } from "@/domain/exchange";
 
 import { CopyAction } from "../copy-button";
 
-export type ShownCall = Pick<Exchange, "method" | "path" | "body"> & Partial<Pick<Exchange, "status" | "response" | "problem" | "ms">>;
+export type ShownCall = Pick<Exchange, "method" | "path" | "body" | "host"> & Partial<Pick<Exchange, "status" | "response" | "problem" | "ms">>;
 
 function statusState(status: number | null | undefined): "ok" | "warn" | "bad" | "unknown" {
   if (status === null || status === undefined) return "unknown";
@@ -24,7 +24,7 @@ export function ExchangePanel({ call, open = false, title }: { readonly call: Sh
       <summary>
         <span className="exchange-title">{title ?? (sent ? "The request and response" : "The request that will be sent")}</span>
         <code className="exchange-line" translate="no">
-          <b>{call.method}</b> {call.path}
+          <b>{call.method}</b> {call.host === "auth0" ? `https://$AUTH0_DOMAIN${call.path}` : call.path}
         </code>
         {sent ? (
           <span className="pill" data-state={statusState(call.status)}>
@@ -37,7 +37,9 @@ export function ExchangePanel({ call, open = false, title }: { readonly call: Sh
       <div className="exchange-body">
         <p className="exchange-k">Headers</p>
         <pre className="code" translate="no">
-          {"Authorization: Bearer lpk_…  (your key, never shown)"}
+          {call.host === "auth0"
+            ? "Authorization: Bearer $AUTH0_MGMT_TOKEN  (the management client, never shown)"
+            : "Authorization: Bearer lpk_…  (your key, never shown)"}
           {call.body !== undefined ? "\ncontent-type: application/json" : ""}
         </pre>
         {call.body !== undefined ? (
