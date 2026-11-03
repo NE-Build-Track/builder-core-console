@@ -75,7 +75,7 @@ export function summarise(
   events: readonly UsageEvent[],
   sessions: readonly PaymentSession[],
   allocations: readonly Allocation[],
-): Pick<UsageView, "feeUsd" | "eventCount" | "averageFeeUsd" | "quarantined" | "byApp" | "byOrchestrator" | "byAllocation"> {
+): Pick<UsageView, "feeUsd" | "eventCount" | "averageFeeUsd" | "quarantined" | "duplicates" | "byApp" | "byOrchestrator" | "byAllocation"> {
   const session = new Map(sessions.map((row) => [row.id, row]));
   const allocationName = new Map(allocations.map((row) => [row.id, row.name]));
   const applied = events.filter((event) => event.status === "applied");
@@ -84,7 +84,8 @@ export function summarise(
     feeUsd,
     eventCount: applied.length,
     averageFeeUsd: averageDecimal(feeUsd, applied.length),
-    quarantined: events.filter((event) => event.status !== "applied"),
+    quarantined: events.filter((event) => event.status !== "applied" && event.status !== "duplicate"),
+    duplicates: events.filter((event) => event.status === "duplicate").length,
     byApp: breakdown(applied, (event) => session.get(event.payment_session_id)?.app ?? "unknown session"),
     byOrchestrator: breakdown(applied, (event) => session.get(event.payment_session_id)?.orchestrator ?? "unknown session"),
     byAllocation: breakdown(

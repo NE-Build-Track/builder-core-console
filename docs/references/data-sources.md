@@ -65,7 +65,7 @@ with no time filter (gap G6). Shapes: `web/src/domain/batteries.ts`.
 | `GET /v1/allocations` | Money, Usage | `allocated_usd, spent_usd, available_usd, status, grant_id`. |
 | `GET /v1/api-keys` | Money | Gateway (`lpg_`) keys per allocation: prefix, last used, revoked. |
 | `GET /v1/sessions` | Usage | Payment sessions: `app`, `orchestrator` (ticket recipient), allocation, key. Joins usage to app and orchestrator. |
-| `GET /v1/usage` | Usage, Jobs | Every applied or quarantined `create_signed_ticket` event: `computed_fee_usd`, `computed_fee_eth`, `manifest_id`, `payment_session_id`. Jobs filters by `manifest_id`. |
+| `GET /v1/usage` | Usage, Jobs | Every applied, duplicate or quarantined `create_signed_ticket` event: `computed_fee_usd`, `computed_fee_eth`, `manifest_id`, `payment_session_id`. Jobs filters by `manifest_id`. A `duplicate` (a replay Batteries already applied) has `null` event, allocation, session, currency and USD fee; a `quarantined` fee can be `"[error]"` (`internal/app/usd_test.go`). |
 | `GET /v1/ledger/report` | Money | Double-entry balances per account (`allocation_available`, `allocation_spent`, `grant_funding_source`, `grant_unallocated`). |
 | `GET /v1/escrow/report` | Money | The payer's TicketBroker deposit and reserve, as ETH decimals (`deposit_balance_eth`, `reserve_balance_eth`, `total_balance_eth`; the API rewrites the store's wei), with the block they are confirmed through. Filled by Batteries' on-chain listener, which this stack runs (`BATTERIES_ONCHAIN_LISTENER`, `PAYER_ADDRESS`). |
 

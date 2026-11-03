@@ -101,6 +101,27 @@ describe("batteries adapter", () => {
     expect(reading.ok && reading.value.map((item) => [item.deposit_balance_eth, item.reserve_balance_eth, item.total_balance_eth])).toEqual([["0.18051204", "0.3366", "0.51711204"]]);
   });
 
+  it("reads duplicate and quarantined usage rows as Batteries serves them (seen live at ca09e47)", async () => {
+    // internal/app/usd_test.go: a duplicate has no event, allocation, session or currency; a quarantined fee can be "[error]"
+    const applied = { id: "a", event_id: "e1", allocation_id: "al", payment_session_id: "ps", status: "applied", currency: "usd", computed_fee_eth: "0.00000004925850374", computed_fee_usd: "0.00011202593173682", created_at_ms: 1 };
+    const duplicate = { allocation_id: null, computed_fee_eth: "", computed_fee_usd: null, created_at_ms: 1793723434498, currency: null, error: "", event_id: null, id: "AaGiP4YCfJWyUvWtO6NCAA", manifest_id: "", offset: 248, partition: 0, payment_session_id: null, pipeline: "", request_id: "", status: "duplicate", topic: "livepeer-signing" };
+    const quarantined = { id: "q", event_id: "e3", allocation_id: "al", status: "quarantined", currency: null, computed_fee_eth: "[error]", computed_fee_usd: "0.25", created_at_ms: 3 };
+    vi.stubGlobal("fetch", vi.fn(async () => respond(200, { items: [applied, duplicate, quarantined], next_cursor: "" })));
+    const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).usage();
+    expect(reading.ok && reading.value.items.map((row) => [row.status, row.event_id, row.allocation_id, row.payment_session_id, row.currency, row.computed_fee_eth, row.computed_fee_usd])).toEqual([
+      ["applied", "e1", "al", "ps", "usd", "0.00000004925850374", "0.00011202593173682"],
+      ["duplicate", "", "", "", "", "", ""],
+      ["quarantined", "e3", "al", "", "", "[error]", "0.25"],
+    ]);
+  });
+
+  it("still rejects an applied usage row whose fee is not a decimal", async () => {
+    const row = { id: "a", event_id: "e1", allocation_id: "al", status: "applied", currency: "usd", computed_fee_eth: "[error]", computed_fee_usd: "", created_at_ms: 1 };
+    vi.stubGlobal("fetch", vi.fn(async () => respond(200, { items: [row], next_cursor: "" })));
+    const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).usage();
+    expect(!reading.ok && reading.problem.kind === "unexpected" && reading.problem.detail).toContain("items.0.computed_fee_eth");
+  });
+
   it("rejects a body that does not match the pinned shape, naming the field", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => respond(200, { items: [{ id: "g1" }], next_cursor: "" })));
     const reading = await batteriesReader(settings, { timeoutMs: 1000, maxRows: 1000, now }).grants();

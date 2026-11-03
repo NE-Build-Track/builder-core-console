@@ -31,6 +31,18 @@ describe("usage", () => {
     expect(summary.byAllocation).toEqual([{ key: allocation.id, label: "chatlpt", feeUsd: "0.000334082948214396", events: 3 }]);
   });
 
+  it("counts duplicates apart from quarantined events: Batteries ignored them, nothing was charged twice", () => {
+    const events = [
+      usageEvent({ id: "a" }),
+      usageEvent({ id: "d1", status: "duplicate", event_id: "", allocation_id: "", computed_fee_usd: "" }),
+      usageEvent({ id: "d2", status: "duplicate", event_id: "", allocation_id: "", computed_fee_usd: "" }),
+      usageEvent({ id: "q", status: "quarantined", computed_fee_usd: "" }),
+    ];
+    const summary = summarise(events, [session], [allocation]);
+    expect(summary).toMatchObject({ eventCount: 1, duplicates: 2 });
+    expect(summary.quarantined.map((event) => event.id)).toEqual(["q"]);
+  });
+
   it("buckets a window into equal slots, oldest first, with empty slots at zero", () => {
     const window = { start: new Date(NOW.getTime() - 24 * hour).toISOString(), end: NOW.toISOString() };
     const events = [usageEvent({ id: "b", created_at_ms: NOW.getTime() - 1 * hour + 1 }), usageEvent({ id: "a", created_at_ms: NOW.getTime() - 24 * hour })];

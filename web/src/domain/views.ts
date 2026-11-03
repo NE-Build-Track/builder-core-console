@@ -225,6 +225,8 @@ export type UsageView = {
   readonly eventCount: number;
   readonly averageFeeUsd: string;
   readonly quarantined: readonly UsageEvent[];
+  /** Repeats of an event Batteries already applied: ignored, never charged twice. */
+  readonly duplicates: number;
   readonly buckets: readonly Bucket[];
   readonly byApp: readonly Breakdown[];
   readonly byOrchestrator: readonly Breakdown[];

@@ -83,7 +83,21 @@ async function Usage({ searchParams }: Props) {
             {view.eventCount.toLocaleString("en-US")}
           </CountUp>
         </Tile>
-        <Tile label="Quarantined events" lift sub={view.quarantined.length ? <Pill state="warn">not applied to the ledger</Pill> : <Pill state="ok">none</Pill>}>
+        <Tile
+          label="Quarantined events"
+          lift
+          sub={
+            <>
+              {view.quarantined.length ? <Pill state="warn">not applied to the ledger</Pill> : <Pill state="ok">none</Pill>}
+              {view.duplicates ? (
+                <span data-tip="Repeats of a signing event Batteries had already applied. It ignored them; nothing was charged twice.">
+                  {" "}
+                  {view.duplicates} {view.duplicates === 1 ? "duplicate" : "duplicates"} ignored
+                </span>
+              ) : null}
+            </>
+          }
+        >
           {view.quarantined.length}
         </Tile>
         <Tile label="Jobs with a cost" lift sub={view.engineCosts.ok ? `${view.engineCosts.value.jobs_pending} still pending` : "engine unreadable"}>
