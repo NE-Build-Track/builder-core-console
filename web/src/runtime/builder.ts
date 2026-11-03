@@ -1,8 +1,9 @@
 import "server-only";
 
 import type { JobState, RunInput } from "@/domain/builder";
-import type { CapabilityProfile } from "@/domain/engine";
-import { capabilityInputIssues } from "@/domain/capability-input";
+import { capabilityInputIssues, type CapabilityRequestProfile } from "@/domain/capability-input";
+import { falRequestProfile } from "@/domain/fal-capability";
+import { FAL_REQUEST_CONTRACTS } from "@/config/fal-request-contracts";
 import { mapReading, type Reading } from "@/domain/reading";
 import type { Session } from "@/domain/session";
 import type { RunStarted } from "@/ports/keyed";
@@ -26,18 +27,23 @@ export async function loadCatalog(session: Session): Promise<CatalogView> {
   return catalog(offerings, health, new Date());
 }
 
-export async function loadCapabilityProfiles(session: Session): Promise<Reading<readonly CapabilityProfile[]>> {
+export async function loadCapabilityProfiles(session: Session, app?: string | null): Promise<Reading<readonly CapabilityRequestProfile[]>> {
   const engine = keyed(session.token);
   if (!engine) return missingEngine();
-  return engine.capabilities();
+  const profiles = await engine.capabilities();
+  if (!profiles.ok || !app || !FAL_REQUEST_CONTRACTS.some(item => item.app === app)) return profiles;
+  const runners = await engine.runners(app);
+  if (!runners.ok) return runners;
+  const fal = falRequestProfile(app, FAL_REQUEST_CONTRACTS, runners.value);
+  return { ...profiles, value: fal ? [...profiles.value, fal] : profiles.value };
 }
 
 /** Revalidate on the server before opening any paid connection, even when browser checks are bypassed. */
 export async function validateCapabilityRun(session: Session, input: RunInput): Promise<string | null> {
-  const profiles = await loadCapabilityProfiles(session);
+  const profiles = await loadCapabilityProfiles(session, input.app);
   if (!profiles.ok) return "Capability schemas could not be read. No job was sent.";
   const candidates = profiles.value.filter(profile => profile.app === input.app);
-  if (!candidates.length) return null;
+  if (!candidates.length) return input.app.startsWith("fal-") ? "No reviewed request schema matches the live FAL runner. No job was sent." : null;
   const profile = candidates.find(profile => profile.path === input.path && profile.method === input.method && profile.content_type === "application/json");
   if (!profile || input.stream) return "The selected capability does not support that path, method or streaming mode.";
   const issues = capabilityInputIssues(profile, input.payload);
