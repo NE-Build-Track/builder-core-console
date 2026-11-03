@@ -66,21 +66,36 @@ export const paymentSessionSchema = z.looseObject({
 export type PaymentSession = z.infer<typeof paymentSessionSchema>;
 
 /** One `create_signed_ticket` accounting event as Batteries applied (or quarantined) it. */
-export const usageEventSchema = z.looseObject({
-  id: z.string(),
-  event_id: z.string(),
-  allocation_id: z.string(),
-  payment_session_id: z.string().default(""),
-  manifest_id: z.string().default(""),
-  request_id: z.string().default(""),
-  pipeline: z.string().default(""),
-  status: z.string(),
-  error: z.string().default(""),
-  currency: z.string(),
-  computed_fee_usd: decimal.or(z.literal("")).default(""),
-  computed_fee_eth: decimal.or(z.literal("")).default(""),
-  created_at_ms: millis,
-});
+/** A string Batteries may send as null on a row it did not apply; read as "". */
+const blank = z.string().nullish().transform((value) => value ?? "");
+const fee = decimal.or(z.literal(""));
+
+/**
+ * A duplicate row has no event, allocation, session or currency, and a quarantined row's fee can be
+ * "[error]" (internal/app/usd_test.go at ca09e47). Only an applied row's fees must be decimals.
+ */
+export const usageEventSchema = z
+  .looseObject({
+    id: z.string(),
+    event_id: blank,
+    allocation_id: blank,
+    payment_session_id: blank,
+    manifest_id: blank,
+    request_id: blank,
+    pipeline: blank,
+    status: z.string(),
+    error: blank,
+    currency: blank,
+    computed_fee_usd: blank,
+    computed_fee_eth: blank,
+    created_at_ms: millis,
+  })
+  .superRefine((row, context) => {
+    if (row.status !== "applied") return;
+    for (const field of ["computed_fee_usd", "computed_fee_eth"] as const) {
+      if (!fee.safeParse(row[field]).success) context.addIssue({ code: "custom", path: [field], message: "a decimal string" });
+    }
+  });
 export type UsageEvent = z.infer<typeof usageEventSchema>;
 
 export const settlementSchema = z.looseObject({ id: z.string() });
