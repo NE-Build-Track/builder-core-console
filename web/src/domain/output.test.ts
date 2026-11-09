@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { brokenImageNotice, formatBytes, imageUrls, outputKind, parseEvents, renderChat, shortenDataUris } from "./output";
+import { brokenImageNotice, formatBytes, imageUrls, inlineMedia, outputKind, parseEvents, renderChat, shortenDataUris } from "./output";
 
 describe("output views", () => {
+  it("previews image envelopes and downloads audio/mesh without rendering active content", () => {
+    const image = { data: [{ b64_json: "aW1hZ2U=", media_type: "image/png" }] };
+    expect(imageUrls(image)).toEqual(["data:image/png;base64,aW1hZ2U="]);
+    expect(inlineMedia({ data: [{ b64_json: "YXVkaW8=", media_type: "audio/wav" }] })[0]?.filename).toBe("output-1.wav");
+    expect(inlineMedia({ data: [{ b64_json: "bWVzaA==", media_type: "model/obj" }] })[0]?.filename).toBe("output-1.obj");
+    expect(inlineMedia({ data: [{ b64_json: "aHRtbA==", media_type: "text/html" }] })).toEqual([]);
+    expect(inlineMedia({ data: [{ b64_json: "aHRtbA==", media_type: "image/svg+xml" }] })).toEqual([]);
+    expect(shortenDataUris(JSON.stringify(image))).not.toContain("aW1hZ2U=");
+  });
   it("picks the view from the content type", () => {
     expect(outputKind("text/event-stream; charset=utf-8")).toBe("events");
     expect(outputKind("application/json")).toBe("json");

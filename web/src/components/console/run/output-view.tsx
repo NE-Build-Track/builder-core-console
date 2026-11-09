@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { brokenImageNotice, formatBytes, imageUrls, outputKind, parseEvents, prettyJson, renderChat, shortenDataUris } from "@/domain/output";
+import { brokenImageNotice, formatBytes, imageUrls, inlineMedia, outputKind, parseEvents, prettyJson, renderChat, shortenDataUris, type InlineMedia } from "@/domain/output";
 
 export type Output = {
   readonly contentType: string;
@@ -79,13 +79,19 @@ function Body({ output, view, kind }: { readonly output: Output; readonly view: 
   if (view === "pretty") {
     const pretty = prettyJson(output.text);
     let images: string[] = [];
+    let media: readonly InlineMedia[] = [];
     try {
       images = imageUrls(JSON.parse(output.text));
+      media = inlineMedia(JSON.parse(output.text));
     } catch {
       images = [];
     }
     return (
       <>
+        {media.map(asset => <div key={asset.filename}>
+          {asset.mime.startsWith("audio/") ? <audio controls src={asset.url} aria-label="Generated audio" /> : null}
+          <a href={asset.url} download={asset.filename}>Download {asset.filename}</a>
+        </div>)}
         {images.length > 0 ? (
           <div className="output-images">
             {images.map((url) => (

@@ -15,6 +15,7 @@ export type CatalogEntry = {
 export const CATALOG = [
   { source: "engine", route: "GET /readyz", credential: "none", usedFor: "Health, discovery freshness, cost-sync age, version" },
   { source: "engine", route: "GET /v1/offerings", credential: "reader (auditor key)", usedFor: "Network: apps on offer" },
+  { source: "engine", route: "GET /v1/capabilities", credential: "actor key (Builder)", usedFor: "Builder: deployment-matched request schemas, defaults and operation paths" },
   { source: "engine", route: "GET /v1/runners", credential: "reader (auditor key)", usedFor: "Network: runners, GPU, capacity, price" },
   { source: "engine", route: "GET /v1/admin/grants", credential: "admin key (Operator; never the auditor reader: grants carry no application)", usedFor: "Operator: the engine's view of grants; Money says the reader cannot read them" },
   { source: "engine", route: "GET /v1/admin/keys", credential: "reader (auditor key)", usedFor: "Users: actors and admin keys" },

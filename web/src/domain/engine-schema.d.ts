@@ -282,6 +282,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Capabilities */
+        get: operations["capabilities_v1_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/costs/projections": {
         parameters: {
             query?: never;
@@ -580,6 +597,40 @@ export interface components {
             response_ms?: number | null;
             /** Signing Ms */
             signing_ms?: number | null;
+        };
+        /** CapabilityProfile */
+        CapabilityProfile: {
+            /** App */
+            app: string;
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "application/json" | "multipart/form-data";
+            /** Defaults */
+            defaults: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Deployment Revision */
+            deployment_revision: string;
+            /** Id */
+            id: string;
+            /** Input Schema */
+            input_schema: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Method
+             * @default POST
+             * @constant
+             */
+            method: "POST";
+            /** Model */
+            model: string;
+            /** Path */
+            path: string;
+            /** Schema Digest */
+            schema_digest: string;
         };
         /**
          * CostSummary
@@ -937,6 +988,7 @@ export interface components {
              */
             timeout_s: number;
         };
+        JsonValue: unknown;
         /**
          * KnownActor
          * @description One row of the operator's actor list (D46, D48): provisioned, signed in, or both.
@@ -1943,6 +1995,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Allowance"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capabilities_v1_capabilities_get: {
+        parameters: {
+            query?: {
+                app?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityProfile"][];
                 };
             };
             /** @description Validation Error */
