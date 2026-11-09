@@ -15,3 +15,5 @@
 | --- | --- |
 | [2026-10-20 demo traffic](evidence/2026-10-20-demo-traffic.md) | Five actors, two grants, 58 paid jobs; Batteries and the engine agree to the last digit |
 | [2026-10-29 repeat-safe commands](evidence/2026-10-29-d57-live-check.md) | builder-core D57 (#76) live: 37 engine checks and 14 Operator checks in a browser, all passing |
+| [2026-11-02 the merged M3 engine](evidence/2026-11-02-m3-merged-live-check.md) | The console on builder-core `1514212`: the committed scripts and the wider M3 checks; the ISS-25 dry run |
+| [2026-11-09 the funded journey (ISS-25)](evidence/2026-11-09-iss-25-funded-journey.md) | The seven outcomes, paid on Arbitrum One: 28 checks; the Batteries row behind each cost; the payer before and after |
