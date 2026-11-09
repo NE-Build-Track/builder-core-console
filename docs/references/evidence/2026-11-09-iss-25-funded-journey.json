@@ -1,0 +1,629 @@
+{
+  "run": "iss25-1794240426",
+  "started_at": "2026-11-09T16:07:06.143960+00:00",
+  "apps": [
+    "blueclaw/chat/qwen3.8-27b",
+    "text-to-image"
+  ],
+  "versions": {
+    "engine_reports": "0.0.1.dev1+g15142129e",
+    "console_commit": "dc160aa4548304d7d6bd4f89d45cdb682d63396e",
+    "console_dirty": false,
+    "compose_pins": {
+      "clearinghouse-batteries": "ca09e47c067682fb48c3f15425546fb6aa5b6659",
+      "node": "406b248f6cb8728e6e7eba1809901f589060bc6b",
+      "livepeer-builder-core": "15142129ebbf51103658f8ad48fd5adae052c56d"
+    }
+  },
+  "payer_before": {
+    "block": 522724689,
+    "deposit_eth": "0.14197116",
+    "reserve_eth": "0.3366",
+    "withdraw_round": 0,
+    "reserve_claimed_in_round_eth": "0",
+    "nonce": 21,
+    "address": "0x5ae4e42db3671370a0c25aff451e7482aaec3d0b"
+  },
+  "escrow_before": [
+    {
+      "chain_id": "42161",
+      "confirmed_through_block": "521983560",
+      "contract_address": "0xa8bb618b1520e284046f3dfc448851a1ff26e41b",
+      "deposit_balance_eth": "0.15398508",
+      "reserve_balance_eth": "0.3366",
+      "sender": "0x5ae4e42db3671370a0c25aff451e7482aaec3d0b",
+      "total_balance_eth": "0.49058508"
+    }
+  ],
+  "funding": {
+    "grant": {
+      "id": "AaHBEDKCfJetW6CTjW6emA",
+      "name": "iss25-1794240426-grant",
+      "status": "active",
+      "currency": "USD",
+      "total": "0.1",
+      "metadata": {
+        "lpb_operation": "wxBk67e202E13lTVl_qELVb_YW0soC3PSXno-7RAaPw"
+      }
+    },
+    "actor": "iss25-1794240426-builder",
+    "allocation": {
+      "application_id": "default",
+      "actor_id": "iss25-1794240426-builder",
+      "grant_id": "AaHBEDKCfJetW6CTjW6emA",
+      "allocation_id": "AaHBEDKdf16nBKXfFV9b9Q",
+      "api_key_id": "AaHBEDKefQ65lghUUCu54Q",
+      "secret_ref": {
+        "ref": "db:QF7s6IS2PbnfXt1wsRyE9A"
+      },
+      "currency": "USD",
+      "status": "active",
+      "created_at": "2026-11-09T16:07:06.670078Z",
+      "updated_at": "2026-11-09T16:07:06.670078Z",
+      "label": "iss25-1794240426-builder"
+    }
+  },
+  "key_id": "key_QfazVSm05U5eMxXx",
+  "offering:blueclaw/chat/qwen3.8-27b": {
+    "app": "blueclaw/chat/qwen3.8-27b",
+    "modes": [
+      "single-shot"
+    ],
+    "rate_low": {
+      "amount": "5176698850",
+      "currency": "wei",
+      "unit": "seconds",
+      "price_usd": null,
+      "source": "orchestrator",
+      "observed_at": "2026-11-09T16:07:03.098430Z",
+      "observed_by": "engine"
+    },
+    "rate_high": {
+      "amount": "5176698850",
+      "currency": "wei",
+      "unit": "seconds",
+      "price_usd": null,
+      "source": "orchestrator",
+      "observed_at": "2026-11-09T16:07:03.098430Z",
+      "observed_by": "engine"
+    },
+    "rate_status": "available",
+    "stale": false,
+    "runner_count": 1,
+    "ready_count": 1,
+    "observed_at": "2026-11-09T16:07:03.098430Z"
+  },
+  "offering:text-to-image": {
+    "app": "text-to-image",
+    "modes": [
+      "single-shot"
+    ],
+    "rate_low": {
+      "amount": "9381514095797",
+      "currency": "wei",
+      "unit": "fixed",
+      "price_usd": "0.02",
+      "source": "orchestrator",
+      "observed_at": "2026-11-09T16:06:37.779851Z",
+      "observed_by": "orchestrator"
+    },
+    "rate_high": {
+      "amount": "9381514095797",
+      "currency": "wei",
+      "unit": "fixed",
+      "price_usd": "0.02",
+      "source": "orchestrator",
+      "observed_at": "2026-11-09T16:06:37.779851Z",
+      "observed_by": "orchestrator"
+    },
+    "rate_status": "available",
+    "stale": false,
+    "runner_count": 1,
+    "ready_count": 1,
+    "observed_at": "2026-11-09T16:07:03.098430Z"
+  },
+  "allowance_before": {
+    "allocation_id": "AaHBEDKdf16nBKXfFV9b9Q",
+    "status": "active",
+    "granted": {
+      "amount": "0.05",
+      "currency": "USD"
+    },
+    "spent": {
+      "amount": "0",
+      "currency": "USD"
+    },
+    "available": {
+      "amount": "0.05",
+      "currency": "USD"
+    }
+  },
+  "chat_reply": "Livepeer is a decentralized, cloud-native network that leverages the Ethereum blockchain to provide scalable, high-quality video streaming and audio services. It connects applications to a global marketplace of nodes, allowing them to pay for video processing and streaming resources using the native LP token.",
+  "chat_usage": {
+    "prompt_tokens": 23,
+    "total_tokens": 77,
+    "completion_tokens": 54,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "image_bytes": 1317029,
+  "image_size": [
+    1024,
+    768
+  ],
+  "jobs": {
+    "chat": "08d171de-3596-4a26-b879-aac6878dc62b",
+    "image": "5f3c5414-bcf4-420f-bb5f-e5b1f0e3c6ab"
+  },
+  "costs": {
+    "chat": {
+      "job_id": "08d171de-3596-4a26-b879-aac6878dc62b",
+      "status": "observed",
+      "fees": {
+        "fee_eth": "5.17669885E-8",
+        "fee_usd": "0.000110992047033195",
+        "row_count": 1
+      },
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "cost_class": "delivered",
+          "fees": {
+            "fee_eth": "5.17669885E-8",
+            "fee_usd": "0.000110992047033195",
+            "row_count": 1
+          }
+        }
+      ],
+      "first_observed_at": "2026-11-09T16:07:18.443464Z",
+      "updated_at": "2026-11-09T16:07:18.443468Z",
+      "billable": {
+        "fee_eth": "5.17669885E-8",
+        "fee_usd": "0.000110992047033195",
+        "row_count": 1
+      }
+    },
+    "image": {
+      "job_id": "5f3c5414-bcf4-420f-bb5f-e5b1f0e3c6ab",
+      "status": "observed",
+      "fees": {
+        "fee_eth": "0.000009381514095797",
+        "fee_usd": "0.020114622927375474",
+        "row_count": 1
+      },
+      "attempts": [
+        {
+          "attempt_number": 1,
+          "cost_class": "delivered",
+          "fees": {
+            "fee_eth": "0.000009381514095797",
+            "fee_usd": "0.020114622927375474",
+            "row_count": 1
+          }
+        }
+      ],
+      "first_observed_at": "2026-11-09T16:07:32.822863Z",
+      "updated_at": "2026-11-09T16:07:32.822866Z",
+      "billable": {
+        "fee_eth": "0.000009381514095797",
+        "fee_usd": "0.020114622927375474",
+        "row_count": 1
+      }
+    }
+  },
+  "record:chat": {
+    "id": "08d171de-3596-4a26-b879-aac6878dc62b",
+    "actor_id": "iss25-1794240426-builder",
+    "application_id": "default",
+    "operation_ref": "iss25-1794240426-chat",
+    "mode": "immediate",
+    "app": "blueclaw/chat/qwen3.8-27b",
+    "capability": null,
+    "model": null,
+    "state": "succeeded",
+    "attempts": [
+      {
+        "job_id": "08d171de-3596-4a26-b879-aac6878dc62b",
+        "number": 1,
+        "runner_url": "https://hky.eliteencoder.net:8936/apps/runner_mcm5lute/app",
+        "orchestrator_url": "https://hky.eliteencoder.net:8936",
+        "allocation_id": "AaHBEDKdf16nBKXfFV9b9Q",
+        "sessions": [
+          {
+            "manifest_id": "c7b8df10",
+            "payment_session_id": "AaHBEDZEfzmXqsU-L9bTkw",
+            "match": "matched",
+            "payment_state": "paid"
+          }
+        ],
+        "payment_sent": true,
+        "outcome": "succeeded",
+        "status_code": 200,
+        "started_at": "2026-11-09T16:07:06.716662Z",
+        "ended_at": "2026-11-09T16:07:08.235926Z",
+        "timings": {
+          "challenge_ms": 89,
+          "signing_ms": 774,
+          "response_ms": 31
+        }
+      }
+    ],
+    "failure": null,
+    "result": {
+      "storage": "inline",
+      "content_type": "text/event-stream",
+      "size_bytes": 8358,
+      "sha256": "369d3e4d50ebdf20f5afb6600599240ca866d74d9f94600f5b4b12f3aaa6e252",
+      "location": null
+    },
+    "usage": null,
+    "created_at": "2026-11-09T16:07:06.707774Z",
+    "completed_at": "2026-11-09T16:07:08.240881Z"
+  },
+  "batteries_rows:chat": [
+    {
+      "session": {
+        "manifest_id": "c7b8df10",
+        "payment_session_id": "AaHBEDZEfzmXqsU-L9bTkw",
+        "match": "matched",
+        "payment_state": "paid"
+      },
+      "row": {
+        "allocation_id": "AaHBEDKdf16nBKXfFV9b9Q",
+        "computed_fee_eth": "0.0000000517669885",
+        "computed_fee_usd": "0.000110992047033195",
+        "created_at_ms": 1794240428229,
+        "currency": "usd",
+        "error": "",
+        "event_id": "186761ec-91d0-4b2d-968c-fc46721896f9",
+        "id": "AaHBEDjFexa96v-ZPzCwqw",
+        "manifest_id": "c7b8df10",
+        "offset": 1066,
+        "partition": 0,
+        "payment_session_id": "AaHBEDZEfzmXqsU-L9bTkw",
+        "pipeline": "live",
+        "request_id": "c204c64017b8e1416621f473929dffae",
+        "status": "applied",
+        "topic": "livepeer-signing"
+      }
+    }
+  ],
+  "record:image": {
+    "id": "5f3c5414-bcf4-420f-bb5f-e5b1f0e3c6ab",
+    "actor_id": "iss25-1794240426-builder",
+    "application_id": "default",
+    "operation_ref": "iss25-1794240426-image",
+    "mode": "immediate",
+    "app": "text-to-image",
+    "capability": null,
+    "model": null,
+    "state": "succeeded",
+    "attempts": [
+      {
+        "job_id": "5f3c5414-bcf4-420f-bb5f-e5b1f0e3c6ab",
+        "number": 1,
+        "runner_url": "https://ai1.eliteencoder.net:8936/apps/eliteprd1-ada-flux-image/app",
+        "orchestrator_url": "https://ai1.eliteencoder.net:8936",
+        "allocation_id": "AaHBEDKdf16nBKXfFV9b9Q",
+        "sessions": [
+          {
+            "manifest_id": "session_k4v7mrau5enuim5i",
+            "payment_session_id": "AaHBED0RcFW4U2O0TbP_wg",
+            "match": "matched",
+            "payment_state": "paid"
+          }
+        ],
+        "payment_sent": true,
+        "outcome": "succeeded",
+        "status_code": 200,
+        "started_at": "2026-11-09T16:07:08.253771Z",
+        "ended_at": "2026-11-09T16:07:32.772081Z",
+        "timings": {
+          "challenge_ms": 387,
+          "signing_ms": 685,
+          "response_ms": 23032
+        }
+      }
+    ],
+    "failure": null,
+    "result": {
+      "storage": "inline",
+      "content_type": "application/json",
+      "size_bytes": 1756091,
+      "sha256": "d3f05f52a24dc344e42bb108e234237320617a928a4a2c15ca5c21f38163b3ff",
+      "location": null
+    },
+    "usage": null,
+    "created_at": "2026-11-09T16:07:08.248415Z",
+    "completed_at": "2026-11-09T16:07:32.781377Z"
+  },
+  "batteries_rows:image": [
+    {
+      "session": {
+        "manifest_id": "session_k4v7mrau5enuim5i",
+        "payment_session_id": "AaHBED0RcFW4U2O0TbP_wg",
+        "match": "matched",
+        "payment_state": "paid"
+      },
+      "row": {
+        "allocation_id": "AaHBEDKdf16nBKXfFV9b9Q",
+        "computed_fee_eth": "0.000009381514095797",
+        "computed_fee_usd": "0.020114622927375474",
+        "created_at_ms": 1794240430207,
+        "currency": "usd",
+        "error": "",
+        "event_id": "4cd0795e-f46b-4bd0-8130-82a729eefd32",
+        "id": "AaHBEEB_dM-znXUmFHN1HA",
+        "manifest_id": "session_k4v7mrau5enuim5i",
+        "offset": 1067,
+        "partition": 0,
+        "payment_session_id": "AaHBED0RcFW4U2O0TbP_wg",
+        "pipeline": "fixed",
+        "request_id": "82233aa57faca763aad2f85cf24ad180",
+        "status": "applied",
+        "topic": "livepeer-signing"
+      }
+    }
+  ],
+  "cost_summary": {
+    "start": "2026-10-10T16:07:33.184151Z",
+    "end": "2026-11-09T16:07:33.184151Z",
+    "by_class": {
+      "delivered": {
+        "fee_eth": "0.000009433281084297",
+        "fee_usd": "0.020225614974408669",
+        "row_count": 2
+      },
+      "failed_after_payment": {
+        "fee_eth": "0",
+        "fee_usd": "0",
+        "row_count": 0
+      },
+      "uncertain": {
+        "fee_eth": "0",
+        "fee_usd": "0",
+        "row_count": 0
+      },
+      "pending": {
+        "fee_eth": "0",
+        "fee_usd": "0",
+        "row_count": 0
+      }
+    },
+    "jobs_with_cost": 2,
+    "jobs_pending": 0,
+    "by_app": {
+      "blueclaw/chat/qwen3.8-27b": {
+        "delivered": {
+          "fee_eth": "5.17669885E-8",
+          "fee_usd": "0.000110992047033195",
+          "row_count": 1
+        }
+      },
+      "text-to-image": {
+        "delivered": {
+          "fee_eth": "0.000009381514095797",
+          "fee_usd": "0.020114622927375474",
+          "row_count": 1
+        }
+      }
+    }
+  },
+  "allowance_after": {
+    "allocation_id": "AaHBEDKdf16nBKXfFV9b9Q",
+    "status": "active",
+    "granted": {
+      "amount": "0.05",
+      "currency": "USD"
+    },
+    "spent": {
+      "amount": "0.020225614974408669",
+      "currency": "USD"
+    },
+    "available": {
+      "amount": "0.029774385025591331",
+      "currency": "USD"
+    }
+  },
+  "reconciliation": {
+    "application_id": "default",
+    "actor_id": "iss25-1794240426-builder",
+    "allocation_id": "AaHBEDKdf16nBKXfFV9b9Q",
+    "provider_spent": {
+      "amount": "0.020225614974408669",
+      "currency": "USD"
+    },
+    "by_class": {
+      "delivered": {
+        "fee_eth": "0.000009433281084297",
+        "fee_usd": "0.020225614974408669",
+        "row_count": 2
+      },
+      "failed_after_payment": {
+        "fee_eth": "0",
+        "fee_usd": "0",
+        "row_count": 0
+      },
+      "uncertain": {
+        "fee_eth": "0",
+        "fee_usd": "0",
+        "row_count": 0
+      },
+      "pending": {
+        "fee_eth": "0",
+        "fee_usd": "0",
+        "row_count": 0
+      }
+    },
+    "unattributed": {
+      "fee_eth": "0",
+      "fee_usd": "0",
+      "row_count": 0
+    },
+    "balanced": true
+  },
+  "payer_after": {
+    "block": 522724767,
+    "deposit_eth": "0.14197116",
+    "reserve_eth": "0.3366",
+    "withdraw_round": 0,
+    "reserve_claimed_in_round_eth": "0",
+    "nonce": 21,
+    "address": "0x5ae4e42db3671370a0c25aff451e7482aaec3d0b"
+  },
+  "escrow_after": [
+    {
+      "chain_id": "42161",
+      "confirmed_through_block": "521991560",
+      "contract_address": "0xa8bb618b1520e284046f3dfc448851a1ff26e41b",
+      "deposit_balance_eth": "0.15398508",
+      "reserve_balance_eth": "0.3366",
+      "sender": "0x5ae4e42db3671370a0c25aff451e7482aaec3d0b",
+      "total_balance_eth": "0.49058508"
+    }
+  ],
+  "finished_at": "2026-11-09T16:07:33.667174+00:00",
+  "checks": [
+    {
+      "check": "6. the payer's TicketBroker deposit and reserve, read from Arbitrum One",
+      "ok": true,
+      "detail": "deposit 0.14197116 ETH, reserve 0.3366 ETH, block 522724689"
+    },
+    {
+      "check": "6. Batteries' escrow report reads the same payer, on the same TicketBroker",
+      "ok": true,
+      "detail": "deposit 0.15398508 ETH, reserve 0.3366 ETH, through block 521983560"
+    },
+    {
+      "check": "6. the operator creates a USD grant",
+      "ok": true,
+      "detail": "grant AaHBEDKCfJetW6CTjW6emA"
+    },
+    {
+      "check": "6. the operator allocates $0.05 of it to the builder's actor",
+      "ok": true,
+      "detail": "allocation AaHBEDKdf16nBKXfFV9b9Q"
+    },
+    {
+      "check": "1. the operator issues an actor key; the builder's key is accepted",
+      "ok": true,
+      "detail": "key key_QfazVSm05U5eMxXx"
+    },
+    {
+      "check": "2. blueclaw/chat/qwen3.8-27b is offered, ready and fresh",
+      "ok": true,
+      "detail": "{\"runner_count\": 1, \"ready_count\": 1, \"rate_status\": \"available\", \"stale\": false, \"observed_at\": \"2026-11-09T16:07:03.098430Z\"}"
+    },
+    {
+      "check": "3. blueclaw/chat/qwen3.8-27b rate with currency, unit, source and age",
+      "ok": true,
+      "detail": "5176698850 wei/seconds, source orchestrator, age 4s"
+    },
+    {
+      "check": "2. text-to-image is offered, ready and fresh",
+      "ok": true,
+      "detail": "{\"runner_count\": 1, \"ready_count\": 1, \"rate_status\": \"available\", \"stale\": false, \"observed_at\": \"2026-11-09T16:07:03.098430Z\"}"
+    },
+    {
+      "check": "3. text-to-image rate with currency, unit, source and age",
+      "ok": true,
+      "detail": "9381514095797 wei/fixed, source orchestrator, age 29s"
+    },
+    {
+      "check": "4. chat streamed through POST /v1/jobs?stream=true",
+      "ok": true,
+      "detail": "job 08d171de-3596-4a26-b879-aac6878dc62b, 34 events"
+    },
+    {
+      "check": "5. chat result: text, [DONE], token usage",
+      "ok": true,
+      "detail": "'Livepeer is a decentralized, cloud-native network that leverages the Ethereum blockchain t' usage={'prompt_tokens': 23, 'total_tokens': 77, 'completion_tokens': 54, 'completion_tokens_details': {'reasoning_tokens': 0}}"
+    },
+    {
+      "check": "4. image job through POST /v1/jobs",
+      "ok": true,
+      "detail": "job 5f3c5414-bcf4-420f-bb5f-e5b1f0e3c6ab"
+    },
+    {
+      "check": "5. image result inline: a PNG, in data[0].b64_json, at the size asked for",
+      "ok": true,
+      "detail": "1317029 bytes, PNG, 1024x768"
+    },
+    {
+      "check": "5. chat record: succeeded, paid, with a result reference",
+      "ok": true,
+      "detail": "state succeeded, attempts 1, orchestrator https://hky.eliteencoder.net:8936"
+    },
+    {
+      "check": "6. chat: paid from the operator's allocation, not by the builder",
+      "ok": true,
+      "detail": "allocation ['AaHBEDKdf16nBKXfFV9b9Q']"
+    },
+    {
+      "check": "5. image record: succeeded, paid, with a result reference",
+      "ok": true,
+      "detail": "state succeeded, attempts 1, orchestrator https://ai1.eliteencoder.net:8936"
+    },
+    {
+      "check": "6. image: paid from the operator's allocation, not by the builder",
+      "ok": true,
+      "detail": "allocation ['AaHBEDKdf16nBKXfFV9b9Q']"
+    },
+    {
+      "check": "7. chat cost observed, in USD",
+      "ok": true,
+      "detail": "status observed, $0.000110992047033195 (5.17669885E-8 ETH), 1 row(s), class ['delivered']"
+    },
+    {
+      "check": "7. chat: every session matched, every applied Batteries row on this run's allocation and session",
+      "ok": true,
+      "detail": "1 session(s) ['matched'], 1 applied row(s) ['AaHBEDjFexa96v-ZPzCwqw']"
+    },
+    {
+      "check": "7. chat: the Batteries rows add up to the engine's cost",
+      "ok": true,
+      "detail": "rows $0.000110992047033195 / 5.17669885E-8 ETH, engine $0.000110992047033195 / 5.17669885E-8 ETH"
+    },
+    {
+      "check": "7. image cost observed, in USD",
+      "ok": true,
+      "detail": "status observed, $0.020114622927375474 (0.000009381514095797 ETH), 1 row(s), class ['delivered']"
+    },
+    {
+      "check": "7. image: every session matched, every applied Batteries row on this run's allocation and session",
+      "ok": true,
+      "detail": "1 session(s) ['matched'], 1 applied row(s) ['AaHBEEB_dM-znXUmFHN1HA']"
+    },
+    {
+      "check": "7. image: the Batteries rows add up to the engine's cost",
+      "ok": true,
+      "detail": "rows $0.020114622927375474 / 0.000009381514095797 ETH, engine $0.020114622927375474 / 0.000009381514095797 ETH"
+    },
+    {
+      "check": "7. the cost summary names both apps",
+      "ok": true,
+      "detail": "{\"blueclaw/chat/qwen3.8-27b\": [\"delivered\"], \"text-to-image\": [\"delivered\"]}"
+    },
+    {
+      "check": "7. the allowance spent is the two jobs' costs, against what the operator granted",
+      "ok": true,
+      "detail": "spent $0.020225614974408669 of $0.05, jobs $0.020225614974408669"
+    },
+    {
+      "check": "7. reconciliation for the actor is balanced",
+      "ok": true,
+      "detail": "{\"application_id\": \"default\", \"actor_id\": \"iss25-1794240426-builder\", \"allocation_id\": \"AaHBEDKdf16nBKXfFV9b9Q\", \"provider_spent\": {\"amount\": \"0.020225614974408669\", \"currency\": \"USD\"}, \"by_class\": {\""
+    },
+    {
+      "check": "6. the payer sent no transaction (nonce unchanged)",
+      "ok": true,
+      "detail": "nonce 21 -> 21, blocks 522724689-522724767"
+    },
+    {
+      "check": "8. the builder's key is revoked at the end",
+      "ok": true,
+      "detail": "204"
+    }
+  ]
+}

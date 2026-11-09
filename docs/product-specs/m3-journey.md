@@ -2,7 +2,8 @@
 
 Status: written 21 October 2026 from the M3 decisions
 ([record](https://github.com/Cloud-SPE/Network-Engineering-SPE/blob/main/docs/decisions/2026-10-21-m3-reference-app-and-scope.md),
-decisions 1, 2 and 8). The pinned versions are below; the final run (ISS-25) adds its evidence.
+decisions 1, 2 and 8). The pinned versions are below. The final run (ISS-25) was on 9 November 2026
+([evidence](../references/evidence/2026-11-09-iss-25-funded-journey.md)), with a new image job (below).
 
 ## The selected jobs
 
@@ -34,6 +35,27 @@ The image runner wraps fal's answer under its endpoint id, so the inline image i
 The Builder finds an image wherever it sits in the JSON (`imageUrls` in `web/src/domain/output.ts`),
 so it shows this one inline.
 
+### Since 9 November: the image job is `text-to-image`
+
+By 9 November `comfystream/fal-flux-schnell` was gone. Its orchestrator, `ai1.eliteencoder.net`, has moved
+its runners to runner contract v1 ([live-runner-standard](https://github.com/NE-Build-Track/live-runner-standard)),
+and its fal routes left discovery. The same orchestrator now offers FLUX.2-klein-4B as the app
+`text-to-image`, with registry profile `openai.images.v1`. The final run used it:
+
+| | Image, since 9 November |
+| --- | --- |
+| Offering | `text-to-image` (runner `eliteprd1-ada-flux-image`, FLUX.2-klein-4B) |
+| Path, method | `/v1/images/generations`, `POST` |
+| Delivery | Buffered, JSON |
+| Input | `model: black-forest-labs/FLUX.2-klein-4B`, `prompt`, `n: 1`, `size: 1024x768`, `response_format: b64_json` |
+| Advertised rate (9 Nov) | 9,381,514,095,797 wei per request, $0.02 |
+| Expected output | A PNG, base64, at `data[0].b64_json` |
+| Expected record | `succeeded`; one attempt, paid; result `application/json` |
+| Observed 9 Nov | $0.020114622927375474 in 1 ticket |
+
+The Builder's image preset (`web/src/domain/builder.ts`) still names `comfystream/fal-flux-schnell`, so it
+fails until it moves to `text-to-image`.
+
 ## Pinned versions
 
 The versions these jobs were checked with. They are the console's pins (`web/src/domain/pins.ts`,
@@ -60,7 +82,9 @@ All in the console, against the M3 dev stack ([m3-environment.md](../references/
 | 7 | See usage and the resulting charge | Job record cost; Usage and cost tab | `GET /v1/jobs/{id}/cost`; `GET /v1/costs/summary`; `GET /v1/allowance` | `observed` cost in USD; spent against granted |
 
 The final run (ISS-25) records each step's ids and the Batteries rows behind each cost, as the M2
-evidence did.
+evidence did. It ran on 9 November 2026 with [`scripts/journey-m3.py`](../../scripts/journey-m3.py), through
+the REST calls above: 28 checks, all passing
+([evidence](../references/evidence/2026-11-09-iss-25-funded-journey.md)).
 
 ## What M3 covers, and what moves to M4
 
