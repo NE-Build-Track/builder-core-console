@@ -19,6 +19,7 @@ The console reads `CONSOLE_*` variables (compose sets the URLs; `deploy/.env` ho
 | `CONSOLE_SESSION_SECRET` | — (32+ characters) | Seals Operator and Builder sign-ins (D16). Without it, sign-in is off and the console is read-only |
 | `CONSOLE_MAX_LIST_ROWS` | `20000` | Row cap per Batteries list (gap G6) |
 | `CONSOLE_AUTH` | `keys` | `keys`: sign in by pasting an engine key (D16). `oidc`: sign in through an identity provider (D21); `CONSOLE_ENGINE_READER_TOKEN` is then not used |
+| `CONSOLE_PROTECT_READS` | `false` | Public deployment: require a live engine-authorized operator session for stack-wide pages and shared-layout aggregates; engine errors fail closed. The production overlay sets this to `true` |
 | `CONSOLE_OIDC_ISSUER` | — | oidc: the provider's issuer, exactly as its tokens' `iss`; `https` unless `CONSOLE_OIDC_ALLOW_HTTP=true` |
 | `CONSOLE_OIDC_CLIENT_ID`, `CONSOLE_OIDC_CLIENT_SECRET` | — | oidc: the console's confidential client (authorization code with PKCE) |
 | `CONSOLE_OIDC_REDIRECT_URL` | — | oidc: `/auth/callback` as the browser reaches the console, registered with the provider |
@@ -50,3 +51,6 @@ console against compose reads them as unreachable unless you add a port mapping 
 ## Operating the stack
 
 See [deploy/README.md](../deploy/README.md): images, first run, start and stop, logs, resets.
+
+Production identity: [Keycloak + Google](../deploy/keycloak/production/README.md).
+Remote releases: [Ansible](../deploy/ansible/README.md). The existing local stack stays unchanged by default.

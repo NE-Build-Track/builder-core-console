@@ -1,0 +1,250 @@
+---
+- name: Deploy builder console with Keycloak and Google on an existing Linux host
+  hosts: builder
+  become: true
+  serial: 1
+  vars:
+    deployment_root: /opt/builder-console
+    deployment_mode: identity
+    install_docker: false
+    edge_mode: caddy
+    validate_public_endpoints: true
+    release_path: "{{ deployment_root }}/releases/{{ release_revision }}"
+    configure: "{{ release_path }}/deploy/keycloak/production/configure.py"
+  tasks:
+    - name: Validate deployment inputs
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.distribution in ['Debian', 'Ubuntu']
+          - deployment_mode in ['identity', 'full', 'remote']
+          - edge_mode in ['caddy', 'apache']
+          - release_revision is match('^[0-9a-f]{40}$')
+          - deployment_root is match('^/opt/[a-zA-Z0-9_-]+$')
+          - source_archive is defined
+          - auth_host is defined
+          - console_host is defined
+          - engine_audience is defined
+          - acme_email is defined
+        fail_msg: Supply reviewed source, production DNS and deployment settings; Debian/Ubuntu hosts are supported.
+
+    - name: Validate private Google credentials
+      ansible.builtin.assert:
+        that:
+          - google_client_id | default('') | length > 0
+          - google_client_secret | default('') | length > 0
+          - deployment_mode != 'full' or builder_stack_env is defined
+          - deployment_mode != 'full' or builder_secrets_directory is defined
+          - deployment_mode != 'remote' or remote_console_env is defined
+      no_log: true
+
+    - name: Inspect existing Docker installation
+      ansible.builtin.command: docker compose version
+      register: docker_compose
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Require Docker Compose or explicit permission to install it
+      ansible.builtin.assert:
+        that: docker_compose.rc == 0 or install_docker | bool
+        fail_msg: Install Docker Engine with Compose v2, or set install_docker=true for the official Docker apt repository.
+
+    - name: Install Docker from its official repository when requested and absent
+      when: docker_compose.rc != 0 and install_docker | bool
+      block:
+        - name: Install apt HTTPS prerequisites
+          ansible.builtin.apt:
+            name: [ca-certificates, python3]
+            state: present
+            update_cache: true
+        - name: Create apt keyring directory
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: '0755'
+        - name: Install Docker repository public key
+          ansible.builtin.get_url:
+            url: "https://download.docker.com/linux/{{ ansible_facts.distribution | lower }}/gpg"
+            dest: /etc/apt/keyrings/docker.asc
+            mode: '0644'
+        - name: Configure Docker apt source
+          ansible.builtin.apt_repository:
+            repo: "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_facts.distribution | lower }} {{ ansible_facts.distribution_release }} stable"
+            filename: docker
+            state: present
+        - name: Install Docker Engine and Compose plugin
+          ansible.builtin.apt:
+            name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
+            state: present
+            update_cache: true
+
+    - name: Ensure Docker is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create private release and shared directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      loop:
+        - "{{ release_path }}"
+        - "{{ deployment_root }}/shared"
+        - "{{ deployment_root }}/shared/secrets"
+
+    - name: Upload reviewed source archive
+      ansible.builtin.unarchive:
+        src: "{{ source_archive }}"
+        dest: "{{ release_path }}"
+        creates: "{{ release_path }}/deploy/keycloak/production/configure.py"
+        owner: root
+        group: root
+
+    - name: Initialize base environment only when absent
+      ansible.builtin.copy:
+        src: "{{ release_path }}/deploy/.env.example"
+        remote_src: true
+        dest: "{{ deployment_root }}/shared/stack.env"
+        force: false
+        mode: '0600'
+
+    - name: Install supplied payment configuration
+      ansible.builtin.copy:
+        content: "{{ builder_stack_env }}"
+        dest: "{{ deployment_root }}/shared/stack.env"
+        mode: '0600'
+      when: deployment_mode == 'full'
+      no_log: true
+
+    - name: Install supplied payment secrets
+      ansible.builtin.copy:
+        src: "{{ builder_secrets_directory }}/"
+        dest: "{{ deployment_root }}/shared/secrets/"
+        mode: '0600'
+        directory_mode: '0700'
+      when: deployment_mode == 'full'
+      no_log: true
+
+    - name: Link persistent stack configuration into release
+      ansible.builtin.file:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        state: link
+      loop:
+        - src: "{{ deployment_root }}/shared/stack.env"
+          dest: "{{ release_path }}/deploy/.env"
+        - src: "{{ deployment_root }}/shared/secrets"
+          dest: "{{ release_path }}/deploy/secrets"
+
+    - name: Inspect persistent identity configuration
+      ansible.builtin.stat:
+        path: "{{ deployment_root }}/shared/keycloak.env"
+      register: identity_env
+
+    - name: Restore identity configuration for repeat releases
+      ansible.builtin.copy:
+        src: "{{ deployment_root }}/shared/keycloak.env"
+        dest: "{{ release_path }}/deploy/keycloak/production/.env"
+        remote_src: true
+        mode: '0600'
+      when: identity_env.stat.exists
+      no_log: true
+
+    - name: Generate Google realm and preserve existing identity secrets
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ configure }}"
+          - init
+          - --auth-host
+          - "{{ auth_host }}"
+          - --console-host
+          - "{{ console_host }}"
+          - --engine-audience
+          - "{{ engine_audience }}"
+          - --acme-email
+          - "{{ acme_email }}"
+          - --google-client-id
+          - "{{ google_client_id }}"
+          - --edge-mode
+          - "{{ edge_mode }}"
+          - --stack-mode
+          - "{{ 'remote' if deployment_mode == 'remote' else 'local' }}"
+      environment:
+        GOOGLE_CLIENT_SECRET: "{{ google_client_secret }}"
+      changed_when: not identity_env.stat.exists
+      no_log: true
+
+    - name: Persist generated identity secrets outside release directory
+      ansible.builtin.copy:
+        src: "{{ release_path }}/deploy/keycloak/production/.env"
+        dest: "{{ deployment_root }}/shared/keycloak.env"
+        remote_src: true
+        mode: '0600'
+      no_log: true
+
+    - name: Install only remote-console connection credentials
+      ansible.builtin.copy:
+        content: "{{ remote_console_env }}"
+        dest: "{{ release_path }}/deploy/keycloak/production/runtime/remote-console.env"
+        mode: '0600'
+      when: deployment_mode == 'remote'
+      no_log: true
+
+    - name: Validate combined Compose configuration without displaying secrets
+      ansible.builtin.command:
+        argv: [python3, "{{ configure }}", stack, --, config, -q]
+      changed_when: false
+
+    - name: Start identity services and HTTPS
+      ansible.builtin.command:
+        argv: "{{ [ 'python3', configure, 'stack', '--', 'up', '-d', '--build', '--wait', '--wait-timeout', '180', 'keycloak'] + (['edge'] if edge_mode == 'caddy' else []) }}"
+      register: identity_start
+      changed_when: "'Started' in identity_start.stderr or 'Recreated' in identity_start.stderr or 'Created' in identity_start.stderr"
+      when: deployment_mode == 'identity'
+
+    - name: Configure virtual hosts on an existing Apache edge
+      ansible.builtin.include_tasks: apache.yml
+      vars:
+        edge_placeholder: false
+        app_placeholder: "{{ deployment_mode == 'identity' }}"
+      when: edge_mode == 'apache'
+
+    - name: Start the selected full or remote-service deployment
+      ansible.builtin.command:
+        argv: [python3, "{{ configure }}", stack, --, up, -d, --build, --wait, --wait-timeout, '300']
+      register: full_start
+      changed_when: "'Started' in full_start.stderr or 'Recreated' in full_start.stderr or 'Created' in full_start.stderr"
+      when: deployment_mode in ['full', 'remote']
+
+    - name: Verify public issuer and certificate
+      ansible.builtin.uri:
+        url: "https://{{ auth_host }}/realms/livepeer/.well-known/openid-configuration"
+        return_content: true
+      register: discovery
+      until: discovery.status | default(0) == 200
+      retries: 12
+      delay: 5
+      when: validate_public_endpoints | bool
+
+    - name: Verify issuer identity
+      ansible.builtin.assert:
+        that: discovery.json.issuer == 'https://' + auth_host + '/realms/livepeer'
+      when: validate_public_endpoints | bool
+
+    - name: Verify private console reads redirect to operator login
+      ansible.builtin.uri:
+        url: "https://{{ console_host }}/money"
+        follow_redirects: none
+        status_code: 303
+      when: deployment_mode in ['full', 'remote'] and validate_public_endpoints | bool
+
+    - name: Mark the successfully deployed release
+      ansible.builtin.file:
+        src: "{{ release_path }}"
+        dest: "{{ deployment_root }}/current"
+        state: link

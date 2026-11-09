@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { beginSignIn, PENDING_COOKIE, PENDING_MAX_AGE_S } from "@/runtime/session";
+import { beginSignIn, consoleOrigin, PENDING_COOKIE, PENDING_MAX_AGE_S } from "@/runtime/session";
 
 /**
  * Start signing in through the identity provider (CONSOLE_AUTH=oidc): /auth/login?area=operator|builder.
@@ -8,15 +8,16 @@ import { beginSignIn, PENDING_COOKIE, PENDING_MAX_AGE_S } from "@/runtime/sessio
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const area = request.nextUrl.searchParams.get("area") === "operator" ? "operator" : "builder";
+  const origin = consoleOrigin(request.url);
   const begun = await beginSignIn(area);
-  if (!begun.ok) return NextResponse.redirect(new URL(`/${area}?signin=${encodeURIComponent(begun.message)}`, request.url), 303);
+  if (!begun.ok) return NextResponse.redirect(new URL(`/${area}?signin=${encodeURIComponent(begun.message)}`, origin), 303);
   const response = NextResponse.redirect(begun.url, 303);
   response.cookies.set(PENDING_COOKIE, begun.sealedPending, {
     httpOnly: true,
     sameSite: "lax", // it must come back on the provider's cross-site redirect to /auth/callback
     path: "/auth/callback",
     maxAge: PENDING_MAX_AGE_S,
-    secure: request.nextUrl.protocol === "https:",
+    secure: origin.startsWith("https:"),
   });
   return response;
 }

@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isStackReadPath } from "@/domain/access";
 import type { Area, EndReason } from "@/domain/session";
-import { COOKIE_NAMES, ENDED_COOKIE_NAMES, ENDED_MAX_AGE_S, endedKeySession, openSession, refreshSession, SESSION_MAX_AGE_S } from "@/runtime/session";
+import { consoleOrigin, COOKIE_NAMES, ENDED_COOKIE_NAMES, ENDED_MAX_AGE_S, endedKeySession, openSession, operatorReadAccess, protectReads, refreshSession, SESSION_MAX_AGE_S } from "@/runtime/session";
 
 /**
  * Runs before a writing area renders. Pages cannot set cookies while rendering, hence this file.
@@ -23,10 +24,12 @@ function pageArea(pathname: string): Area | null {
 }
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
-  const secure = request.nextUrl.protocol === "https:";
+  const origin = consoleOrigin(request.url);
+  const secure = origin.startsWith("https:");
   const changes: { readonly name: string; readonly sealed: string | null }[] = [];
   const endings: { readonly name: string; readonly reason: EndReason }[] = [];
-  const area = pageArea(request.nextUrl.pathname);
+  const protectedRead = protectReads() && isStackReadPath(request.nextUrl.pathname);
+  const area = protectedRead ? "operator" : pageArea(request.nextUrl.pathname);
   if (area) {
     const reason = await endedKeySession(area, request.cookies.get(COOKIE_NAMES[area])?.value);
     if (reason) {
@@ -43,13 +46,23 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     if (result === "fresh") continue;
     changes.push({ name, sealed: result?.sealed ?? null });
   }
-  if (changes.length === 0) return NextResponse.next();
   for (const change of changes) {
     if (change.sealed) request.cookies.set(change.name, change.sealed);
     else request.cookies.delete(change.name);
   }
+  let refused = false;
+  if (protectReads() && !(await operatorReadAccess(request.cookies.get(COOKIE_NAMES.operator)?.value))) {
+    refused = protectedRead;
+    if (request.cookies.has(COOKIE_NAMES.operator)) {
+      request.cookies.delete(COOKIE_NAMES.operator);
+      changes.push({ name: COOKIE_NAMES.operator, sealed: null });
+    }
+  }
   for (const ending of endings) request.cookies.set(ending.name, ending.reason);
-  const response = NextResponse.next({ request: { headers: request.headers } });
+  const response = refused
+    ? NextResponse.redirect(new URL("/operator", origin), 303)
+    : NextResponse.next({ request: { headers: request.headers } });
+  if (protectReads()) response.headers.set("cache-control", "private, no-store");
   for (const change of changes) {
     if (change.sealed) {
       response.cookies.set(change.name, change.sealed, { httpOnly: true, sameSite: "strict", path: "/", maxAge: SESSION_MAX_AGE_S, secure });
@@ -63,4 +76,4 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   return response;
 }
 
-export const config = { matcher: ["/operator/:path*", "/builder/:path*", "/operator", "/builder"] };
+export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|livez$|auth/).*)"] };

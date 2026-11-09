@@ -1,0 +1,50 @@
+# Managed by builder-core-console Ansible. Other sites are untouched.
+<VirtualHost *:443>
+    ServerName {{ console_host }}
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/builder-console/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/builder-console/privkey.pem
+    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set Cache-Control "private, no-store"
+{% if app_placeholder | default(edge_placeholder | default(false)) | bool %}
+    RewriteEngine On
+    RewriteRule ^ - [R=503,L]
+{% else %}
+    ProxyRequests Off
+    ProxyPreserveHost On
+    RequestHeader unset Forwarded
+    RequestHeader unset X-Forwarded-For
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Host "{{ console_host }}"
+    RequestHeader set X-Forwarded-Port "443"
+    ProxyPass / http://127.0.0.1:{{ console_http_port | default(3060) }}/ connectiontimeout=5 timeout=300
+    ProxyPassReverse / http://127.0.0.1:{{ console_http_port | default(3060) }}/
+{% endif %}
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName {{ auth_host }}
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/builder-console/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/builder-console/privkey.pem
+    Header always set Strict-Transport-Security "max-age=31536000"
+{% if edge_placeholder | default(false) | bool %}
+    RewriteEngine On
+    RewriteRule ^ - [R=503,L]
+{% else %}
+    ProxyRequests Off
+    ProxyPreserveHost On
+    RequestHeader unset Forwarded
+    RequestHeader unset X-Forwarded-For
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Host "{{ auth_host }}"
+    RequestHeader set X-Forwarded-Port "443"
+    # Match only the public realm, resources and robots; deny admin/master/health/metrics.
+    ProxyPassMatch ^/((?:realms/livepeer/|resources/).*)$ http://127.0.0.1:{{ keycloak_http_port | default(18081) }}/$1
+    ProxyPass /robots.txt http://127.0.0.1:{{ keycloak_http_port | default(18081) }}/robots.txt
+    ProxyPassReverse / http://127.0.0.1:{{ keycloak_http_port | default(18081) }}/
+    <LocationMatch "^/(?!realms/livepeer/|resources/|robots\.txt$)">
+        Require all denied
+    </LocationMatch>
+{% endif %}
+</VirtualHost>
