@@ -6,8 +6,8 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "15142129ebbf51103658f8ad48fd5adae052c56d",
-    note: "releases/m3 with PRs #78, #81, #82, #83 and #77 merged: payment failure reasons, paged history and a request limit, cost per app, repeat-safe revokes, rates with source and age (D58–D62)",
+    commit: "28ae6a953ba993eaa2839a97d53ed3f7f6101bca",
+    note: "v0.2.0, the M3 release: discovery read from livepeer/node's /discovery document (D63) and stored text capped at 200 characters (#103), on top of D57–D62",
   },
   batteries: {
     repository: "livepeer/clearinghouse-batteries",
@@ -17,7 +17,12 @@ export const PINS = {
   signer: {
     repository: "livepeer/node",
     commit: "406b248f6cb8728e6e7eba1809901f589060bc6b",
-    note: "v1.0.2, same as ChatLPT and builder-core's dev stack",
+    note: "v1.0.2, same as ChatLPT (builder-core v0.2.0's dev stack signs with f45d83f)",
+  },
+  discovery: {
+    repository: "livepeer/node",
+    commit: "f45d83fd68f73d195dffe8b45f6cac296d023c49",
+    note: "livepeer-discovery in static mode: the node commit builder-core v0.2.0 pins and reads (D63)",
   },
 } as const;
 

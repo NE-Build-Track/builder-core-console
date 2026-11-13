@@ -7,13 +7,18 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 | --- | --- | --- |
 | `clearinghouse` | `livepeer/clearinghouse-batteries`, `examples/compose/Dockerfile` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
 | `signer` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
-| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `15142129ebbf51103658f8ad48fd5adae052c56d` (`releases/m3` after PRs #78, #81, #82, #83 and #77 merged, 2 November: payment failure reasons, D58; paged job history and a 16 MiB request limit, D59; cost per app and class, the events feed held, D60; repeat-safe revokes, D61; network rates with their source and age, D62; and, from #90, where each runner call's time went. Migration `0011` adds the attempt timings: the stack's `engine-data` volume upgrades from `0010` on start) |
+| `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `28ae6a953ba993eaa2839a97d53ed3f7f6101bca` (tag `v0.2.0`, the M3 release, 11 November). Over `1514212` (2 November: D58–D62 and #90's call timings) it reads discovery only from livepeer/node's `/discovery` document at the required `LPB_DISCOVERY_URL`, and its `Runner` carries `price_info` as advertised, with no `runner_id`, `rate` or `rate_error` (D63); it refuses an id, label or reference over 200 characters or holding a NUL with 422 (#103); a malformed signer identity reply no longer burns the job's `operation_ref` (#79). No migration since `0011`, so the `engine-data` volume carries over |
+| `discovery` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-discovery` | `f45d83fd68f73d195dffe8b45f6cac296d023c49` (main, 10 commits after v1.0.6: the commit builder-core v0.2.0 pins, and whose discovery document its reader is tested against). Static mode, the list in `deploy/config/discovery.toml` |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relay only (D10) |
 | `console` | this repository, `deploy/console/Dockerfile` | — |
 
-`web/src/domain/pins.ts` holds the same three commits; `web/tests/structure/pins.test.ts` fails when
+`web/src/domain/pins.ts` holds the same four commits; `web/tests/structure/pins.test.ts` fails when
 it, `deploy/compose.yaml` and this page disagree. To re-pin: change all three, copy the new engine's
 `docs/generated/openapi.json` to `openapi/engine.openapi.json`, run `make gen-api`, then `make check`.
+
+The signer stays at `406b248` (v1.0.2), the commit ChatLPT signs with, while builder-core v0.2.0's own
+dev stack signs with `f45d83f` too (its D63 (5)). The engine reaches the signer through the same SDK pin
+at both engine commits.
 
 ## Topology
 

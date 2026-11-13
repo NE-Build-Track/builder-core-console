@@ -71,9 +71,9 @@ services:
   # The stock engine, JWT only (LPB_AUTH=jwt): engine API keys are off, so the console signs in through
   # Keycloak. Paid through the signer and Batteries above, per actor; its own database and engine id.
   engine:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:1514212
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:28ae6a9
     build:
-      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#15142129ebbf51103658f8ad48fd5adae052c56d
+      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#28ae6a953ba993eaa2839a97d53ed3f7f6101bca
       dockerfile: deploy/dev-stack/engine/Dockerfile
       args:
         BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"
@@ -111,14 +111,15 @@ services:
       start_period: 20s
       retries: 3
 
+  # livepeer/node's livepeer-discovery, as in deploy/compose.yaml (builder-core D63).
   discovery:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:1514212
-    command: [lpb, discovery]
-    environment:
-      LPD_ORCHESTRATORS: /etc/lpd/orchestrators.txt
-      LPD_HTTP_HOST: 0.0.0.0
-    volumes: [../config/orchestrators.txt:/etc/lpd/orchestrators.txt:ro]
-    depends_on: [engine]
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/node:f45d83f
+    build:
+      context: https://github.com/livepeer/node.git#f45d83fd68f73d195dffe8b45f6cac296d023c49
+      dockerfile: docker/Dockerfile
+    entrypoint: ["/usr/local/bin/livepeer-discovery"]
+    command: [--config, /etc/livepeer/discovery.toml]
+    volumes: [../config/discovery.toml:/etc/livepeer/discovery.toml:ro]
     read_only: true
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
