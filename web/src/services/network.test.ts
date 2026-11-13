@@ -26,9 +26,19 @@ describe("network", () => {
 
   it("summarises an offering's runners: orchestrators, slots and price range", async () => {
     const runners = await fakeSources().engine.runners("blueclaw/chat/qwen3.8-27b");
-    const second = runners.ok ? { ...runners.value[0]!, url: "u2", orchestrator_url: "https://b:1", capacity: 4, capacity_available: 0, rate: { amount: "9000000000", currency: "wei", unit: "seconds", source: "orchestrator" as const } } : null;
+    const second = runners.ok ? { ...runners.value[0]!, url: "u2", orchestrator_url: "https://b:1", capacity: 4, capacity_available: 0, price_info: { price: "9000000000", currency: "wei", unit: "seconds" } } : null;
     const stats = offeringStats(runners.ok && second ? [...runners.value, second] : []);
     expect(stats).toEqual({ runners: 2, orchestrators: 2, free: 6, total: 12, priceLow: "4534062178", priceHigh: "9000000000", priceUnit: "wei/seconds" });
+  });
+
+  it("ranges only prices that name an amount, a currency and a unit, and counts a runner with no orchestrator_url by its URL (builder-core D63)", async () => {
+    const runners = await fakeSources().engine.runners("blueclaw/chat/qwen3.8-27b");
+    const first = runners.ok ? runners.value[0]! : null;
+    // price_info is passed on as advertised, every field optional; orchestrator_url is absent when the address is on another origin
+    const partial = first ? { ...first, url: "https://c:1/app", orchestrator_url: null, price_info: { price: "1", currency: null, unit: null } } : null;
+    const unpriced = first ? { ...first, url: "https://d:1/app", orchestrator_url: undefined, price_info: null } : null;
+    const stats = offeringStats(first && partial && unpriced ? [first, partial, unpriced] : []);
+    expect(stats).toMatchObject({ runners: 3, orchestrators: 3, priceLow: "4534062178", priceHigh: "4534062178", priceUnit: "wei/seconds" });
   });
 
   it("reads runners for every offered app", async () => {
