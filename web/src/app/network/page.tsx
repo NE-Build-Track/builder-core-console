@@ -215,7 +215,7 @@ async function Network() {
 
       <Section id="h-orchs" title="Orchestrators" description="GET /discovery on the discovery service: what the engine reads. The ring shows free slots out of capacity.">
         <Unreadable reading={view.orchestrators} what="Orchestrators" />
-        {view.orchestrators.ok && view.orchestrators.value.length === 0 ? <Empty>The discovery service serves no orchestrators. Check its /readyz.</Empty> : null}
+        {view.orchestrators.ok && view.orchestrators.value.length === 0 ? <Empty>The discovery service serves no orchestrators. Its log reports each failed refresh (make logs).</Empty> : null}
         {view.orchestrators.ok && view.orchestrators.value.length > 0 ? (
           <Grid min="20rem">
             {view.orchestrators.value.map((orchestrator) => (

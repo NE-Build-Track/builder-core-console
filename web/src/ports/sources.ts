@@ -61,7 +61,7 @@ export interface SignerReader {
   metrics(): Promise<Reading<SignerMetrics>>;
 }
 
-/** The discovery service (lpb discovery): the orchestrators it serves and their runners. */
+/** The discovery service (livepeer/node's livepeer-discovery): the orchestrators it serves and their runners. */
 export interface DiscoveryReader {
   inventory(): Promise<Reading<readonly DiscoveredOrchestrator[]>>;
 }

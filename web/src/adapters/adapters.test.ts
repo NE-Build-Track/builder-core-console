@@ -57,6 +57,35 @@ describe("discovery adapter", () => {
     expect(reading).toMatchObject({ ok: true, source: "discovery", value: [{ address: "https://hky.example:8936", last_seen: null }] });
   });
 
+  it("reads livepeer/node's livepeer-discovery document: skips its nodes entry, takes price_info with fields missing (builder-core D63)", async () => {
+    // the shape of node f45d83f's GET /discovery (builder-core tests/unit/node_discovery_f45d83f.json), trimmed
+    const document = [
+      { nodes: [{ url: "https://ai1.example:8936", queried_at: "2026-11-10T17:31:43.814512142Z" }] },
+      {
+        address: "https://ai1.example:8936",
+        runners: [
+          {
+            observed_at: "2026-11-10T17:31:43.797658115Z",
+            url: "https://ai1.example:8936/apps/app-23bjtyh4/app",
+            app: "media/ffmpeg-metadata",
+            version: "comfystream.ffmpeg.v1",
+            metadata: '{"runner_contract":1}',
+            mode: "single-shot",
+            capacity: 1,
+            capacity_used: 0,
+            capacity_available: 1,
+            price_info: { price: 494605544, price_usd: 0.000001, currency: "wei", unit: "fixed" },
+          },
+          { observed_at: "2026-11-10T17:31:43.797658115Z", url: "https://ai1.example:8936/apps/app-2/app", app: "a/b", price_info: { price: 0 } },
+        ],
+      },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async () => respond(200, document)));
+    const reading = await discoveryReader(settings, { timeoutMs: 1000, now }).inventory();
+    expect(reading).toMatchObject({ ok: true, value: [{ address: "https://ai1.example:8936", runners: [{ app: "media/ffmpeg-metadata", capacity_available: 1 }, { app: "a/b" }] }] });
+    expect(reading.ok && reading.value).toHaveLength(1);
+  });
+
   it("reports an HTTP error, a body it does not recognise, and a missing setting", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => respond(503, "not ready")));
     expect(await discoveryReader(settings, { timeoutMs: 1000, now }).inventory()).toMatchObject({ ok: false, problem: { kind: "http", status: 503 } });
