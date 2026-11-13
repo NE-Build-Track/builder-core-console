@@ -1,7 +1,8 @@
 # Deploy
 
-The builder stack and its console, in Docker Compose. Same components, pins, config and secrets as
-ChatLPT's `deploy/`, plus the stock builder-core engine as its own service and the console. This is
+The builder stack and its console, in Docker Compose. The same payment components (Batteries and the
+signer), pins, config and secrets as ChatLPT's `deploy/`, plus the stock builder-core engine as its own
+service, livepeer/node's discovery, and the console. This is
 the Build Track's M3 dev stack ([m3-environment.md](../docs/references/m3-environment.md)).
 Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.md).
 
@@ -10,8 +11,8 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 | `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
 | `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:1514212` | `127.0.0.1:8090` (Swagger at `/docs`) |
-| `discovery` | `builder-console/engine:1514212` running `lpb discovery` (static list `config/orchestrators.txt`) | `discovery:8939` on the compose network only |
+| `engine` | `builder-console/engine:28ae6a9` (builder-core `v0.2.0`) | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `discovery` | `builder-console/node:f45d83f` running `livepeer-discovery` (static list `config/discovery.toml`) | `discovery:8939` on the compose network only |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 Testing sign-in through an identity provider instead of keys: [keycloak/README.md](keycloak/README.md), a
@@ -29,14 +30,16 @@ python3 deploy/init-secrets.py      # adds the read-only console-reader; lets th
 
 or start fresh with `python3 deploy/init-secrets.py` on an empty `deploy/secrets/`, then add
 `keystore.json`, `keystore-password` and `rpc-url` (mode 0600). No orchestrator certificates are
-pinned: the signer only signs, and the discovery service leaves out orchestrators with untrusted TLS.
-The orchestrators to discover are in `deploy/config/orchestrators.txt`.
+pinned: the signer only signs, and discovery leaves out orchestrators with untrusted TLS.
+The orchestrators to discover are `Nodes` in `deploy/config/discovery.toml`. livepeer-discovery reads
+each one's `/discovery` every 30 s and skips a runner with no `observed_at`, so an orchestrator still on
+node v1.0.2 does not appear (builder-core D63).
 
 ## First run
 
 ```sh
 cp deploy/.env.example deploy/.env && chmod 600 deploy/.env
-make images            # all five images; Batteries, the signer and the engine build from GitHub at their pins
+make images            # all six images; Batteries, the signer, discovery and the engine build from GitHub at their pins
 deploy/first-run.sh    # fills LPB_* tokens, CONSOLE_BATTERIES_TOKEN, LPB_SECRET_KEY, the engine admin key, the console's reader key and CONSOLE_SESSION_SECRET
 ```
 
@@ -77,6 +80,13 @@ pins: Compose neither rebuilds them from GitHub nor looks for them in a registry
 The engine's host port is `ENGINE_PORT` in `deploy/.env` (8090 by default). When 8090 is taken on the host,
 set another; `make up` publishes it there, and `scripts/demo-traffic.py` and the live checks read it from
 `deploy/.env`. The curl examples below use 8090.
+
+**Upgrading from engine `1514212`:** `scripts/build-images.sh discovery engine`, then `make up`. builder-core
+`v0.2.0` adds no migration, so the volumes carry over. It has no `lpb discovery`, so discovery is now
+livepeer/node's `livepeer-discovery`, from its own image, reading `config/discovery.toml`; the engine
+needs `LPB_DISCOVERY_URL`, which compose sets. Discovery's own `/readyz` is on its container's loopback:
+`docker compose -f deploy/compose.yaml logs discovery` shows each failed refresh, and the engine's
+`/readyz` (`discovery_fresh`, `discovery_error`) says whether the engine reads it.
 
 **Upgrading from engine `0dbfe6e`:** start over with `down -v`. That engine (builder-core #53) numbered its
 migrations `0006` (actor label) and `0007` (sightings). In builder-core `releases/m3`, and in #69, `0006` is

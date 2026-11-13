@@ -15,7 +15,7 @@ Every write is reviewed before it is sent and shows its exact REST call and resp
 > Status: **v1 pages accepted; M3 areas built, in review.** Bound to 127.0.0.1. See
 > [docs/exec-plans/active/console-m3.md](docs/exec-plans/active/console-m3.md) and the
 > [M3 journey guide](docs/guides/m3-journey.md), which follows builder-core's
-> [REST builder guide](https://github.com/NE-Build-Track/livepeer-builder-core/blob/15142129ebbf51103658f8ad48fd5adae052c56d/docs/guides/rest-builder.md);
+> [REST builder guide](https://github.com/NE-Build-Track/livepeer-builder-core/blob/28ae6a953ba993eaa2839a97d53ed3f7f6101bca/docs/guides/rest-builder.md);
 > every REST call in the journey is in [m3-rest-operations.md](docs/references/m3-rest-operations.md).
 
 ## Pages
