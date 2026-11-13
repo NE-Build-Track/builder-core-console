@@ -23,8 +23,8 @@ engine has no record of.
 | --- | --- | --- |
 | `clearinghouse`, `signer`, `signer-metrics` | compose network only | Batteries `ca09e47` and the node signer `406b248`, as in `deploy/compose.yaml` |
 | `keycloak` | http://keycloak.localhost:8180 (admin console at `/admin`) | Keycloak 26.8.1, realm `livepeer` from `realm-livepeer.json` |
-| `engine` | http://127.0.0.1:8091 (Swagger at `/docs`) | builder-core `1514212` (`releases/m3` with PRs #78–#83 and #77 merged: D58–D62 on top of D57's repeat-safe admin commands), `LPB_AUTH=jwt`, strict RFC 9068 tokens |
-| `discovery` | compose network only | `lpb discovery` over `../config/orchestrators.txt` |
+| `engine` | http://127.0.0.1:8091 (Swagger at `/docs`) | builder-core `28ae6a9` (tag `v0.2.0`, the M3 release: D57–D63), `LPB_AUTH=jwt`, strict RFC 9068 tokens |
+| `discovery` | compose network only | livepeer/node's `livepeer-discovery` (`f45d83f`) over `../config/discovery.toml` |
 | `console` | **http://127.0.0.1:3061** | the console with `CONSOLE_AUTH=oidc` |
 
 Open the console at `127.0.0.1:3061` exactly: it is the address registered as the client's redirect URL.

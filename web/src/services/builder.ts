@@ -2,7 +2,7 @@
  * The Builder area's views (decisions D15, D19): the live catalog with each rate's unit, source and age;
  * one builder's jobs; and their allowance and wholesale network cost. Pure functions over readings.
  */
-import { COST_CLASSES, mayHavePaid, type Allowance, type CostClass, type CostSummary, type EngineHealth, type Fees, type Job, type JobCost, type NetworkRate, type Offering } from "@/domain/engine";
+import { COST_CLASSES, mayHavePaid, type Allowance, type CostClass, type CostSummary, type EngineHealth, type Fees, type Job, type JobCost, type ObservedRate, type Offering } from "@/domain/engine";
 import { isFinalState, type JobState, type RunInput } from "@/domain/builder";
 import { failureAdvice } from "@/domain/failures";
 import { invalid, parsed, wholeNumber, type Parsed } from "@/domain/forms";
@@ -55,7 +55,7 @@ export type CatalogView = {
   readonly discovery: Reading<EngineHealth>;
 };
 
-function rateOf(rate: NetworkRate | null | undefined): RateView {
+function rateOf(rate: ObservedRate | null | undefined): RateView {
   if (!rate) return { known: false };
   const text = rateText(String(rate.amount), rate.currency, rate.unit);
   // the orchestrator's own figure, passed on unconverted (builder-core D62); most send none (gap G14)

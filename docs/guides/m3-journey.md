@@ -31,7 +31,7 @@ fresh. If the signer is not ready, its reason is on that page.
 The engine itself is described in builder-core's docs: its
 [README](https://github.com/NE-Build-Track/livepeer-builder-core#readme), the engine contract
 (`docs/contracts/engine.md`) and the REST walkthrough every step below sends,
-[`docs/guides/rest-builder.md`](https://github.com/NE-Build-Track/livepeer-builder-core/blob/15142129ebbf51103658f8ad48fd5adae052c56d/docs/guides/rest-builder.md).
+[`docs/guides/rest-builder.md`](https://github.com/NE-Build-Track/livepeer-builder-core/blob/28ae6a953ba993eaa2839a97d53ed3f7f6101bca/docs/guides/rest-builder.md).
 Each REST call in this journey, and the console action that sends it, is listed in
 [m3-rest-operations.md](../references/m3-rest-operations.md). To use the engine embedded in your own
 Python app instead, see its embedded walkthrough

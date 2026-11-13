@@ -2,7 +2,7 @@
  * The network as this stack sees it: what the engine offers per app, the runners behind each offer, and
  * the orchestrators the discovery service serves (docs/product-specs/console.md#network).
  */
-import type { Offering, Runner } from "@/domain/engine";
+import { advertisedPrice, type Offering, type Runner } from "@/domain/engine";
 import { ok, type Reading } from "@/domain/reading";
 import type { DiscoveredOrchestrator } from "@/domain/discovery";
 import type { AppNetwork, NetworkView, OfferingStats, OrchestratorView } from "@/domain/views";
@@ -41,10 +41,10 @@ export function capacityOf(runners: readonly Runner[]): { readonly total: number
   );
 }
 
-/** Runner count, orchestrators, slots and the price range of one app's runners. */
+/** Runner count, orchestrators, slots and the range of the prices one app's runners advertise. */
 export function offeringStats(runners: readonly Runner[]): OfferingStats {
   const capacity = capacityOf(runners);
-  const prices = runners.flatMap((runner) => (runner.rate ? [runner.rate] : [])).sort((left, right) => compareDecimals(left.amount, right.amount));
+  const prices = runners.flatMap((runner) => advertisedPrice(runner) ?? []).sort((left, right) => compareDecimals(left.amount, right.amount));
   const first = prices[0];
   const last = prices[prices.length - 1];
   return {

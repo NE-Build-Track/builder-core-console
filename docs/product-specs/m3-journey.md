@@ -58,14 +58,17 @@ fails until it moves to `text-to-image`.
 
 ## Pinned versions
 
-The versions these jobs were checked with. They are the console's pins (`web/src/domain/pins.ts`,
-built by `deploy/compose.yaml`); `web/tests/structure/pins.test.ts` fails when this table falls behind.
+The console's pins (`web/src/domain/pins.ts`, built by `deploy/compose.yaml`);
+`web/tests/structure/pins.test.ts` fails when this table falls behind. These jobs were last checked live
+at engine `1514212` (the ISS-25 funded run, 9 November); the stack at `v0.2.0` and node's discovery has
+not run them yet.
 
 | Component | Repository | Commit |
 | --- | --- | --- |
-| Engine | `NE-Build-Track/livepeer-builder-core` | `15142129ebbf51103658f8ad48fd5adae052c56d` (`releases/m3` with PRs #78 → #81 → #82 → #83 and #77 merged). The live checks of 30 October ran on `9676260`, a local integration of the same PRs |
+| Engine | `NE-Build-Track/livepeer-builder-core` | `28ae6a953ba993eaa2839a97d53ed3f7f6101bca` (tag `v0.2.0`, the M3 release: `1514212` plus D63 discovery, #103 stored text, #79 and #102). Before it, `15142129ebbf51103658f8ad48fd5adae052c56d` (`releases/m3` with PRs #78 → #81 → #82 → #83 and #77 merged); the live checks of 30 October ran on `9676260`, a local integration of the same PRs |
 | Batteries | `livepeer/clearinghouse-batteries` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
 | Node signer | `livepeer/node` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
+| Node discovery | `livepeer/node` | `f45d83fd68f73d195dffe8b45f6cac296d023c49` (`livepeer-discovery`, static mode; replaces builder-core's `lpb discovery`, D63) |
 
 ## The seven-outcome journey
 

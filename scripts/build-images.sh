@@ -10,7 +10,7 @@ if [ -f deploy/.env ]; then
 fi
 export IMAGE_REGISTRY="${IMAGE_REGISTRY:-}"
 SERVICES=("$@")
-[ ${#SERVICES[@]} -eq 0 ] && SERVICES=(clearinghouse signer engine console)
+[ ${#SERVICES[@]} -eq 0 ] && SERVICES=(clearinghouse signer discovery engine console)
 echo "registry prefix: '${IMAGE_REGISTRY}'"
 for svc in "${SERVICES[@]}"; do
   echo "== building $svc"

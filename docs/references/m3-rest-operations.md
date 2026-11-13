@@ -5,12 +5,13 @@ done when every REST operation in the journey (credential and admin operations, 
 submission, status, results, usage and cost) is documented and exercised through the console. This page
 lists each one, the console page or action that sends it, and how it was exercised. The engine's own
 contract for each is in builder-core's `docs/contracts/` and its REST walkthrough,
-[`docs/guides/rest-builder.md`](https://github.com/NE-Build-Track/livepeer-builder-core/blob/15142129ebbf51103658f8ad48fd5adae052c56d/docs/guides/rest-builder.md).
+[`docs/guides/rest-builder.md`](https://github.com/NE-Build-Track/livepeer-builder-core/blob/28ae6a953ba993eaa2839a97d53ed3f7f6101bca/docs/guides/rest-builder.md).
 Every call the console makes is also in [data-sources.md](data-sources.md), and every write shows its
 request and response in the console, with **Copy as curl** (D18).
 
-Pinned engine: builder-core `1514212` ([payment-stack.md](payment-stack.md)), `releases/m3` with PRs
-#78–#83 and #77 merged (D58–D62). **Pending the live run** marks what has not yet been shown on a stack at this pin or
+Pinned engine: builder-core `28ae6a9`, tag `v0.2.0` ([payment-stack.md](payment-stack.md)): `releases/m3` with PRs
+#78–#83 and #77 merged (D58–D62, `1514212`), then D63 discovery and #103 stored text. Nothing has run on a stack at
+`v0.2.0` yet; the evidence below is from earlier pins. **Pending the live run** marks what has not yet been shown on a stack at this pin or
 earlier through the console; `scripts/live-check-d57.py` (engine) and `scripts/live-check-d57-ui.py`
 (console, in a browser) carry the checks for it.
 

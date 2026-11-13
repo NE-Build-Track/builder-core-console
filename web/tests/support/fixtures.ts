@@ -3,7 +3,7 @@
  * ChatLPT's stack on 20 October 2026 (same pins as this repository), so tests run on real shapes.
  */
 import type { Allocation, ApiKey, Grant, LedgerRow, PaymentSession, UsageEvent } from "@/domain/batteries";
-import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, KnownActor, Reconciliation } from "@/domain/engine";
+import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, KnownActor, Reconciliation, Runner } from "@/domain/engine";
 import { failed, ok, type Problem, type Reading, type SourceName } from "@/domain/reading";
 import { PINS, shortCommit } from "@/domain/pins";
 import type { DiscoveredOrchestrator } from "@/domain/discovery";
@@ -234,16 +234,17 @@ export function engineFake(overrides: Partial<EngineReader> = {}): EngineReader 
         },
       ]),
     runners: async (app) =>
-      read("engine", [
+      read<readonly Runner[]>("engine", [
         {
+          // builder-core v0.2.0 (D63): price_info as advertised, no runner_id, rate or rate_error
           url: "https://orch-us-central.xodeapp.xyz:18935/apps/runner_ogm53upg/app",
           app,
-          runner_id: "runner_ogm53upg",
           mode: "single-shot",
           orchestrator_url: "https://orch-us-central.xodeapp.xyz:18935",
           capacity: 8,
+          capacity_used: 2,
           capacity_available: 6,
-          rate: { amount: "4534062178", currency: "wei", unit: "seconds", source: "orchestrator" as const },
+          price_info: { price: "4534062178", price_usd: null, currency: "wei", unit: "seconds" },
           gpu: { id: "0", name: "NVIDIA RTX 4090", vram_mb: 24564 },
           metadata: null,
           version: "1.0.2",

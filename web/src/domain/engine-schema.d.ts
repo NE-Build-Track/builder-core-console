@@ -1005,26 +1005,6 @@ export interface components {
             currency: "USD" | "ETH";
         };
         /**
-         * NetworkRate
-         * @description A rate exactly as advertised: a wholesale network price per unit, not a job quote or a retail price.
-         */
-        NetworkRate: {
-            /** Amount */
-            amount: string;
-            /** Currency */
-            currency: string;
-            /** Price Usd */
-            price_usd?: string | null;
-            /**
-             * Source
-             * @default orchestrator
-             * @constant
-             */
-            source: "orchestrator";
-            /** Unit */
-            unit: string;
-        };
-        /**
          * ObservedRate
          * @description A rate as the catalog serves it: when it was last known, and whose clock says so.
          */
@@ -1082,6 +1062,23 @@ export interface components {
             runner_count: number;
             /** Stale */
             stale: boolean;
+        };
+        /**
+         * PriceInfo
+         * @description ``price_info`` as advertised. ``price`` and ``price_usd`` are exact decimals, all four fields optional.
+         *
+         *     A JSON number ``Decimal`` cannot hold is absent here. The runner is still kept, and ``payable_rate``
+         *     reports that the price cannot be paid.
+         */
+        PriceInfo: {
+            /** Currency */
+            currency?: string | null;
+            /** Price */
+            price?: string | null;
+            /** Price Usd */
+            price_usd?: string | null;
+            /** Unit */
+            unit?: string | null;
         };
         /** ProvisionBody */
         ProvisionBody: {
@@ -1189,28 +1186,32 @@ export interface components {
             /** Operation Ref */
             operation_ref: string;
         };
-        /** Runner */
+        /**
+         * Runner
+         * @description One runner a discovery document advertises.
+         *
+         *     ``address`` becomes ``orchestrator_url`` only when its origin matches ``url``; otherwise payment and
+         *     failover follow the host the engine calls.
+         */
         Runner: {
             /** App */
             app: string;
             /** Capacity */
-            capacity: number | null;
+            capacity?: number | null;
             /** Capacity Available */
-            capacity_available: number | null;
+            capacity_available?: number | null;
+            /** Capacity Used */
+            capacity_used?: number | null;
             gpu?: components["schemas"]["RunnerGPU"] | null;
             /** Metadata */
             metadata?: string | null;
             /** Mode */
-            mode: string | null;
+            mode?: string | null;
             /** Observed At */
             observed_at?: string | null;
             /** Orchestrator Url */
-            orchestrator_url: string | null;
-            rate: components["schemas"]["NetworkRate"] | null;
-            /** Rate Error */
-            rate_error?: string | null;
-            /** Runner Id */
-            runner_id: string | null;
+            orchestrator_url?: string | null;
+            price_info?: components["schemas"]["PriceInfo"] | null;
             /** Url */
             url: string;
             /** Version */
@@ -1218,7 +1219,7 @@ export interface components {
         };
         /**
          * RunnerGPU
-         * @description The GPU a runner reports in its registration, as the node echoes it.
+         * @description The GPU a runner reports. The engine stores ``id``, ``name`` and ``vram_mb`` and ignores the rest.
          */
         RunnerGPU: {
             /** Id */
