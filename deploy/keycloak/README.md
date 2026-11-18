@@ -1,5 +1,8 @@
 # Keycloak test stack
 
+For a persistent deployment with Google signup, HTTPS and PostgreSQL, use the
+[production setup](production/README.md). This file describes local testing only.
+
 Sign in to the console through an identity provider (decision D21) against an engine that accepts only
 JWTs (builder-core PR #50, `LPB_AUTH=jwt`, and PR #69: the actor list and the read-only auditor). It is
 a separate compose project from `deploy/compose.yaml`, and it is paid. Batteries and the signer run

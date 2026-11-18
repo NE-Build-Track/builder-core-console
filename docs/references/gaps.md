@@ -16,6 +16,7 @@ fails when the two disagree. The console works within these today; nothing here 
 | [G13](#g13-no-who-am-i-call) | builder-core | The Builder names its actor from the moment it signs in. |
 | [G14](#g14-rates-are-in-wei-only) | builder-core | Rates a builder can read in dollars before running a job. |
 | [G15](#g15-the-job-list-has-no-filters) | builder-core | Per-actor and per-app job history, and failures by kind, without paging through every job. |
+| [G16](#g16-engine-api-does-not-cover-batteries-only-console-reads) | builder-core | Remote payment visibility through engine authorization, without a Batteries credential in the console. |
 
 ## G3: Cost projections capped at 25
 
@@ -97,6 +98,16 @@ fails when the two disagree. The console works within these today; nothing here 
 
 **Owner.** builder-core. **Unlocks:** Per-actor and per-app job history, and failures by kind, without paging through every job.
 
+## G16: Engine API does not cover Batteries-only console reads
+
+**Impact.** The remote console has no direct Batteries credential. Its grant lists, payment-session usage, ledger and escrow readings are unavailable where the engine does not expose an equivalent.
+
+**Fix.** Add scoped, paginated engine payment reads with exact amounts, freshness and explicit upstream failures; keep Batteries credentials inside the engine deployment.
+
+**Owner.** builder-core. **Unlocks:** Remote payment visibility through engine authorization.
+
+See the [enhancement draft](engine-payment-reads.md) for proposed resources, permissions and acceptance.
+
 ## Not a console gap: funded grants through the engine
 
 With ChatLPT's credential layout (also builder-core's dev stack), `POST /v1/admin/grants` with a non-zero
@@ -123,7 +134,7 @@ credentials and still uses the CLI.
   with `before` (D59). The engine takes no filters yet: that is G15.
 - **G12, creating a grant returned an incomplete record** (closed 30 October). builder-core's
   `POST /v1/admin/grants` now answers with the grant's name, status and total (seen live on the stack:
-  `{"name": …, "status": "active", "total": "0.01"}`; `scripts/live-check-d57.py` A5, "created grant
+  `{"name": â€¦, "status": "active", "total": "0.01"}`; `scripts/live-check-d57.py` A5, "created grant
   read back in full"). The Operator result step still shows only the new grant's id and the amount
   sent; showing the response's name, status and total is a small follow-up, not a gap.
 - **G2, no list of provisioned actors** (closed 28 October). builder-core #69 lists actors

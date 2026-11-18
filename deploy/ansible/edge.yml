@@ -1,0 +1,11 @@
+---
+# Prepare DNS/TLS endpoints while Google credentials or payer configuration are pending.
+# Run only after A records point at this host. Both new HTTPS sites return 503 until deploy.yml.
+- name: Prepare Apache HTTPS for the builder domains
+  hosts: builder
+  become: true
+  vars:
+    edge_placeholder: true
+  tasks:
+    - name: Configure isolated virtual hosts and certificates
+      ansible.builtin.include_tasks: apache.yml

@@ -37,6 +37,26 @@ export function authMode(): AuthMode {
   return readConfig().auth.mode;
 }
 
+export function protectReads(): boolean {
+  return readConfig().protectReads;
+}
+
+/** The registered public origin also works behind a TLS-terminating reverse proxy. */
+export function consoleOrigin(fallback: string): string {
+  const auth = readConfig().auth;
+  return auth.mode === "oidc" && auth.oidc.ok ? new URL(auth.oidc.value.redirectUrl).origin : new URL(fallback).origin;
+}
+
+/** Fail closed for public stack data, including after a role is removed or the engine is unavailable. */
+export async function operatorReadAccess(sealed: string | undefined): Promise<boolean> {
+  if (!protectReads()) return true;
+  const session = openSession("operator", sealed);
+  if (!session || session.kind !== "admin") return false;
+  if (session.via === "oidc" && (!session.tokenExpiresAt || Date.parse(session.tokenExpiresAt) <= Date.now())) return false;
+  const probe = await probeKey(session);
+  return probe?.ok === true;
+}
+
 /** False when CONSOLE_SESSION_SECRET is missing, or the identity provider's settings are incomplete. */
 export function signInEnabled(): boolean {
   const config = readConfig();

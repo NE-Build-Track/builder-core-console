@@ -1,0 +1,93 @@
+---
+- name: Validate Apache hostname inputs
+  ansible.builtin.assert:
+    that:
+      - console_host is match('^[a-z0-9-]+(\.[a-z0-9-]+)+$')
+      - auth_host is match('^[a-z0-9-]+(\.[a-z0-9-]+)+$')
+      - console_host != auth_host
+
+- name: Verify required Apache modules exist
+  ansible.builtin.command: apache2ctl -M
+  register: apache_modules
+  changed_when: false
+
+- name: Require the existing proxy and TLS modules
+  ansible.builtin.assert:
+    that:
+      - "'proxy_http_module' in apache_modules.stdout"
+      - "'ssl_module' in apache_modules.stdout"
+      - "'headers_module' in apache_modules.stdout"
+      - "'rewrite_module' in apache_modules.stdout"
+    fail_msg: Enable Apache proxy, proxy_http, ssl, headers and rewrite modules before deployment.
+
+- name: Inspect existing builder virtual-host files
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  loop:
+    - /etc/apache2/sites-available/builder-console-http.conf
+    - /etc/apache2/sites-available/builder-console-https.conf
+  register: builder_vhosts
+  failed_when: false
+  no_log: true
+
+- name: Refuse to overwrite unmanaged virtual hosts
+  ansible.builtin.assert:
+    that: item.content is not defined or 'Managed by builder-core-console Ansible' in (item.content | b64decode)
+  loop: "{{ builder_vhosts.results }}"
+  no_log: true
+
+- name: Create ACME webroot
+  ansible.builtin.file:
+    path: /var/www/builder-console-acme/.well-known/acme-challenge
+    state: directory
+    mode: '0755'
+
+- name: Install only the new HTTP virtual hosts
+  ansible.builtin.template:
+    src: templates/builder-console-http.conf.j2
+    dest: /etc/apache2/sites-available/builder-console-http.conf
+    mode: '0644'
+
+- name: Enable new HTTP virtual hosts
+  ansible.builtin.file:
+    src: /etc/apache2/sites-available/builder-console-http.conf
+    dest: /etc/apache2/sites-enabled/builder-console-http.conf
+    state: link
+
+- name: Validate Apache before challenge reload
+  ansible.builtin.command: apache2ctl configtest
+  changed_when: false
+
+- name: Gracefully reload Apache for ACME
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+
+- name: Obtain the two-domain certificate using the existing ACME account
+  ansible.builtin.command:
+    argv: "{{ ['certbot', 'certonly', '--webroot', '-w', '/var/www/builder-console-acme', '--non-interactive', '--cert-name', 'builder-console', '-d', console_host, '-d', auth_host] + (['--email', acme_email, '--agree-tos'] if not (use_existing_acme_account | default(false) | bool) else []) }}"
+    creates: /etc/letsencrypt/live/builder-console/fullchain.pem
+  when: edge_issue_certificate | default(true) | bool
+
+- name: Install only the new HTTPS virtual hosts
+  ansible.builtin.template:
+    src: templates/builder-console-https.conf.j2
+    dest: /etc/apache2/sites-available/builder-console-https.conf
+    mode: '0644'
+  when: edge_issue_certificate | default(true) | bool
+
+- name: Enable new HTTPS virtual hosts
+  ansible.builtin.file:
+    src: /etc/apache2/sites-available/builder-console-https.conf
+    dest: /etc/apache2/sites-enabled/builder-console-https.conf
+    state: link
+  when: edge_issue_certificate | default(true) | bool
+
+- name: Validate Apache before HTTPS reload
+  ansible.builtin.command: apache2ctl configtest
+  changed_when: false
+
+- name: Gracefully reload Apache for the new domains
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded

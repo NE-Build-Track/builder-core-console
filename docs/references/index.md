@@ -3,6 +3,7 @@
 | Document | What it holds |
 | --- | --- |
 | [data-sources.md](data-sources.md) | Every route the console reads, with credential, shape and page |
+| [engine-payment-reads.md](engine-payment-reads.md) | Draft engine API enhancement to replace direct remote Batteries reads (G16) |
 | [gaps.md](gaps.md) | What the stack cannot show yet, the fix, and who owns it |
 | [payment-stack.md](payment-stack.md) | Batteries and the signer: pins, topology, secrets |
 | [m3-environment.md](m3-environment.md) | The M3 funded configuration: endpoints, credentials, funding, accounting (ISS-13) |

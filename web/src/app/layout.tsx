@@ -15,6 +15,8 @@ import { Ago, Id, Pill } from "@/components/console/values";
 import { PINS, shortCommit } from "@/domain/pins";
 import { consoleSettings, loadNavCounts, loadStackHealth } from "@/runtime/console";
 
+import { mayReadStack } from "./session-cookies";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -97,6 +99,7 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
 /** The application chip, the verdict pill and when it was checked: read at request time. */
 async function TopStatus() {
   await connection();
+  if (!(await mayReadStack())) return <span className="topbar-spacer" />;
   const [health, settings] = await Promise.all([loadStackHealth(), Promise.resolve(consoleSettings())]);
   return (
     <>
@@ -118,11 +121,13 @@ async function TopStatus() {
 
 async function RailWithCounts() {
   await connection();
+  if (!(await mayReadStack())) return <RailNav counts={null} />;
   return <RailNav counts={await loadNavCounts()} />;
 }
 
 async function ReportedPin() {
   await connection();
+  if (!(await mayReadStack())) return <EnginePin version={null} />;
   const health = await loadStackHealth();
   return <EnginePin version={health.engine.ok ? health.engine.value.version : null} />;
 }

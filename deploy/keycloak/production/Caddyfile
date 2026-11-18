@@ -1,0 +1,34 @@
+{
+    email {$ACME_EMAIL}
+    admin off
+}
+
+{$AUTH_HOST} {
+    header Strict-Transport-Security "max-age=31536000"
+    # Public login, broker callback, discovery and keys only. Administration is through
+    # configure.py inside the container; /admin, master realm, metrics and health stay private.
+    @login path /realms/livepeer/* /resources/* /robots.txt
+    handle @login {
+        reverse_proxy keycloak:8080 {
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Port 443
+        }
+    }
+    handle {
+        respond "Not found" 404
+    }
+}
+
+{$CONSOLE_HOST} {
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        # Authenticated HTML and RSC payloads must not be cached at a shared proxy.
+        Cache-Control "private, no-store"
+    }
+    reverse_proxy console:3000 {
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Port 443
+    }
+}

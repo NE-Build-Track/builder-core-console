@@ -9,7 +9,8 @@
 - **Sessions.** The pasted key is checked against the engine, then sealed (AES-256-GCM under
   `CONSOLE_SESSION_SECRET`) into an httpOnly, `SameSite=Strict` cookie for 8 hours; the browser cannot
   read it and the server stores nothing. Server actions are origin-checked by Next.js; the Builder's
-  run endpoint checks `Origin` itself. Sign-out deletes the cookie. Before a page of either area renders, `src/proxy.ts` asks the engine once with
+  run endpoint checks the complete `Origin` against the registered public console origin in OIDC mode,
+  including behind a reverse proxy; forwarded host headers do not select the trusted origin. Sign-out deletes the cookie. Before a page of either area renders, `src/proxy.ts` asks the engine once with
   the session's key (`GET /v1/admin/actors?limit=1` or `GET /v1/jobs?limit=1`); a 401 (the key was revoked or
   expired) clears the cookie and the page shows the sign-in form saying why. A 403, a 5xx or no answer leaves
   the session alone. A Builder run answered 401 ends the session the same way.
@@ -56,3 +57,18 @@
 
 Put TLS in front of it (the session cookie is marked Secure over HTTPS) and protect the read-only pages
 too: they need no sign-in. Prefer a reverse proxy with its own auth until the pages have one.
+
+The [production Keycloak + Google overlay](../deploy/keycloak/production/README.md) enables
+`CONSOLE_PROTECT_READS=true`: a valid operator session and successful engine permission probe are
+required for stack-wide pages; the shared layout suppresses aggregate reads for everyone else.
+The engine probe fails closed on 401, 403, timeouts and configuration failures. Builder pages remain
+available with their existing per-actor authorization. Caddy applies private/no-store caching and HTTPS;
+OIDC callbacks and refreshed cookies use the configured public origin behind the proxy.
+
+Google is an upstream login provider, not the engine issuer. Keycloak issues short-lived, role-gated
+RFC 9068 tokens with an engine audience. The separate reader client has no admin or builder scopes.
+Signup grants the builder role and no allocation. The first-login flow refuses existing-email
+collisions rather than linking accounts. No demo human identities, default operator or password
+signup are imported. The public edge denies the master realm and administrative endpoints.
+Provisioning stores secrets in ignored files with private modes; deployment settings are supplied
+externally and secret tasks use `no_log`. Do not publish generated env files, inventories, database dumps or key files.

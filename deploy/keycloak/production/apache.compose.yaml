@@ -1,0 +1,7 @@
+# Third overlay when EDGE_MODE=apache: Apache owns 80/443 on the host.
+services:
+  keycloak:
+    ports: ["127.0.0.1:${KEYCLOAK_HTTP_PORT:-18081}:8080"]
+  edge:
+    # Disabled by default; do not explicitly request the edge service in Apache mode.
+    profiles: [standalone-caddy]

@@ -1,0 +1,14 @@
+# Managed by builder-core-console Ansible. Other sites are untouched.
+{% for hostname in [console_host, auth_host] %}
+<VirtualHost *:80>
+    ServerName {{ hostname }}
+    DocumentRoot /var/www/builder-console-acme
+    Alias /.well-known/acme-challenge/ /var/www/builder-console-acme/.well-known/acme-challenge/
+    <Directory /var/www/builder-console-acme>
+        Require all granted
+    </Directory>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+    RewriteRule ^ https://{{ hostname }}%{REQUEST_URI} [R=308,L,NE]
+</VirtualHost>
+{% endfor %}

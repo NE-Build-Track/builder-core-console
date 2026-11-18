@@ -4,6 +4,8 @@ web/node_modules
 web/.next
 deploy/secrets
 deploy/.env
+**/.env
+deploy/keycloak/production/runtime
 deploy/config/pinned-certs
 docs
 **/__pycache__
