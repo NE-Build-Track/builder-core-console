@@ -52,6 +52,11 @@ parser.add_argument("--env", default=str(ROOT / "deploy" / ".env"), help="the st
 parser.add_argument("--compose", default=str(ROOT / "deploy" / "compose.yaml"), help="the stack's compose file")
 parser.add_argument("--out", default=".", help="where to write journey-<run>.json")
 parser.add_argument("--allocation", default="0.05", help="USD the operator allocates to this run's actor (at most 0.25)")
+# The journey's image input is fixed in docs/product-specs/m3-journey.md. On 18 November 2026 ai1's runner
+# answered 400, and charged, for that input: for 1024x768 and for a request that names response_format.
+# These two options run the journey with an input the runner takes; the output records what was sent.
+parser.add_argument("--image-size", default="1024x768", help="WIDTHxHEIGHT for the image job (the journey's is 1024x768)")
+parser.add_argument("--no-response-format", action="store_true", help="leave response_format out of the image job")
 arguments = parser.parse_args()
 if not arguments.yes:
     sys.exit("this spends real money through the signer: pass --yes")
@@ -71,7 +76,10 @@ TICKET_BROKER = "0xa8bB618B1520E284046F3dFc448851A1Ff26e41B"  # Livepeer's Ticke
 GET_SENDER_INFO = "0xe1a589da"  # getSenderInfo(address)
 # The image job was comfystream/fal-flux-schnell until ai1.eliteencoder.net moved to runner contract v1
 # (seen 9 November 2026): its fal routes are gone, and text-to-image (FLUX.2 klein, openai.images.v1) replaces it.
-CHAT, IMAGE, IMAGE_MODEL = "blueclaw/chat/qwen3.8-27b", "text-to-image", "black-forest-labs/FLUX.2-klein-4B"
+# The chat model was app blueclaw/chat/qwen3.8-27b until its runners moved to runner contract v1; on
+# 18 November 2026 it is the app `chat` on livepeer-ai.xodeapp.xyz, and its envelope names the model.
+CHAT, CHAT_MODEL = "chat", "qwen3.8-27b"
+IMAGE, IMAGE_MODEL = "text-to-image", "black-forest-labs/FLUX.2-klein-4B"
 RUN = f"iss25-{int(time.time())}"
 results: list[tuple[str, bool, str]] = []
 evidence: dict = {"run": RUN, "started_at": datetime.now(UTC).isoformat(), "apps": [CHAT, IMAGE]}
@@ -228,7 +236,7 @@ try:
 
     # -- 4, 5. invoke: the streamed chat, then the image -----------------------------------------------
     chat_body = {"app": CHAT, "path": "/v1/chat/completions", "method": "POST", "operation_ref": f"{RUN}-chat", "timeout_s": 120, "max_attempts": 2,
-                 "payload": {"messages": [{"role": "user", "content": "In two sentences, what is the Livepeer network?"}], "max_tokens": 200, "stream": True,
+                 "payload": {"model": CHAT_MODEL, "messages": [{"role": "user", "content": "In two sentences, what is the Livepeer network?"}], "max_tokens": 200, "stream": True,
                              "stream_options": {"include_usage": True}, "chat_template_kwargs": {"enable_thinking": False}}}
     request = urllib.request.Request(BASE + "/v1/jobs?stream=true", data=json.dumps(chat_body).encode(), method="POST",
                                      headers={"Authorization": f"Bearer {builder}", "Content-Type": "application/json"})
@@ -255,7 +263,8 @@ try:
     evidence["chat_reply"], evidence["chat_usage"] = reply, usage
 
     image_body = {"app": IMAGE, "path": "/v1/images/generations", "method": "POST", "operation_ref": f"{RUN}-image", "timeout_s": 180, "max_attempts": 2,
-                  "payload": {"model": IMAGE_MODEL, "prompt": "A lighthouse on a cliff at dusk, watercolour", "n": 1, "size": "1024x768", "response_format": "b64_json"}}
+                  "payload": {"model": IMAGE_MODEL, "prompt": "A lighthouse on a cliff at dusk, watercolour", "n": 1, "size": arguments.image_size}
+                  | ({} if arguments.no_response_format else {"response_format": "b64_json"})}
     s_img, h_img, image = call("POST", "/v1/jobs", token=builder, body=image_body)
     image_id = header(h_img, "livepeer-job-id")
     first = ((image.get("data") or [{}])[0]) if isinstance(image, dict) else {}
@@ -268,7 +277,7 @@ try:
     if picture:
         (OUT / f"journey-{RUN}-image.{'png' if png else 'bin'}").write_bytes(picture)
     check(4, "image job through POST /v1/jobs", s_img == 200 and image_id, f"job {image_id}")
-    check(5, "image result inline: a PNG, in data[0].b64_json, at the size asked for", png and (width, height) == (1024, 768),
+    check(5, "image result inline: a PNG, in data[0].b64_json, at the size asked for", png and f"{width}x{height}" == arguments.image_size,
           f"{len(picture)} bytes, {'PNG' if png else 'not a PNG: ' + json.dumps(image)[:200]}, {width}x{height}")
     evidence["image_bytes"], evidence["image_size"] = len(picture), [width, height]
     jobs = {"chat": chat_id, "image": image_id}

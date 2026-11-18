@@ -34,7 +34,9 @@ ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / "deploy" / ".env"
 KEYS_FILE = ROOT / ".local" / "demo-keys.json"
 
-CHAT = "blueclaw/chat/qwen3.8-27b"
+# The chat model was app blueclaw/chat/qwen3.8-27b until its runners moved to runner contract v1; on
+# 18 November 2026 it is the app `chat` on livepeer-ai.xodeapp.xyz, and its envelope names the model.
+CHAT, CHAT_MODEL = "chat", "qwen3.8-27b"
 EMBED = "blueclaw/embeddings/ollama"
 
 GRANTS = {"Acme Studio": "2", "Northwind Research": "1"}
@@ -141,7 +143,7 @@ def request_for(app: str, index: int) -> dict:
     return {
         "app": app,
         "path": "/v1/chat/completions",
-        "payload": {"messages": [{"role": "user", "content": prompt}], "max_tokens": 48, "temperature": 0.7, "chat_template_kwargs": {"enable_thinking": False}},
+        "payload": {"model": CHAT_MODEL, "messages": [{"role": "user", "content": prompt}], "max_tokens": 48, "temperature": 0.7, "chat_template_kwargs": {"enable_thinking": False}},
         "max_attempts": 3,
         "timeout_s": 120,
     }
