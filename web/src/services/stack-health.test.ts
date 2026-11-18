@@ -31,13 +31,44 @@ describe("stack health", () => {
     const stale = fakeSources({
       engine: {
         health: async () =>
-          read("engine", engineHealth({ discovery_fresh: false, discovery_error: "signer unreachable", cost_sync_at: "2026-10-20T17:00:00Z" })),
+          read("engine", engineHealth({ discovery_fresh: false, discovery_error: "unavailable", cost_sync_at: "2026-10-20T17:00:00Z" })),
       },
     });
-    expect(await stateOf(stale, "engine.discovery")).toMatchObject({ state: "warn", summary: expect.stringContaining("signer unreachable") });
+    expect(await stateOf(stale, "engine.discovery")).toMatchObject({
+      state: "warn",
+      summary: expect.stringContaining("Stale: the discovery service could not be reached"),
+    });
     expect(await stateOf(stale, "engine.cost_sync")).toMatchObject({ state: "warn", summary: "Synced 1 h ago" });
-    const failing = fakeSources({ engine: { health: async () => read("engine", engineHealth({ cost_sync_error: "Batteries 401" })) } });
-    expect(await stateOf(failing, "engine.cost_sync")).toMatchObject({ state: "warn", summary: "Last sync failed: Batteries 401" });
+    const failing = fakeSources({ engine: { health: async () => read("engine", engineHealth({ cost_sync_error: "unavailable" })) } });
+    expect(await stateOf(failing, "engine.cost_sync")).toMatchObject({
+      state: "warn",
+      summary: "Last sync failed: Batteries could not be reached, or refused the engine",
+    });
+  });
+
+  it("says each engine error code in words (builder-core #113, C7: codes, never exception text)", async () => {
+    const summaryOf = async (id: string, overrides: Parameters<typeof engineHealth>[0]) =>
+      (await stateOf(fakeSources({ engine: { health: async () => read("engine", engineHealth(overrides)) } }), id))?.summary;
+    expect(await summaryOf("engine.discovery", { discovery_fresh: false, discovery_error: "invalid_answer" })).toContain(
+      "Stale: the discovery answer could not be read",
+    );
+    expect(await summaryOf("engine.cost_sync", { cost_sync_error: "invalid_answer" })).toBe("Last sync failed: Batteries' answer could not be read");
+    expect(await summaryOf("engine.cost_sync", { cost_sync_error: "store_error" })).toBe(
+      "Last sync failed: the engine could not store the usage rows",
+    );
+  });
+
+  it("warns when the cost sync set usage rows aside (builder-core #114, C13)", async () => {
+    const withRows = (count: number | null | undefined) =>
+      fakeSources({ engine: { health: async () => read("engine", engineHealth({ cost_sync_set_aside: count })) } });
+    expect(await stateOf(withRows(0), "engine.set_aside")).toMatchObject({ state: "ok", summary: "None" });
+    expect(await stateOf(withRows(1), "engine.set_aside")).toMatchObject({
+      state: "warn",
+      summary: "1 usage row the sync could not read or store; see costs.usage_set_aside in the engine's log",
+    });
+    expect(await stateOf(withRows(3), "engine.set_aside")).toMatchObject({ state: "warn", summary: expect.stringContaining("3 usage rows") });
+    // An engine before the hardened releases/m4 does not report the count: no check, not a false "ok".
+    expect(await stateOf(withRows(undefined), "engine.set_aside")).toBeUndefined();
   });
 
   it("does not call a never-synced engine healthy", async () => {

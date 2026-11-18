@@ -659,9 +659,11 @@ export interface components {
             /** Cost Sync At */
             cost_sync_at: string | null;
             /** Cost Sync Error */
-            cost_sync_error: string | null;
+            cost_sync_error: ("unavailable" | "invalid_answer" | "store_error") | null;
+            /** Cost Sync Set Aside */
+            cost_sync_set_aside?: number | null;
             /** Discovery Error */
-            discovery_error: string | null;
+            discovery_error: ("unavailable" | "invalid_answer") | null;
             /** Discovery Fresh */
             discovery_fresh: boolean;
             /** Discovery Observed At */
@@ -1152,6 +1154,11 @@ export interface components {
             by_class: {
                 [key: string]: components["schemas"]["Fees"];
             };
+            /**
+             * Other Allocations
+             * @default []
+             */
+            other_allocations: string[];
             provider_spent: components["schemas"]["Money-Output"] | null;
             unattributed: components["schemas"]["Fees"];
         };
@@ -1339,6 +1346,11 @@ export interface components {
             rows_new: number;
             /** Rows Seen */
             rows_seen: number;
+            /**
+             * Rows Set Aside
+             * @default 0
+             */
+            rows_set_aside: number;
         };
         /** UsageBody */
         UsageBody: {
@@ -1899,6 +1911,7 @@ export interface operations {
             query?: {
                 application_id?: string;
                 actor_id?: string | null;
+                allocation_id?: string | null;
             };
             header?: never;
             path?: never;

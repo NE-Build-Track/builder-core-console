@@ -30,6 +30,20 @@ export function worst(states: readonly State[]): State {
   return states.reduce<State>((acc, state) => (RANK[state] > RANK[acc] ? state : acc), "ok");
 }
 
+/**
+ * /readyz carries short codes, never exception text (builder-core #113, C7); the full text is in the engine's
+ * log. The words here say what each code means for an operator.
+ */
+const DISCOVERY_ERRORS: Record<NonNullable<EngineHealth["discovery_error"]>, string> = {
+  unavailable: "the discovery service could not be reached",
+  invalid_answer: "the discovery answer could not be read",
+};
+const COST_SYNC_ERRORS: Record<NonNullable<EngineHealth["cost_sync_error"]>, string> = {
+  unavailable: "Batteries could not be reached, or refused the engine",
+  invalid_answer: "Batteries' answer could not be read",
+  store_error: "the engine could not store the usage rows",
+};
+
 function unreadable(id: string, label: string, reading: Reading<unknown>): Check {
   return { id, label, state: "bad", summary: reading.ok ? "" : describeProblem(reading.problem) };
 }
@@ -50,7 +64,7 @@ export function engineChecks(health: Reading<EngineHealth>, now: Date): Check[] 
       state: h.discovery_fresh ? "ok" : "warn",
       summary: h.discovery_fresh
         ? `Fresh, observed ${ago(h.discovery_observed_at, now)}`
-        : `Stale${h.discovery_error ? `: ${h.discovery_error}` : ""} (last observed ${ago(h.discovery_observed_at, now)})`,
+        : `Stale${h.discovery_error ? `: ${DISCOVERY_ERRORS[h.discovery_error] ?? h.discovery_error}` : ""} (last observed ${ago(h.discovery_observed_at, now)})`,
     },
   ];
   const syncAge = ageSeconds(h.cost_sync_at, now);
@@ -59,11 +73,25 @@ export function engineChecks(health: Reading<EngineHealth>, now: Date): Check[] 
     label: "Cost sync",
     state: h.cost_sync_error ? "warn" : syncAge === null ? "unknown" : syncAge > COST_SYNC_STALE_S ? "warn" : "ok",
     summary: h.cost_sync_error
-      ? `Last sync failed: ${h.cost_sync_error}`
+      ? `Last sync failed: ${COST_SYNC_ERRORS[h.cost_sync_error] ?? h.cost_sync_error}`
       : syncAge === null
         ? "Has not synced with Batteries yet"
         : `Synced ${formatAge(syncAge)} ago`,
   });
+  // A usage row the sync cannot read or store is set aside, not fatal (builder-core #114, C13). An engine
+  // before the hardened releases/m4 does not report the count, and then there is nothing to show.
+  const setAside = h.cost_sync_set_aside;
+  if (setAside !== null && setAside !== undefined) {
+    checks.push({
+      id: "engine.set_aside",
+      label: "Usage rows set aside",
+      state: setAside > 0 ? "warn" : "ok",
+      summary:
+        setAside > 0
+          ? `${setAside} usage ${setAside === 1 ? "row" : "rows"} the sync could not read or store; see costs.usage_set_aside in the engine's log`
+          : "None",
+    });
+  }
   const pinned = shortCommit(PINS.engine.commit);
   checks.push({
     id: "engine.version",

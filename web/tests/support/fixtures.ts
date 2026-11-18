@@ -129,6 +129,7 @@ export function engineHealth(overrides: Partial<EngineHealth> = {}): EngineHealt
     discovery_error: null,
     cost_sync_at: new Date(NOW.getTime() - 20_000).toISOString(),
     cost_sync_error: null,
+    cost_sync_set_aside: 0,
     running_jobs: 0,
     allocation_mode: "per_actor",
     version: `0.1.1.dev37+g${shortCommit(PINS.engine.commit)}`, // the pinned build
@@ -146,6 +147,7 @@ export function reconciliation(overrides: Partial<Reconciliation> = {}): Reconci
     provider_spent: { amount: "0.044953749066932028", currency: "USD" },
     by_class: { delivered: { fee_eth: "0", fee_usd: "0.044953749066932028", row_count: 404 } },
     unattributed: noFees,
+    other_allocations: [],
     balanced: true,
     ...overrides,
   };

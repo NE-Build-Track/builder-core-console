@@ -71,9 +71,9 @@ services:
   # The stock engine, JWT only (LPB_AUTH=jwt): engine API keys are off, so the console signs in through
   # Keycloak. Paid through the signer and Batteries above, per actor; its own database and engine id.
   engine:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:28ae6a9
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/engine:719378f
     build:
-      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#28ae6a953ba993eaa2839a97d53ed3f7f6101bca
+      context: https://github.com/NE-Build-Track/livepeer-builder-core.git#719378fef583a70f2321f0de5dcf8553df978667
       dockerfile: deploy/dev-stack/engine/Dockerfile
       args:
         BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"

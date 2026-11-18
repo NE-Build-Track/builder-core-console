@@ -6,8 +6,8 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "28ae6a953ba993eaa2839a97d53ed3f7f6101bca",
-    note: "v0.2.0, the M3 release: discovery read from livepeer/node's /discovery document (D63) and stored text capped at 200 characters (#103), on top of D57–D62",
+    commit: "719378fef583a70f2321f0de5dcf8553df978667",
+    note: "the hardened releases/m4 of 17 November 2026: v0.2.0 plus the hardening tickets #112 to #115 (migrations 0012 and 0013). It has no tag yet",
   },
   batteries: {
     repository: "livepeer/clearinghouse-batteries",
