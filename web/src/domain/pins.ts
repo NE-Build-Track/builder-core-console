@@ -11,18 +11,18 @@ export const PINS = {
   },
   batteries: {
     repository: "livepeer/clearinghouse-batteries",
-    commit: "ca09e47c067682fb48c3f15425546fb6aa5b6659",
-    note: "same as ChatLPT and builder-core's dev stack",
+    commit: "03bc9fb5e15b073e68986ec0261e68d7ecd9598b",
+    note: "v0.0.3, the release builder-core's dev stack runs since v0.2.1",
   },
   signer: {
     repository: "livepeer/node",
-    commit: "406b248f6cb8728e6e7eba1809901f589060bc6b",
-    note: "v1.0.2, same as ChatLPT (builder-core v0.2.0's dev stack signs with f45d83f)",
+    commit: "eee09c41f46d64a34bfd9ed3c9cb649536490f13",
+    note: "v1.0.7. Its chain observer polls the RPC provider non-stop, also with no jobs (builder-core #159)",
   },
   discovery: {
     repository: "livepeer/node",
-    commit: "f45d83fd68f73d195dffe8b45f6cac296d023c49",
-    note: "livepeer-discovery in static mode: the node commit builder-core v0.2.0 pins and reads (D63)",
+    commit: "eee09c41f46d64a34bfd9ed3c9cb649536490f13",
+    note: "livepeer-discovery in static mode (D63), from the same v1.0.7 image as the signer",
   },
 } as const;
 

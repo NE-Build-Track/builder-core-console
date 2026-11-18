@@ -2,7 +2,7 @@
  * The node remote signer as the console reads it (docs/references/data-sources.md#signer): its metrics
  * listener (/readyz, /metrics) through the relay. The signer only signs; discovery is its own service.
  */
-/** The signer's Prometheus gauges and counters at livepeer/node 406b248. */
+/** The signer's Prometheus gauges and counters, the same names at livepeer/node 406b248 and v1.0.7 (eee09c4). */
 export const SIGNER_METRICS = [
   "livepeer_signer_up",
   "livepeer_signer_kafka_outbox_healthy",

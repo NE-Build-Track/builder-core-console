@@ -8,11 +8,11 @@ Reference: [docs/references/payment-stack.md](../docs/references/payment-stack.m
 
 | Service | Image | Reachable at |
 | --- | --- | --- |
-| `clearinghouse` | `builder-console/clearinghouse:ca09e47` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
-| `signer` | `builder-console/node:406b248` | shares the clearinghouse namespace |
+| `clearinghouse` | `builder-console/clearinghouse:03bc9fb` | compose network: `:8081` management API, `:8937` signer, `:8939` signer metrics |
+| `signer` | `builder-console/node:eee09c4` | shares the clearinghouse namespace |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relays the signer's loopback metrics to `:8939` |
-| `engine` | `builder-console/engine:28ae6a9` (builder-core `v0.2.0`) | `127.0.0.1:8090` (Swagger at `/docs`) |
-| `discovery` | `builder-console/node:f45d83f` running `livepeer-discovery` (static list `config/discovery.toml`) | `discovery:8939` on the compose network only |
+| `engine` | `builder-console/engine:719378f` (builder-core's hardened `releases/m4`) | `127.0.0.1:8090` (Swagger at `/docs`) |
+| `discovery` | `builder-console/node:eee09c4` running `livepeer-discovery` (static list `config/discovery.toml`) | `discovery:8939` on the compose network only |
 | `console` | `builder-console/console:local` | `127.0.0.1:3060` |
 
 Testing sign-in through an identity provider instead of keys: [keycloak/README.md](keycloak/README.md), a

@@ -5,10 +5,10 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 
 | Service | Source | Pin |
 | --- | --- | --- |
-| `clearinghouse` | `livepeer/clearinghouse-batteries`, `examples/compose/Dockerfile` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
-| `signer` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-signer` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
+| `clearinghouse` | `livepeer/clearinghouse-batteries`, `examples/compose/Dockerfile` | `03bc9fb5e15b073e68986ec0261e68d7ecd9598b` (v0.0.3; was `ca09e47`) |
+| `signer` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-signer` | `eee09c41f46d64a34bfd9ed3c9cb649536490f13` (v1.0.7; was `406b248`, v1.0.2) |
 | `engine` | `NE-Build-Track/livepeer-builder-core`, `deploy/dev-stack/engine/Dockerfile` | `719378fef583a70f2321f0de5dcf8553df978667` (the hardened `releases/m4` of 17 November, no tag yet: tag `v0.2.0`, `28ae6a9`, plus the hardening tickets #112 to #115). Over `v0.2.0`: `/readyz` reports `discovery_error` and `cost_sync_error` as short codes and adds `cost_sync_set_aside`; reconciliation is per allocation and lists the actor's `other_allocations`; a job `path` that is not normal, an empty `operation_ref` and an id over 200 characters are refused with 422; migrations `0012` and `0013` run at the first start, so back up the `engine-data` volume before upgrading. Over `1514212` (2 November: D58–D62 and #90's call timings) it reads discovery only from livepeer/node's `/discovery` document at the required `LPB_DISCOVERY_URL`, and its `Runner` carries `price_info` as advertised, with no `runner_id`, `rate` or `rate_error` (D63); it refuses an id, label or reference over 200 characters or holding a NUL with 422 (#103); a malformed signer identity reply no longer burns the job's `operation_ref` (#79) |
-| `discovery` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-discovery` | `f45d83fd68f73d195dffe8b45f6cac296d023c49` (main, 10 commits after v1.0.6: the commit builder-core v0.2.0 pins, and whose discovery document its reader is tested against). Static mode, the list in `deploy/config/discovery.toml` |
+| `discovery` | `livepeer/node`, `docker/Dockerfile`, binary `livepeer-discovery` | `eee09c41f46d64a34bfd9ed3c9cb649536490f13` (v1.0.7, the same image as the signer; was `f45d83f`, main, 10 commits after v1.0.6: the commit builder-core v0.2.0 pins, and whose discovery document its reader is tested against). Static mode, the list in `deploy/config/discovery.toml` |
 | `signer-metrics` | `alpine/socat:1.8.0.3` | relay only (D10) |
 | `console` | this repository, `deploy/console/Dockerfile` | — |
 
@@ -16,9 +16,12 @@ The same components, pins and configuration as ChatLPT's `deploy/` (its
 it, `deploy/compose.yaml` and this page disagree. To re-pin: change all three, copy the new engine's
 `docs/generated/openapi.json` to `openapi/engine.openapi.json`, run `make gen-api`, then `make check`.
 
-The signer stays at `406b248` (v1.0.2), the commit ChatLPT signs with, while builder-core v0.2.0's own
-dev stack signs with `f45d83f` too (its D63 (5)). The engine reaches the signer through the same SDK pin
-at both engine commits.
+Since 18 November 2026 the signer and discovery run one node image, v1.0.7, and Batteries is v0.0.3. Both
+refuse a bind that is not loopback without the `unsafe@` prefix (`deploy/config/signer.toml`,
+`clearinghouse.toml`). The v1.0.7 signer keeps its chain view fresh in the background: about 28 RPC
+requests every 5 seconds with no jobs running, about 480,000 a day, and no setting changes it
+(builder-core [#159](https://github.com/NE-Build-Track/livepeer-builder-core/issues/159)). Stop the stack
+when it is not in use, or size the RPC plan for it.
 
 ## Topology
 

@@ -9,9 +9,9 @@ name: builder-console-keycloak
 
 services:
   clearinghouse:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/clearinghouse:ca09e47
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/clearinghouse:03bc9fb
     build:
-      context: https://github.com/livepeer/clearinghouse-batteries.git#ca09e47c067682fb48c3f15425546fb6aa5b6659
+      context: https://github.com/livepeer/clearinghouse-batteries.git#03bc9fb5e15b073e68986ec0261e68d7ecd9598b
       dockerfile: examples/compose/Dockerfile
     command: [serve, --config-file, /etc/clearinghouse.toml]
     volumes:
@@ -24,9 +24,9 @@ services:
       retries: 12
 
   signer:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/node:406b248
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/node:eee09c4
     build:
-      context: https://github.com/livepeer/node.git#406b248f6cb8728e6e7eba1809901f589060bc6b
+      context: https://github.com/livepeer/node.git#eee09c41f46d64a34bfd9ed3c9cb649536490f13
       dockerfile: docker/Dockerfile
     user: "0:0"  # dev only: lets the container read bind-mounted secrets regardless of host uid
     network_mode: service:clearinghouse  # Kafka and the webhook listen on this namespace's loopback
@@ -113,9 +113,9 @@ services:
 
   # livepeer/node's livepeer-discovery, as in deploy/compose.yaml (builder-core D63).
   discovery:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/node:f45d83f
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}builder-console/node:eee09c4
     build:
-      context: https://github.com/livepeer/node.git#f45d83fd68f73d195dffe8b45f6cac296d023c49
+      context: https://github.com/livepeer/node.git#eee09c41f46d64a34bfd9ed3c9cb649536490f13
       dockerfile: docker/Dockerfile
     entrypoint: ["/usr/local/bin/livepeer-discovery"]
     command: [--config, /etc/livepeer/discovery.toml]

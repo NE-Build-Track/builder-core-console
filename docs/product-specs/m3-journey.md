@@ -66,9 +66,9 @@ not run them yet.
 | Component | Repository | Commit |
 | --- | --- | --- |
 | Engine | `NE-Build-Track/livepeer-builder-core` | `719378fef583a70f2321f0de5dcf8553df978667` (the hardened `releases/m4` of 17 November, no tag yet: `v0.2.0` plus the hardening tickets #112 to #115). Before it, `28ae6a953ba993eaa2839a97d53ed3f7f6101bca` (tag `v0.2.0`, the M3 release: `1514212` plus D63 discovery, #103 stored text, #79 and #102), and `15142129ebbf51103658f8ad48fd5adae052c56d` (`releases/m3` with PRs #78 → #81 → #82 → #83 and #77 merged); the live checks of 30 October ran on `9676260`, a local integration of the same PRs |
-| Batteries | `livepeer/clearinghouse-batteries` | `ca09e47c067682fb48c3f15425546fb6aa5b6659` |
-| Node signer | `livepeer/node` | `406b248f6cb8728e6e7eba1809901f589060bc6b` (v1.0.2) |
-| Node discovery | `livepeer/node` | `f45d83fd68f73d195dffe8b45f6cac296d023c49` (`livepeer-discovery`, static mode; replaces builder-core's `lpb discovery`, D63) |
+| Batteries | `livepeer/clearinghouse-batteries` | `03bc9fb5e15b073e68986ec0261e68d7ecd9598b` (v0.0.3; `ca09e47` at the funded run of 9 November) |
+| Node signer | `livepeer/node` | `eee09c41f46d64a34bfd9ed3c9cb649536490f13` (v1.0.7; `406b248`, v1.0.2, at the funded run of 9 November) |
+| Node discovery | `livepeer/node` | `eee09c41f46d64a34bfd9ed3c9cb649536490f13` (v1.0.7, `livepeer-discovery`, static mode; replaces builder-core's `lpb discovery`, D63) |
 
 ## The seven-outcome journey
 
