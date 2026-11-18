@@ -6,18 +6,23 @@
 export const PINS = {
   engine: {
     repository: "NE-Build-Track/livepeer-builder-core",
-    commit: "15142129ebbf51103658f8ad48fd5adae052c56d",
-    note: "releases/m3 with PRs #78, #81, #82, #83 and #77 merged: payment failure reasons, paged history and a request limit, cost per app, repeat-safe revokes, rates with source and age (D58–D62)",
+    commit: "719378fef583a70f2321f0de5dcf8553df978667",
+    note: "the hardened releases/m4 of 17 November 2026: v0.2.0 plus the hardening tickets #112 to #115 (migrations 0012 and 0013). It has no tag yet",
   },
   batteries: {
     repository: "livepeer/clearinghouse-batteries",
-    commit: "ca09e47c067682fb48c3f15425546fb6aa5b6659",
-    note: "same as ChatLPT and builder-core's dev stack",
+    commit: "03bc9fb5e15b073e68986ec0261e68d7ecd9598b",
+    note: "v0.0.3, the release builder-core's dev stack runs since v0.2.1",
   },
   signer: {
     repository: "livepeer/node",
-    commit: "406b248f6cb8728e6e7eba1809901f589060bc6b",
-    note: "v1.0.2, same as ChatLPT and builder-core's dev stack",
+    commit: "eee09c41f46d64a34bfd9ed3c9cb649536490f13",
+    note: "v1.0.7. Its chain observer polls the RPC provider non-stop, also with no jobs (builder-core #159)",
+  },
+  discovery: {
+    repository: "livepeer/node",
+    commit: "eee09c41f46d64a34bfd9ed3c9cb649536490f13",
+    note: "livepeer-discovery in static mode (D63), from the same v1.0.7 image as the signer",
   },
 } as const;
 

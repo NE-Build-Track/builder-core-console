@@ -5,7 +5,7 @@ import { CountUp } from "@/components/console/count-up";
 import { PageView, Streamed } from "@/components/console/page-view";
 import { Empty, Grid, PageHead, ReadFrom, Ring, Section, Tile, Unreadable } from "@/components/console/primitives";
 import { Ago, Pill } from "@/components/console/values";
-import type { Runner } from "@/domain/engine";
+import { advertisedPrice, type Runner } from "@/domain/engine";
 import { loadNetwork } from "@/runtime/console";
 
 export const metadata: Metadata = { title: "Network" };
@@ -35,6 +35,11 @@ function host(url: string | null | undefined): string {
 
 function price(amount: string): string {
   return /^\d+$/.test(amount) ? BigInt(amount).toLocaleString("en-US") : amount;
+}
+
+/** A runner's price as advertised (builder-core D63), or a dash when it names no amount, currency and unit. */
+function priceText(advertised: ReturnType<typeof advertisedPrice>): string {
+  return advertised ? `${price(advertised.amount)} ${advertised.currency}/${advertised.unit}` : "—";
 }
 
 /** How many offering cards to show before the rest go into a table. Real networks offer ~100 apps. */
@@ -210,7 +215,7 @@ async function Network() {
 
       <Section id="h-orchs" title="Orchestrators" description="GET /discovery on the discovery service: what the engine reads. The ring shows free slots out of capacity.">
         <Unreadable reading={view.orchestrators} what="Orchestrators" />
-        {view.orchestrators.ok && view.orchestrators.value.length === 0 ? <Empty>The discovery service serves no orchestrators. Check its /readyz.</Empty> : null}
+        {view.orchestrators.ok && view.orchestrators.value.length === 0 ? <Empty>The discovery service serves no orchestrators. Its log reports each failed refresh (make logs).</Empty> : null}
         {view.orchestrators.ok && view.orchestrators.value.length > 0 ? (
           <Grid min="20rem">
             {view.orchestrators.value.map((orchestrator) => (
@@ -283,7 +288,7 @@ async function Network() {
                 {runners.map(({ app, runner }) => (
                   <tr key={runner.url}>
                     <th scope="row" className="mono cell-wrap-narrow">
-                      {host(runner.orchestrator_url)}
+                      {host(runner.orchestrator_url ?? runner.url)}
                     </th>
                     <td className="mono cell-wrap-narrow">{app}</td>
                     <td className="cell-wrap-narrow">{runner.gpu?.name ?? "—"}</td>
@@ -298,7 +303,7 @@ async function Network() {
                         </span>
                       </span>
                     </td>
-                    <td className="r mono cell-wrap-narrow">{runner.rate ? `${price(runner.rate.amount)} ${runner.rate.currency}/${runner.rate.unit}` : "—"}</td>
+                    <td className="r mono cell-wrap-narrow">{priceText(advertisedPrice(runner))}</td>
                     <td className="mono cell-wrap-narrow">{runner.version ?? "—"}</td>
                   </tr>
                 ))}

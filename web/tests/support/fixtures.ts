@@ -3,7 +3,7 @@
  * ChatLPT's stack on 20 October 2026 (same pins as this repository), so tests run on real shapes.
  */
 import type { Allocation, ApiKey, Grant, LedgerRow, PaymentSession, UsageEvent } from "@/domain/batteries";
-import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, KnownActor, Reconciliation } from "@/domain/engine";
+import type { AccessKey, CostSummary, EngineHealth, Job, JobCost, KnownActor, Reconciliation, Runner } from "@/domain/engine";
 import { failed, ok, type Problem, type Reading, type SourceName } from "@/domain/reading";
 import { PINS, shortCommit } from "@/domain/pins";
 import type { DiscoveredOrchestrator } from "@/domain/discovery";
@@ -129,6 +129,7 @@ export function engineHealth(overrides: Partial<EngineHealth> = {}): EngineHealt
     discovery_error: null,
     cost_sync_at: new Date(NOW.getTime() - 20_000).toISOString(),
     cost_sync_error: null,
+    cost_sync_set_aside: 0,
     running_jobs: 0,
     allocation_mode: "per_actor",
     version: `0.1.1.dev37+g${shortCommit(PINS.engine.commit)}`, // the pinned build
@@ -146,6 +147,7 @@ export function reconciliation(overrides: Partial<Reconciliation> = {}): Reconci
     provider_spent: { amount: "0.044953749066932028", currency: "USD" },
     by_class: { delivered: { fee_eth: "0", fee_usd: "0.044953749066932028", row_count: 404 } },
     unattributed: noFees,
+    other_allocations: [],
     balanced: true,
     ...overrides,
   };
@@ -234,16 +236,17 @@ export function engineFake(overrides: Partial<EngineReader> = {}): EngineReader 
         },
       ]),
     runners: async (app) =>
-      read("engine", [
+      read<readonly Runner[]>("engine", [
         {
+          // builder-core v0.2.0 (D63): price_info as advertised, no runner_id, rate or rate_error
           url: "https://orch-us-central.xodeapp.xyz:18935/apps/runner_ogm53upg/app",
           app,
-          runner_id: "runner_ogm53upg",
           mode: "single-shot",
           orchestrator_url: "https://orch-us-central.xodeapp.xyz:18935",
           capacity: 8,
+          capacity_used: 2,
           capacity_available: 6,
-          rate: { amount: "4534062178", currency: "wei", unit: "seconds", source: "orchestrator" as const },
+          price_info: { price: "4534062178", price_usd: null, currency: "wei", unit: "seconds" },
           gpu: { id: "0", name: "NVIDIA RTX 4090", vram_mb: 24564 },
           metadata: null,
           version: "1.0.2",

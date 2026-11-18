@@ -1,0 +1,16 @@
+# livepeer/node's livepeer-discovery in static mode (builder-core D63), shaped like builder-core v0.2.0's
+# deploy/dev-stack/config/discovery.toml. The same orchestrators as the list lpb discovery read before.
+# It GETs each node's /discovery at start and every RefreshInterval, verifies TLS with the system trust store,
+# and skips a runner with no observed_at (so an orchestrator on node v1.0.2 does not appear). A non-loopback
+# listener needs the unsafe@ prefix; /readyz and /metrics stay on the container's loopback.
+Listen = "unsafe@0.0.0.0:8939"
+MetricsListen = "127.0.0.1:8940"
+Nodes = [
+  "https://hky.eliteencoder.net:8936",
+  "https://ai1.eliteencoder.net:8936",
+  "https://orch-us-central.xodeapp.xyz:18935",
+  "https://us-central-metrics.speedybird.xyz:28935",
+  "https://orch-eu-central.open-pool.com:443",
+  "https://livepeer-ai.xodeapp.xyz:38935",
+]
+RefreshInterval = "30s"

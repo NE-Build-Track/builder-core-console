@@ -16,11 +16,11 @@ flowchart LR
         AD["adapters/: engine, Batteries, signer, discovery (GET only)"]
     end
     subgraph Stack["builder stack (deploy/compose.yaml)"]
-        Engine["engine: stock lpb serve (builder-core 1514212)"]
+        Engine["engine: stock lpb serve (builder-core v0.2.0, 28ae6a9)"]
         Bat["clearinghouse: Batteries (ca09e47)"]
         Signer["signer: node remote signer (406b248)"]
         Relay["signer-metrics: socat relay"]
-        Disc["discovery: builder-core lpb discovery (static list)"]
+        Disc["discovery: node livepeer-discovery (f45d83f, static list)"]
     end
     Orch["Orchestrators (network)"]
     Browser -->|"HTTP, 127.0.0.1 only"| Pages --> RT --> SVC --> AD

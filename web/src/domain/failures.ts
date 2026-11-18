@@ -18,8 +18,8 @@ const BY_KIND: Record<Kind, Row> = {
     todo: "Check the name against the catalog (GET /v1/offerings); the same operation reference runs again.",
   },
   no_capacity: {
-    title: "The engine is at capacity",
-    meaning: "The engine's admission limits are full, so nothing ran.",
+    title: "Every runner is busy",
+    meaning: "Every runner for the app advertises no free capacity and the job would pay each of them, so none was tried and nothing was paid.",
     todo: "Retry after the Retry-After header, with the same operation reference.",
   },
   not_provisioned: {

@@ -61,7 +61,9 @@ for line in Path(arguments.env).read_text().splitlines():
 BASE = f"http://127.0.0.1:{values.get('ENGINE_PORT') or '8090'}"
 ADMIN = values["CONSOLE_ENGINE_ADMIN_TOKEN"]
 RUN = f"live-d57-{int(time.time())}"
-APP = "blueclaw/chat/qwen3.8-27b"
+# The chat model was app blueclaw/chat/qwen3.8-27b until its runners moved to runner contract v1; on
+# 18 November 2026 it is the app `chat` on livepeer-ai.xodeapp.xyz, and its envelope names the model.
+APP, MODEL = "chat", "qwen3.8-27b"
 results: list[tuple[str, bool, str]] = []
 
 
@@ -104,7 +106,7 @@ def chat(prompt, stream=False):
         "app": APP,
         "path": "/v1/chat/completions",
         "payload": {
-            "model": "Qwen3.8-27B",
+            "model": MODEL,
             "stream": stream,
             "max_tokens": 600 if stream else 16,
             "messages": [{"role": "user", "content": prompt}],

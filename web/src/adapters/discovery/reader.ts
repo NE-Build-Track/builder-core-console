@@ -10,8 +10,9 @@ import { brief, getText, parseJson } from "../http";
 type Options = { readonly timeoutMs: number; readonly now: () => Date };
 
 /**
- * The discovery service, ``lpb discovery`` from the pinned builder-core (docs/references/data-sources.md#discovery):
- * GET /discovery is the inventory the engine reads too, so the Network page shows what the engine can buy.
+ * Discovery, livepeer/node's ``livepeer-discovery`` at the pinned commit (docs/references/data-sources.md#discovery):
+ * GET /discovery is the document the engine reads too (builder-core D63), so the Network page shows what the engine
+ * can buy.
  */
 export function discoveryReader(settings: SourceSettings<DiscoverySettings>, options: Options): DiscoveryReader {
   const at = () => options.now().toISOString();

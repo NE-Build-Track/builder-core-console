@@ -89,11 +89,12 @@ The node remote signer. Two listeners:
 
 ## Discovery
 
-The discovery service, `lpb discovery` from the pinned builder-core, at `CONSOLE_DISCOVERY_URL`
-(`http://discovery:8939`). It lists orchestrators (here a static list, `deploy/config/orchestrators.txt`),
-probes each one's `/discovery` over trusted TLS, and serves the merged inventory. The engine reads the
-same inventory through `LPB_DISCOVERY_URL`, so the Network page shows exactly what the engine can buy.
+livepeer/node's `livepeer-discovery`, at the node commit in `web/src/domain/pins.ts`, at
+`CONSOLE_DISCOVERY_URL` (`http://discovery:8939`). It reads each listed orchestrator's `/discovery` (here a
+static list, `deploy/config/discovery.toml`) every 30 s over trusted TLS, skips runners with no
+`observed_at`, and serves the merged document. The engine reads the same document through
+`LPB_DISCOVERY_URL` (builder-core D63), so the Network page shows exactly what the engine can buy.
 
 | Route | Page | Notes |
 | --- | --- | --- |
-| `GET /discovery` | Network, nav count | livepeer-node's inventory: one entry per serving orchestrator, `address` and `runners` (capacity, price, GPU). No `last_seen`: the service serves only what answered within its retention window. |
+| `GET /discovery` | Network, nav count | livepeer-node's document: first an entry listing the sources read (`nodes`, each `url` and `queried_at`), which the console skips; then one entry per orchestrator with runners, `address` and `runners` (capacity, `price_info` as advertised, GPU, `observed_at`). No `last_seen`: a source is served until it fails six refreshes in a row. |

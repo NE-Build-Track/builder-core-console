@@ -488,6 +488,11 @@
           "cost_sync_error": {
             "anyOf": [
               {
+                "enum": [
+                  "unavailable",
+                  "invalid_answer",
+                  "store_error"
+                ],
                 "type": "string"
               },
               {
@@ -496,9 +501,24 @@
             ],
             "title": "Cost Sync Error"
           },
+          "cost_sync_set_aside": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Sync Set Aside"
+          },
           "discovery_error": {
             "anyOf": [
               {
+                "enum": [
+                  "unavailable",
+                  "invalid_answer"
+                ],
                 "type": "string"
               },
               {
@@ -686,6 +706,7 @@
           },
           "grant_id": {
             "default": "",
+            "maxLength": 200,
             "title": "Grant Id",
             "type": "string"
           },
@@ -785,11 +806,15 @@
       "IssueKeyBody": {
         "properties": {
           "actor_id": {
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Actor Id",
             "type": "string"
           },
           "application_id": {
             "default": "default",
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Application Id",
             "type": "string"
           },
@@ -806,6 +831,7 @@
           },
           "label": {
             "default": "",
+            "maxLength": 200,
             "title": "Label",
             "type": "string"
           },
@@ -1086,6 +1112,7 @@
         "additionalProperties": false,
         "properties": {
           "app": {
+            "maxLength": 200,
             "minLength": 1,
             "title": "App",
             "type": "string"
@@ -1093,6 +1120,7 @@
           "capability": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -1184,6 +1212,7 @@
           "model": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -1196,6 +1225,7 @@
             "anyOf": [
               {
                 "maxLength": 200,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -1422,48 +1452,6 @@
         "title": "Money",
         "type": "object"
       },
-      "NetworkRate": {
-        "additionalProperties": false,
-        "description": "A rate exactly as advertised: a wholesale network price per unit, not a job quote or a retail price.",
-        "properties": {
-          "amount": {
-            "title": "Amount",
-            "type": "string"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          },
-          "price_usd": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Usd"
-          },
-          "source": {
-            "const": "orchestrator",
-            "default": "orchestrator",
-            "title": "Source",
-            "type": "string"
-          },
-          "unit": {
-            "title": "Unit",
-            "type": "string"
-          }
-        },
-        "required": [
-          "amount",
-          "currency",
-          "unit"
-        ],
-        "title": "NetworkRate",
-        "type": "object"
-      },
       "ObservedRate": {
         "additionalProperties": false,
         "description": "A rate as the catalog serves it: when it was last known, and whose clock says so.",
@@ -1596,6 +1584,58 @@
         "title": "Offering",
         "type": "object"
       },
+      "PriceInfo": {
+        "additionalProperties": false,
+        "description": "``price_info`` as advertised. ``price`` and ``price_usd`` are exact decimals, all four fields optional.\n\nA JSON number ``Decimal`` cannot hold is absent here. The runner is still kept, and ``payable_rate``\nreports that the price cannot be paid.",
+        "properties": {
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Usd"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "title": "PriceInfo",
+        "type": "object"
+      },
       "ProvisionBody": {
         "properties": {
           "amount": {
@@ -1603,6 +1643,7 @@
           },
           "grant_id": {
             "default": "",
+            "maxLength": 200,
             "title": "Grant Id",
             "type": "string"
           },
@@ -1751,6 +1792,14 @@
             "title": "By Class",
             "type": "object"
           },
+          "other_allocations": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Other Allocations",
+            "type": "array"
+          },
           "provider_spent": {
             "anyOf": [
               {
@@ -1842,6 +1891,7 @@
           "label": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -1865,6 +1915,7 @@
       },
       "Runner": {
         "additionalProperties": false,
+        "description": "One runner a discovery document advertises.\n\n``address`` becomes ``orchestrator_url`` only when its origin matches ``url``; otherwise payment and\nfailover follow the host the engine calls.",
         "properties": {
           "app": {
             "title": "App",
@@ -1891,6 +1942,17 @@
               }
             ],
             "title": "Capacity Available"
+          },
+          "capacity_used": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacity Used"
           },
           "gpu": {
             "anyOf": [
@@ -1947,37 +2009,15 @@
             ],
             "title": "Orchestrator Url"
           },
-          "rate": {
+          "price_info": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/NetworkRate"
+                "$ref": "#/components/schemas/PriceInfo"
               },
               {
                 "type": "null"
               }
             ]
-          },
-          "rate_error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rate Error"
-          },
-          "runner_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Runner Id"
           },
           "url": {
             "title": "Url",
@@ -1997,20 +2037,14 @@
         },
         "required": [
           "url",
-          "app",
-          "runner_id",
-          "mode",
-          "orchestrator_url",
-          "capacity",
-          "capacity_available",
-          "rate"
+          "app"
         ],
         "title": "Runner",
         "type": "object"
       },
       "RunnerGPU": {
         "additionalProperties": false,
-        "description": "The GPU a runner reports in its registration, as the node echoes it.",
+        "description": "The GPU a runner reports. The engine stores ``id``, ``name`` and ``vram_mb`` and ignores the rest.",
         "properties": {
           "id": {
             "anyOf": [
@@ -2166,6 +2200,8 @@
           "operation_ref": {
             "anyOf": [
               {
+                "maxLength": 200,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -2264,6 +2300,11 @@
           },
           "rows_seen": {
             "title": "Rows Seen",
+            "type": "integer"
+          },
+          "rows_set_aside": {
+            "default": 0,
+            "title": "Rows Set Aside",
             "type": "integer"
           }
         },
@@ -2377,6 +2418,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 200,
                   "type": "string"
                 },
                 {
@@ -2480,6 +2522,7 @@
             "name": "application_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Application Id",
               "type": "string"
             }
@@ -2489,6 +2532,7 @@
             "name": "actor_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Actor Id",
               "type": "string"
             }
@@ -2531,6 +2575,7 @@
             "name": "application_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Application Id",
               "type": "string"
             }
@@ -2540,6 +2585,7 @@
             "name": "actor_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Actor Id",
               "type": "string"
             }
@@ -2594,6 +2640,7 @@
             "name": "application_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Application Id",
               "type": "string"
             }
@@ -2603,6 +2650,7 @@
             "name": "actor_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Actor Id",
               "type": "string"
             }
@@ -2657,6 +2705,7 @@
             "name": "application_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Application Id",
               "type": "string"
             }
@@ -2666,6 +2715,7 @@
             "name": "actor_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Actor Id",
               "type": "string"
             }
@@ -2710,6 +2760,7 @@
             "name": "application_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Application Id",
               "type": "string"
             }
@@ -2719,6 +2770,7 @@
             "name": "actor_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Actor Id",
               "type": "string"
             }
@@ -2773,6 +2825,7 @@
             "name": "application_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Application Id",
               "type": "string"
             }
@@ -2782,6 +2835,7 @@
             "name": "actor_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Actor Id",
               "type": "string"
             }
@@ -2965,6 +3019,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 200,
                   "type": "string"
                 },
                 {
@@ -3059,6 +3114,7 @@
             "name": "key_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Key Id",
               "type": "string"
             }
@@ -3103,6 +3159,7 @@
             "name": "key_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Key Id",
               "type": "string"
             }
@@ -3140,6 +3197,7 @@
             "name": "key_id",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "Key Id",
               "type": "string"
             }
@@ -3195,6 +3253,7 @@
             "required": false,
             "schema": {
               "default": "default",
+              "maxLength": 200,
               "title": "Application Id",
               "type": "string"
             }
@@ -3206,6 +3265,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 200,
                   "type": "string"
                 },
                 {
@@ -3213,6 +3273,24 @@
                 }
               ],
               "title": "Actor Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "allocation_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Allocation Id"
             }
           }
         ],
@@ -3257,6 +3335,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 200,
                   "type": "string"
                 },
                 {
@@ -3393,6 +3472,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 200,
                   "type": "string"
                 },
                 {
@@ -3811,6 +3891,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 200,
                   "type": "string"
                 },
                 {
@@ -3859,6 +3940,7 @@
             "name": "app",
             "required": true,
             "schema": {
+              "maxLength": 200,
               "title": "App",
               "type": "string"
             }
